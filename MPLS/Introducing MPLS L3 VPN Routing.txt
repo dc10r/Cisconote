@@ -1,0 +1,225 @@
+<h2>Introducing MPLS L3 VPN Routing</h2>
+
+
+<h3>MPLS L3 VPN Routing Requirements</h3>
+
+
+The designers of MPLS L3 VPN technology were faced with these routing requirements:
+
+MPLS VPN routing requirements:
+
+CE routers must run standard IP routing software.
+
+PE routers must support MPLS VPN services and IP routing.
+
+P routers have no VPN routes.
+
+
+<table border="1">
+<tr>
+<th>MPLS L3 VPN Routing Requirements</th>
+</tr>
+<tr>
+<td>CE</td>
+<td>PE</td>
+<td>P</td>
+</tr>
+<tr>
+<td>Runs standard IPv4/IPv6 routing softare and is not MPLS-aware.</td>
+<td>Supports MPLS L3 VPN services and VRF routing.</td>
+<td>Runs IGP + LDP in the core and has no VPN awareness.</td>
+</tr>
+</table>
+
+MPLS L3 VPN routing requirements:
+
+<ul>
+  <li>CE routers must run standard IPv4/IPv6 routing software and establish a routing protocol adjacency with the provider’s PE routers.</li>
+  <li>PE routers must support MPLS L3 VPN services and IP routing. To maintain customer separation and privacy, PE routers must use Virtual Routing and Forwarding (VRFs). This allows customers to use the same private or overlapping IP addresses. Each VRF carries a unique RIB and FIB, which is separate from the default or global provider RIB and FIB.</li>
+  <li>P routers have no VPN routes and run an IGP in the provider network for internal reachability, and a label distribution protocol like LDP.</li>
+</ul>
+
+
+<h4> Describe the CE Router MPLS L3 VPN Routing Model</h4>
+
+The MPLS L3 VPN backbone should look like a standard corporate backbone to the CE routers. The CE routers run standard IP routing software and exchange routing updates with the PE routers, which appear to them as normal routers in the C-network.
+
+An MPLS L3 VPN implementation is very similar to a dedicated router peer-to-peer model implementation. From the perspective of a CE router, only IPv4/IPv6 updates, and data, are forwarded to the PE router. The CE router does not need any specific configuration to enable it to be a part of an MPLS L3 VPN domain. The only requirement on the CE router is a routing protocol (or a static default route) that enables the router to exchange IPv4/IPv6 routing information with the connected PE router, which appears as a normal router in the C-network.
+
+Since Cisco IOS Release 12.2, the choice of routing protocols that can be run between a CE router and a PE router includes Enhanced Interior Gateway Routing Protocol (EIGRP), RIPv2, OSPF, EBGP, and static routes.
+
+<h4>Describe the P Router MPLS L3 VPN Routing Model</h4>
+
+From the customer perspective, the MPLS L3 VPN backbone looks like an intracompany BGP backbone with PE routers performing route redistribution between individual sites and the core backbone. The standard design rules that are used for enterprise BGP backbones can be applied to the design of the C-network.
+
+The P routers are hidden from customer view; the internal topology of the BGP backbone is transparent to the customer.
+
+From the P router perspective, the MPLS L3 VPN backbone looks even simpler—the P routers do not participate in MPLS L3 VPN routing and do not carry VPN routes. The P routers run only a backbone IGP with other P routers and with PE routers, and exchange information about core subnetworks.
+
+BGP deployment on P routers is not needed for proper MPLS L3 VPN operation. However, BGP deployment might be needed to support traditional Internet connectivity that has not yet been migrated to MPLS.
+
+
+<h4>Describe the PE Router MPLS L3 VPN Routing Model</h4>
+
+The PE routers are the only routers in MPLS L3 VPN architecture that see all routing aspects of the MPLS L3 VPN. PE routers can perform these exchanges:
+
+<ul>
+  <li>PE routers exchange IPv4/IPv6 VPN routes with CE routers via various routing protocols that are running in the virtual routing tables.</li>
+  <li>PE routers exchange VPNv4/VPNv6 routes via MP-IBGP sessions with other PE routers.</li>
+  <li>PE routers exchange core routes with P routers and other PE routers via core IGP.</li>
+</ul>
+
+In an MPLS L3 VPN architecture, a Provider Edge (PE) router maintains separate Virtual Routing and Forwarding (VRF) tables for each customer to isolate traffic and routing information.
+
+those routes received via the customer IGP update: The PE router peers directly with the Customer Edge (CE) router using a routing protocol (like OSPF, EIGRP, BGP, or Static routing). Routes learned across this PE-CE link are directly placed into that specific customer's VRF routing table.
+
+those routes received via a VPNv4 update: Remote PE routers exchange customer prefix information across the Service Provider core using MP-BGP (Multiprotocol BGP) via VPNv4 routes. When the local PE receives a VPNv4 update containing the matching Route Target (RT), it translates it back to standard IPv4 and installs it into the local VRF.
+
+
+<h3>Describe Support for Internet Routing</h3>
+
+The routing requirements for PE routers also extend to supporting Internet connectivity—PE routers need to exchange Internet routes with other PE routers.
+
+The CE routers cannot participate in Internet routing that is performed in global address space. The P routers could participate in Internet routing; however, Internet routing should be disabled on the P routers to make the network core more stable.
+
+PE routers can run standard IPv4 BGP or IPv4/IPv6 MP-BGP in the global routing table.
+
+<h3>Describe Routing Tables on PE Routers</h3>
+
+PE routers contain several routing tables.
+
+The PE routers fulfill various routing requirements that are imposed on them by using several IP routing tables. Here are some examples:
+
+<ul>
+  <li>The global IP routing table—the IP routing table that is always present in a Cisco IOS Software-based router even if it is not supporting an MPLS VPN—contains all core routes (inserted by the core IGP) and the Internet routes (inserted from the global IPv4/IPv6 MP-BGP table).</li>
+  <li>The VRF tables contain sets of routes for sites with identical routing requirements. The VRFs are filled with intra-VPN IGP information that is exchanged with the CE routers and with VPNv4/VPNv6 routes that are received through MP-BGP sessions from the other PE routers.</li>
+</ul>
+
+<h3>Describe the End-to-End Flow of Routing Updates</h3>
+
+The MPLS end-to-end routing update flow goes as follows:
+PE routers receive IPv4 routing updates from the CE routers and install the updates in the appropriate VRF table.
+
+Cisco IOS Software currently supports RIPv2 (multiple contexts), Classic, and Named EIGRP (multiple contexts), OSPFv2/v3 (multiple processes), and MP-BGP4 (multiple contexts) as routing protocols that can be used per-VRF to exchange customer routing information between CE and PE routers.
+
+The VRF interfaces on PE routers can be either logical or physical, but each interface can be assigned to only one VRF.
+
+The customer routes from VRF tables are exported as VPNv4/VPNv6 routes into MP-BGP and propagated to other PE routers.
+
+The MP-BGP sessions between the PE routers are Internal Border Gateway Protocol (IBGP) sessions and are subject to the IBGP split-horizon rules. Either a full mesh of MP-IBGP sessions is required between PE routers, or route reflectors need to be used.
+
+An MP-BGP update contains these elements:
+
+<ul>
+  <li>VPNv4 and VPNv6 addresses</li>
+  <li>Extended communities (for example, route targets)</li>
+  <li>A label that is used for VPN packet forwarding</li>
+  <li>Any other BGP attribute (for example, AS path, local preference, MED, standard community)</li>
+</ul>
+
+
+The PE routers that are receiving MP-BGP updates import the incoming VPNv4/VPNv6 routes into their VRFs based on RTs that are attached to the incoming routes and on import RTs that are configured in the VRFs. The VPNv4/VPNv6 routes that are installed in the VRFs are converted to IPv4/IPv6 routes and then propagated to the CE routers.
+
+The RTs that are attached to a route and the import RTs that are configured in the VRF drive the propagation of the routes to the CE router.
+
+Incoming VPNv4/VPNv6 routes are imported into VRFs on the receiving PE router only if at least one RT that is attached to the route matches at least one import RT that is configured in the VRF.
+
+Import RT: When a receiving Provider Edge (PE) router receives VPNv4 routes from a peer via MP-BGP, it checks the Import RT values configured on its local VRFs. If the extended community tag on the incoming route matches the local VRF's route-target import configuration, the router accepts that route and imports it into that VRF's routing table.
+
+<h3>Describe End-to-End VPN Packet Forwarding Mechanisms</h3>
+
+A <b>simple MPLS-oriented approach</b> to MPLS L3 VPN packet forwarding across the MPLS backbone would be to label the customer packet with the label that is assigned by LDP for the egress PE router. As a result, the core routers would never see the customer IP packet. Instead, the core routers would see just a labeled packet that is targeted toward the egress PE router. The core routers would perform simple label-switching operations, eventually delivering the customer packet to the egress PE router.
+
+Unfortunately, the customer IP packet would contain no VPN or VRF information that could be used to perform VRF lookup on the egress PE router. The egress PE router would not know which VRF to use for packet lookup and would need to drop the packet.
+----
+An <b>MPLS label stack</b> can be used to tell the egress PE router what to do with the VPN packet. When using the label stack, the ingress PE router labels the incoming IP packet with two labels. The top label in the stack is the LDP label for the egress PE router. This label guarantees that the packet will traverse the MPLS L3 VPN backbone and arrive at the egress PE router.
+
+The egress PE router determines what the second label in the stack will be and propagates this information to the ingress PE using MP-BGP. The second label tells how to forward the incoming VPN packet. The second label could point directly toward an outgoing interface, in which case the egress PE router would perform label lookup only on the VPN packet. The second label could also point to a VRF. In this case, the egress PE router would first perform a label lookup to find the target VRF, and then perform an IP lookup within the VRF.
+
+Both methods of implementing second labels are used in Cisco IOS Software. The second label in the stack points toward an outgoing interface whenever the CE router is the next hop of the VPN route. The second label in the stack points to the VRF table for aggregate VPN routes, VPN routes that are pointing to a null interface, and routes for directly connected VPN interfaces.
+
+The two-level MPLS label stack satisfies these MPLS L3 VPN forwarding requirements:
+
+<ul>
+  <li>The P routers perform label switching on the LDP-assigned label toward the egress PE router.</li>
+  <li>The egress PE router performs label switching on the second label (which it had advertised to the ingress PE router) and either forwards the IP packet toward the CE router or performs another IP lookup in the VRF that is pointed to by the second label in the stack.</li>
+</ul>
+
+<h3>Describe VPN Penultimate Hop Popping</h3>
+
+
+PHP is the removal of the top label in the stack on the hop before the egress router.
+
+
+PHP can be performed in frame-based MPLS networks. In these networks, the last P router in the LSP tunnel pops the LDP label as previously requested by the egress PE router through LDP. So, the PE router receives a labeled packet that contains only the VPN label. In most cases, a single label lookup that is performed on that packet in the egress PE router is enough to forward the packet toward the CE router. The full IP lookup through the FIB is performed only once, in the ingress PE router, even without PHP.
+
+<h3>Describe the Propagation of VPN Labels Between PE Routers</h3>
+
+An MPLS label stack with the second label is required for proper MPLS L3 VPN operation. The egress PE router allocates this label. This label needs to be propagated from the egress PE router to the ingress PE routers to enable proper packet forwarding. MP-BGP was chosen as the propagation mechanism. Every MP-BGP update thus carries a label, which the egress PE router assigns, together with the 12-byte/96-bit VPNv4 or the 24-byte/192-bit VPNv6 prefix.
+
+These steps describe the label propagation between PE routers:
+
+The egress PE router assigns a label to every VPN route that is received from the attached CE routers and to every summary route that is summarized inside the PE router. This label is then used as the second label in the MPLS label stack by the ingress PE routers when labeling VPN packets.
+
+
+In the figure, the VPN label 38 for destination 192.168.10.0 is assigned by the egress PE router.
+
+The VPN labels that the PE router assigns locally can be inspected with the <b>show mpls forwarding vrf vrf-name</b> command.
+
+The VPN labels that the egress PE routers assign are advertised to all other PE routers together with the VPNv4 or VPNv6 prefix in MP-BGP updates.
+
+The labels can be inspected with the show ip bgp vpnv4 all labels command on the ingress PE router.
+
+The routes that have an input label but no output labels are the routes that are received from the CE routers. The local PE router assigns the input label. The routes with an output label but no input labels are the routes that are received from the other PE routers. The remote PE router assigns the output label.
+
+
+Routes received from CE routers (Input label, NO Output label)
+
+Where the route comes from: The local Customer Edge (CE) router sends standard IPv4 routes to the PE router.
+
+Why no output label? The CE router is non-MPLS aware; it sends plain IP packets over a standard Ethernet or serial link. Since the source is directly connected via plain IP, there is no incoming label needed from the CE.
+
+Why an input label? The local PE router acts as the ingress node for traffic heading to this customer. It assigns a VPN label (input label) to this route so remote PE routers know which specific VRF or interface to send packets to when they reply.
+
+Routes received from remote PE routers (Output label, NO Input label)
+
+Where the route comes from: A remote PE router sends VPNv4 routes to the local PE across the MPLS core using MP-BGP.
+
+Why an output label? When the remote PE advertises the route, it attaches a VPN label that it allocated. The local PE stores this as the output label. When sending traffic toward that remote destination, the local PE will slap this output label onto the packet so the remote PE knows how to process it upon arrival.
+
+Why no input label? From the perspective of the local VRF route table entry for this remote prefix, the local PE doesn't need to assign a local VPN label for receiving traffic on that prefix, because the local PE isn't the destination endpoint for that route—it only forwards traffic out toward the remote PE using that output label.
+
+The ingress PE router has two labels that are associated with a remote VPN route. One is the label for the next hop, and the next-hop P router assigns this label via LDP. The label is taken from the local LIB. The remote PE router assigns the second label. The second label is propagated via an MP-BGP update. Both labels are combined in a label stack and installed in the VRF table.
+
+In the figure, the VPN label 26 is assigned by the next-hop P router and advertised to the ingress PE router using LDP.
+
+The label stack in the VRF table can be inspected using the <b>show ip cef vrf vrf-name detail</b> command. The tag-imposed values in the output display the MPLS label stack. The first label in the MPLS label stack is the LDP label that is forwarded toward the egress PE router. The second label is the VPN label that the egress PE router advertises.
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

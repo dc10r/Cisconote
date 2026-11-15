@@ -1,0 +1,1498 @@
+<h2>IMPLEMENTING DMVPN</h2>
+
+<h3>Overview of Cisco IOS DMVPN</h3>
+
+
+DMVPN provides fully meshed connectivity with simple configuration of hub and spoke:
+
+Supports dynamically addressed spokes
+
+Facilitates zero-touch configuration for addition of new spokes
+
+Features automatic IPsec triggering for building an IPsec tunnel
+
+
+DMVPN allows IPsec VPN networks to better scale hub-to-spoke and spoke-to-spoke designs, therefore optimizing performance and reducing latency for communications between sites.
+
+The following are the primary benefits of DMVPNs:
+
+Hub router configuration reduction: Traditionally, configuration on the hub router defines the crypto map characteristics, the crypto Access Control List (ACL), and the GRE tunnel interface for each spoke router. The DMPVN feature enables users to configure a single mGRE tunnel interface and a single IPsec profile without requiring crypto ACLs on the hub router to manage all spoke routers. Thus, the size of the configuration on the hub router remains constant even if spoke routers are added to the network.
+
+Automatic IPsec initiation: GRE uses Next Hop Resolution Protocol (NHRP) to configure and resolve the peer destination address. Thus, this feature allows IPsec to be immediately triggered to create point-to-point GRE tunnels without any IPsec peering configuration.
+
+Support for dynamically addressed spoke routers: When you use point-to-point GRE and IPsec hub-and-spoke VPN networks, you must know the physical interface IP address of the spoke routers when you configure the hub router because the IP address must be configured as the GRE and IPsec tunnel destination address. DMVPN enables spoke routers to have dynamic physical interface IP addresses and uses NHRP to register the dynamic physical interface IP addresses of the spoke routers with the hub router.
+
+
+With networks becoming geographically distributed, network availability over a secure channel is becoming a critical factor in designing scalable IPsec VPN solution designs. DMVPN solution architecture is by far the most effective and scalable solution available.
+
+
+<h3>DMVPN Solution Components</h3>
+
+
+DMVPNs use the following mechanisms to combine the best of hub-and-spoke and fully meshed topologies, and provide some other features:
+
+<table border="1">
+<tr>
+<th>Building Blocks of DMVPN</th>
+</tr>
+<tr>
+<td>(m)GRE</td>
+<td>NHRP</td>
+<td>IKE + IPsec</td>
+</tr>
+<tr>
+<td>Provides a scalable multiprotocol tunneling framework with optional dynamic routing.</td>
+<td>Provides dynamic mutual discovery of spokes.</td>
+<td>Provides key management and transmission protection.</td>
+</tr>
+<tr>
+<td>All DMVPN members use GRE or mGRE interfaces to build GRE tunnels between devices.</td>
+<td>Spokes use NHRP to inform the hub about their inner (tunnel) and outer (physical interface) IP addresses, and query about the mappings of other spokes.</td>
+<td>GRE tunnels use IPsec encapsulation; spokes have permanent IKE sessions with the hub and on-demand sessions between themselves.</td>
+</tr>
+</table>
+
+mGRE: mGRE technology enables a single GRE interface to support multiple GRE tunnels and simplifies the complexity of the configuration. GRE tunnels also provide support for IP multicast and non-IP protocols. IP multicast, in turn, enables the designer to use routing protocols to distribute routing information and detect changes in the VPN. All DMVPN members use GRE or mGRE interfaces to build tunnels between devices.
+
+
+NHRP: NHRP is a client and server protocol in which the hub acts as an NHRP server and the spokes act as NHRP clients. The hub maintains an NHRP database of mappings between the outer (public, physical interface) and tunnel (inside the tunnel interface) IP addresses of each spoke. Each spoke registers its public and internal tunnel addresses when it boots and queries the NHRP database for the addresses of other spokes when building direct spoke-to-spoke tunnels. NHRP is used to reduce the configuration complexity of fully meshed or partially meshed VPNs into something that is comparable to the complexity of hub-and-spoke VPNs.
+
+IPsec: IPsec provides transmission protection for GRE tunnels. DMVPNs form a permanent hub-and-spoke IPsec VPN, which can dynamically reconfigure itself into a partial mesh or full mesh as needed
+
+
+A dynamic routing protocol is used to advertise private networks within the DMVPN networks. IP routing updates and IP multicast data packets traverse only hub-and-spoke tunnels. Unicast IP data packets traverse both hub-and-spoke and direct dynamic spoke-to-spoke tunnels. Routing adjacencies are established across the hub-to-spoke links, and the spoke-to-spoke routing logic is performed by NHRP. A routing protocol does not monitor the state of spoke-to-spoke tunnels. Protocols that are supported include RIP, EIGRP, OSPF, ODR, and BGP.
+
+A DMVPN cloud topology can support either a hub-and-spoke or a spoke-to-spoke deployment model.
+
+Hub-and-spoke: A strict hub-and-spoke DMVPN deployment model requires each branch to be configured with a point-to-point GRE interface to the hub, in which all traffic between spoke networks must flow through the hub router. DMVPN provides scalable configuration to the hub router, but does not facilitate direct spoke-to-spoke communication.
+
+Spoke-to-spoke: A spoke-to-spoke DMVPN deployment model requires each branch to be configured with an mGRE interface in which dynamic spoke-to-spoke tunnels are used for the spoke-to-spoke traffic. In this model, DMVPN provides a scalable configuration model for all involved devices, and also allows spoke devices to dynamically peer and establish optimal routing paths. Note that DMVPN will not immediately produce a partially meshed or fully meshed topology. DMVPN initially establishes a permanent hub-and-spoke topology, from which a partial mesh, or full mesh is dynamically generated, based on traffic patterns.
+
+Because VPNs are used for secure enterprise communications across a shared public infrastructure, such as the Internet, you must consider the following two distinct IP address domains:
+
+The enterprise addressing space, sometimes referred to as the private or inside addresses: These are the addresses that are assigned to mGRE tunnel interfaces, and are registered to the hub NHRP server by each spoke.
+
+
+The infrastructure addressing space, also referred to as the service provider, public, or outside addresses: These are the addresses on physical interfaces of the routers, and are used as addresses in the tunnel envelopes (that is, the source and destination addresses in the GRE/IPsec packet headers).
+
+<h3>Understanding GRE</h3>
+
+GRE is a simple, general-purpose protocol that is designed to manage the transportation of multiprotocol and IP multicast traffic between two or more sites, which may only have IP connectivity.
+
+GRE uses IP protocol 47 and can be used with IPsec VPNs to pass routing information between connected networks. Tunneling protocols encapsulate packets inside a transport protocol. A tunnel interface supports a header for each of the following:
+
+A passenger protocol or encapsulated protocol: This is the original IP packet in the diagram.
+
+A carrier protocol: This is the GRE header in the diagram.
+
+A transport protocol: This is the new IP header in the diagram.
+
+
+The GRE header includes a flag field that identifies the presence of optional header fields, such as the tunnel checksum, the tunnel key, and the tunnel packet sequence number. The Protocol Type field identifies the type of passenger payload inside the GRE packet. For IPv4, the EtherType value is 0x0800. For IPv6, the value is 0x86DD.
+
+
+GRE may be combined with IPsec, where GRE encapsulates the plaintext packet, and then IPsec cryptographically envelopes the packet. The diagram shows a GRE packet encapsulated by ESP in both tunnel mode and transport mode. Tunnel mode adds an extra IP header, whereas transport mode reuses the IP header from GRE. This is an economy of 20 bytes to the total packet size.
+
+IPsec encapsulates unicast IP packet (GRE):
+
+Tunnel mode (default): IPsec creates a new tunnel IP packet
+Transport mode: IPsec reuses the IP header of the GRE (20 bytes less overhead)
+
+GRE offers many useful features. Many vendors support GRE, so interoperability is usually not a problem when using basic GRE point-to-point connectivity. GRE tunnels support multiple network protocols, including IP multicasting. Multipoint tunneling is possible with GRE. A significant advantage of GRE tunneling relative to non-virtual tunnel interface (non-VTI) IPsec tunnels is that GRE uses Cisco IOS Software interfaces, which can offer finer-grained QoS features.
+
+Some limitations of GRE tunneling include the following:
+
+GRE provides no cryptographic traffic protection and must be combined with IPsec to provide it.
+
+There is no standard method to determine the end-to-end state of a GRE tunnel or maintain GRE tunnels. Cisco IOS Software supports proprietary GRE keepalives for this purpose. Dynamic routing protocols are typically used to verify the end-to-end tunnel state.
+
+It may be CPU-intensive on some platforms.
+
+Tunnels can exhibit Maximum Transmission Unit (MTU) and IP fragmentation-related issues.
+
+Most systems installed today leave the default MTU value set to 1500 and generate packets at this MTU size limit. The tunneling system tries to add the 24-bit GRE header onto the packet and this makes the packet too large for the MTU size. The tunneling system then begins to fragment the packets so they will fit under the MTU limit. Where this becomes an issue is when the DF bit is set and the tunneling systems fragment the packet. Once fragmented, some applications cannot process the packets, and this can cause problems. This also becomes an issue when a device wants to send an ICMP packet out to have the sending system retransmit the packets at a smaller size, but Internet Control Message Protocol (ICMP) is blocked before reaching the transmitting system (for example, a firewall blocks all ICMP messages).
+
+
+GRE Implementation Options
+
+The diagrams show three options for implementing GRE networks using GRE or mGRE functionality:
+
+In the diagram on the left, a hub-and-spoke network uses a set of point-to-point tunnels using only GRE interfaces. On the hub, you would need to create as many GRE interfaces as there are spokes, and on a spoke, you would require one GRE interface. All traffic between spokes flows strictly over the hub.
+
+The middle diagram shows the hub optimized with an mGRE interface. In this setup, only a single interface is required on the hub. However, you must deploy NHRP for the hub to learn spoke addresses and correctly provision the spoke-to-hub GRE tunnels.
+This option is often referred to as dynamic mGRE since the hub is configured with NHRP.
+
+
+In the diagram on the right, all devices in a hub-and-spoke network use mGRE interfaces. Using NHRP, these devices can establish a partial mesh or full mesh of GRE tunnels by only configuring a single mGRE interface on each device, greatly simplifying configuration and improving manageability.
+
+This option is often referred to as dynamic mGRE since both the hub and the spokes are configured with NHRP.
+
+
+<table border="1">
+<tr>
+<th>Point-to-Point vs Point-to-Multipoint GRE Tunnels</th>
+</tr>
+<tr>
+<td>Point-to-Point GRE</td>
+<td>mGRE</td>
+</tr>
+<tr>
+<td>Used on point-to-point tunnels or on spokes in hub-and-spoke VPNs</td>
+<td>Typically used on the hub in hub-and-spoke VPNs</td>
+</tr>
+<tr>
+<td>One tunnel interface for each peer</td>
+<td>A single interface on each router for al mGRE peers</td>
+</tr>
+<tr>
+<td>Does not require NHRP; all other peers statically configured</td>
+<td>Requires NHRP to build tunnels to othe peers</td>
+</tr>
+<tr>
+<td>Supports unicast, multicast, and broadcast</td>
+<td>Supports unicast, multicast, and broadcast</td>
+</tr>
+
+</table>
+
+This table compares point-to-point and point-to-multipoint GRE tunnels. The following are the main characteristics of a point-to-point GRE configuration:
+
+It is typically used for simple point-to-point tunnels that emulate a point-to-point WAN link, or on spoke routers in hub-and-spoke VPNs.
+
+On each device, there is a separate GRE tunnel interface configured for each GRE peer.
+
+It does not require NHRP because other peers (their destination tunnel address) are statically configured.
+
+It supports unicast, multicast, and broadcast traffic.
+
+The following are the main characteristics of point-to-multipoint GRE configuration:
+
+Only one tunnel interface needs to be configured on a router to support multiple remote GRE peers; in a hub-and-spoke network, a single mGRE tunnel interface on the hub accommodates many spoke GRE peers. This greatly simplifies the management of the hub device because new spokes can be added without the need to reconfigure the hub.
+
+To learn about the IP addresses of other peer, devices using mGRE require NHRP to build dynamic GRE tunnels. Peers can also use dynamically assigned addresses that will then be used by NHRP when registering with the hub.
+
+ mGRE interfaces also support unicast, multicast, and broadcast traffic.
+
+
+<h3>NHRP</h3>
+
+NHRP provides a mechanism to dynamically learn the IP addresses of the spokes.
+
+A client-server protocol: the hub acts as the server and spokes are clients.
+
+The hub maintains a database of all external (physical) and internal (tunnel) addresses of the spokes.
+
+Each spoke registers its addresses when it boots.
+
+NHRP is used by routers to determine the IP address of the next hop (in this case, the inner and outer IP addresses of spoke routers) in IP tunneling networks. When a spoke router initially connects to a DMVPN network, it registers its inner (tunnel) and outer (physical interface) address with the hub router (the NHRP server) whose IP address is statically preconfigured on the spoke router. This registration enables the mGRE interface on the hub router to build a dynamic GRE tunnel back to the registering spoke router without having to know the branch tunnel destination in advance. Therefore, NHRP creates a mapping for a tunnel IP address to the physical interface IP address for each spoke at the hub.
+
+NHRP is a client-server protocol: the hub acts as the server and the spokes are clients. You must configure spoke routers with the physical interface IP address of the hub router as their next-hop server in order for spokes to register with the hub router. The spoke routers send an NHRP registration to the hub router that contains their tunnel IP address and the physical interface IP address. The hub router creates an entry in its NHRP cache and returns a registration reply. The spoke router now views the hub router as a valid next-hop server and uses it as a source to locate any other spokes and networks in the NHRP domain. From the routing protocol perspective, the NHRP domain operates similarly to an NBMA network.
+
+(m)GRE-NHRP Integration
+
+mGRE (and IPsec in DMVPN) uses NHRP to create dynamic tunnels.
+
+The hub learns the spoke addresses to create GRE tunnels to them.
+
+Spokes query the server to resolve external addresses of other spokes and create dynamic GRE tunnels to them.
+
+
+Using NHRP in multipoint GRE networks maps inner-tunnel IP addresses to the outer transport IP addresses. In a hub-and-spoke DMVPN deployment, no GRE or IPsec information about a spoke is configured on the hub router. The spoke router for the GRE tunnel is configured (via NHRP commands) with information about the hub router as the next-hop server. When the spoke router starts up, it automatically initiates the IPsec tunnel with the hub route. It then uses NHRP to notify the hub router of its current physical interface IP address. This notification is useful for the following reasons:
+
+Configuration of the hub router is shortened and simplified because it does not need to have GRE or IPsec information about the peer routers. All this information is learned dynamically via NHRP.
+
+When you add a new spoke router to the DMVPN network, you do not need to change the configuration on the hub or on any of the current spoke routers. The new spoke router is configured with the hub information, and when it starts up, it dynamically registers with the hub router. The dynamic routing protocol propagates the routing information for this spoke to the hub. The hub propagates this new routing information to the other spokes. It also propagates the routing information from the other spokes to the new spoke.
+
+In the figure, one spoke wants to send IP traffic to another spoke, which has a tunnel interface that is configured with the IP address of 10.1.1.3. The originating router sends an NHRP query for the 10.1.1.3 IP address to the hub, which is configured as an NHRP server. The hub responds with information that the IP address 10.1.1.3 is mapped to the physical interface (172.17.3.34) of the receiving spoke router.
+
+<h3>DMVPN Operations</h3>
+
+DMVPN Initial State
+
+Initially, all spokes register with the hub:
+
+Hub has a static physical IP address.
+
+Spokes can be statically or dynamically (physically) addressed.
+
+NHRP mappings are created.
+
+Spoke-to-hub GRE and IPsec tunnels are created.
+
+All traffic from the spoke is forwarded.
+
+The figure illustrates a DMVPN example, where the top (hub) router is used as DMVPN hub and other two routers are statically configured to connect to the hub using NHRP, GRE, and IPsec. The VPN tunnels between the spokes are not permanent, but are established on demand. Initially, all spokes establish a GRE/IPsec tunnel with the hub and NHRP-register with the hub.
+
+At this point, the network is strictly hub-and-spoke and can remain that way, if so configured. The following are the current network properties:
+
+The hub knows the outer and inner IP addresses of each spoke in its NHRP database.
+
+Two spoke-to-hub GRE/IPsec tunnels are created.
+
+All traffic from each spoke (to the hub networks or to the networks of other spokes) is forwarded via the hub.
+
+Dynamic Spoke-to-Spoke Tunnel Creation: A PC (192.168.2.10) inside the left spoke network wants to communicate with a server (192.168.3.10) inside the right spoke network. It sends a packet toward the server.
+
+In a spoke-to-spoke-enabled DMVPN, spokes can dynamically locate each other and establish direct tunnels.
+
+
+This figure illustrates dynamic spoke-to-spoke tunnel creation when a packet is sent from the left spoke site to the right spoke site. In this figure, static NHRP-enabled GRE tunnels are already configured and pre-established from the hub to all spokes. A PC (192.168.2.10) on the left spoke subnet wants to connect to a web server (192.168.3.10) behind the right spoke router. It sends a packet towards the server.
+
+The left spoke router finds the destination network (192.168.3.0/24) reachable over the 10.1.1.3 next hop on its mGRE interface.
+
+Dynamic routing (running over the permanent hub-to-spoke links) is used to populate the routing table of the spoke, so each spoke knows about subnets behind other spokes. The left spoke router consults its routing table for a route to the destination network (192.168.3.0) and finds it reachable behind the right spoke router. The routing table provides an IP next-hop of 10.1.1.3 via the mGRE tunnel interface of the left spoke router.
+
+The left spoke router does not find a mapping for the 10.1.1.3 next hop in its NHRP cache and consults the NHRP server.
+
+After consulting its local NHRP cache for the 10.1.1.3 next hop and finding no cached entries, the left spoke router sends an NHRP query to the NHRP server (DMVPN hub) to resolve the inner (private) tunnel address 10.1.1.3 to an outer (physical, public) tunnel endpoint address.
+
+The hub resolves the 10.1.1.3 tunnel next hop to the 172.17.3.34 physical interface address of the right spoke (based on its NHRP registration).
+
+The NHRP server (hub) stores information about the inner (tunnel) and outer (physical) addresses of all spoke routers based on the NHRP registration information that is received from the initial registration of the spokes to the hub. It sends an NHRP reply to the left spoke informing it that the 10.1.1.3 next hop is reachable through the 172.17.3.34 outer (physical) IP address of the right spoke router.
+
+The response triggers the creation of a dynamic GRE/IPsec tunnel between spoke physical addresses. The answer from the NHRP server is cached on the spoke.
+
+The left spoke receives the NHRP response from the DMVPN hub (the NHRP server) and enters it in the local NHRP cache. This triggers IPsec on the left spoke to create an IPsec tunnel directly to the right spoke, reachable at 172.17.3.34. The left spoke initiates an Internet Key Exchange (IKE) session to 172.17.3.34, using its physical IP address (172.17.2.24) as the source, and negotiates IPsec SAs for a spoke-to-spoke GRE tunnel.
+
+Now that the tunnel has been built, traffic can flow directly between the left spoke network and the right spoke network. Note that traffic cannot flow directly in the other direction yet.
+
+After the IPsec tunnel is created, the left spoke will create a GRE tunnel to 172.17.3.34, and all subsequent packets from the left spoke network and the right spoke network will bypass the hub. This solution has the performance benefit of relieving the hub from decrypting and encrypting these packets, and also reduces the impact on the hub link. Note that, at this point, the spoke-to-spoke tunnel can pass traffic in one direction only, from the left spoke to the right spoke.
+
+When the web server replies to client traffic, the same sequence of NHRP and GRE/IPsec processes occurs. Because there is already a GRE/IPsec tunnel in place, a duplicate tunnel is avoided.
+
+To provide bidirectional connectivity, the right spoke router also needs next-hop information for the left spoke router from the NHRP server. The right spoke router sends an NHRP query when the first packet needs to be forwarded from a host in the right spoke network to the network behind the left spoke router. When the right spoke router has the NHRP mapping for the left spoke router, the corresponding GRE association is built, and a response packet is sent directly to the left spoke router, encapsulated in a GRE/IPsec tunnel. The IPsec tunnel, however, is already in place and is not duplicated.
+
+After a configurable timeout value, NHRP entries on the spoke routers time out, causing the dynamic spoke-to-spoke tunnel to be torn down.
+
+The designer may want to tune (lower) the IPsec SA and NHRP timers to prevent too many lingering tunnels after there is no more traffic between spokes. After a timeout period, the NHRP entries will age out, triggering IPsec to break down the dynamic spoke-to-spoke tunnel because it is no longer needed.
+
+
+<h3>DMVPN Authentication</h3>
+
+There are two types of DMVPN authentication:
+
+Preshared keys
+
+PKI-based IKE authentication
+
+Consider the following when implementing DMVPN:
+
+In a hub-and-spoke DMVPN, either authentication type is acceptable.
+
+In fully meshed DMVPNs, PKI-based authentication is highly recommended.
+
+When configuring DMVPN, you will have to make some deployment choices. In a strict hub-and-spoke DMVPN, choose either PSKs or PKI-based IKE authentication, both are acceptable. In fully meshed DMVPNs, PKI-based authentication is highly recommended.
+
+Pre-shared keys are easy to deploy and highly scalable, but they become very difficult to manage. Any DMVPN peer with the knowledge of the password can establish a DMVPN session to the headend in a pre-shared key environment. Moreover, if there are multiple headends then the passwords must be synchronized between the headends—which makes it inherently more difficult to manage. If spoke-to-spoke communication is required, then you must maintain passwords between the spokes. Taken together, these issues can confuse the process of securing a large deployment. To avoid this, some organizations can use wild card-based strategy for authentication, which involves matching any IP address with one password. This can create security risk for the solution. Another weakness in pre-shared key-based security is the difficulty in removing spokes off the network. Removing spokes requires the removal of each associated pair-wise password from the headends or the spokes.
+
+PKI addresses all the issues encountered with a pre-shared key authentication strategy. The significant benefits of PKI solutions including the following:
+
+PKI supports hierarchical architectures, therefore scaling to large number of sessions.
+
+PKI is highly secure because it uses public key cryptography.
+
+PKI is easier to manage; certificates can be added, deleted, or revoked.
+
+PKI can be used to provide better security for VPN connections such as DMVPN. The figure depicts how PKI can be used in a branch/WAN deployment. A key design consideration is locating the CA server. Because all the branches must enroll with the CA server, it should be directly accessible on the WAN edge, as should the DMVPN gateway.
+
+<h3>DMVPN Hub Configuration</h3>
+
+
+These steps represent the DMVPN hub configuration sequence:
+
+1 (Optional) First, you can configure an IKE policy to interface with other IPsec peers. If you do not configure a specific policy, the hub will use default IKE policies.
+
+2 Generate or configure authentication credentials to authenticate spoke devices. Typically, you will enroll the hub into a PKI to obtain a certificate for this purpose.
+
+3 Configure an IPsec profile. and inside the profile, an optional IPsec transform set. If you do not configure a transform set, the router will use default IPsec transform sets. An IPsec profile, however, is mandatory, even if it is empty.
+
+4 Create an mGRE tunnel interface.
+
+5 Configure NHRP server parameters inside the mGRE tunnel interface.
+
+6 Inside the mGRE tunnel interface, configure tunnel protection, referencing the IPsec profile.
+
+7 Inside the mGRE tunnel interface, configure all required and optional IP parameters. (IP address, IP fragmentation and TCP segmentation parameters)
+
+This figure shows the configuration scenario that will be used in the DMVPN hub configuration task sequence. You will configure the following features on the DMVPN hub router:
+
+An IKE policy and peer authentication credentials
+
+An NHRP server, using an NHRP network ID and authentication key
+
+An IPsec profile, specifying the required IPsec SA parameters for transmission protection
+
+A single Cisco Internetwork Operating System Software mGRE interface that will interface with IPsec to create IPsec/GRE tunnels to spokes
+
+
+The addressing information that is used for the physical and logical (tunnel) interfaces is given in the figure. The configuration scenario assumes that there is complete IP connectivity between physical interfaces of all routers in the transport network.
+
+<b>
+crypto isakmp policy 10
+auth rsa-sig 		------------------- PKI Authentication
+group 14
+crypto ipsec profile MYIPSECPROFILE
+!
+interface Tunne10
+tunnel mode gre multipoint	-----------Point-to-Multipoint Configuration GRE
+tunnel source GigabitEthernet0/0
+tunnel key 12345
+
+ip nhrp network-id 1
+ip nhrp authentication HdRtKqX5
+ip nhrp map multicast dynamic	---------------Dynamic Learning of Multicast Addresses
+
+tunnel protection ipsec profile MYIPSECPROFILE
+
+ip address 10.1.1.1 255.255.0.0
+ip mtu 1400
+ip tcp adjust-mss 1360		----------- Lower MTU and MSS avoids fragmentation
+
+</b>
+
+To configure a DMVPN on Hub on the Cisco router, use the commands that are described in this table:
+
+
+<b>
+crypto isakmp policy 10
+auth rsa-sig
+group 14
+</b>
+
+Creates a new IKE policy. This example uses certificates for IKE authentication.
+
+<b>
+crypto ipsec profile
+MYIPSECPROFILE
+</b>
+Creates an IPsec profile and includes nondefault transform set in the profile.
+
+<b>
+interface Tunnelø
+tunnel mode gre
+multipoint
+tunnel source
+GigabitEthernet0/0
+tunnel key 12345
+</b>
+Creates a new point-to-multipoint GRE interface. Specifies the tunnel source; this will be the IKE/IPsec endpoint IP address of the hub. Specifies a tunnel key. You can run multiple DMVPN hubs on the same router interface, each with a different tunnel key.
+
+<b>
+ip nhrp network-id 1
+ip nhrp authentication
+HdRtKqX5
+ip nhrp map multicast
+dynamic
+</b>
+Creates an instance of an NHRP server and assigns it an NHRP net ID. Creates a strong NHRP authentication string. Specifies that multicast addresses (for routing protocols) will be dynamically learned from the spokes.
+
+<b>
+tunnel protection
+ipsec profile
+MYIPSECPROFILE
+</b>
+Assigns the configured IPsec profile to the mGRE interface.
+
+<b>
+ip address 10.1.1.1
+255.255.0.0
+ip mtu 1400
+ip tcp adjust-mss 1360
+</b>
+Enables IP processing on this interface by assigning it an IP address. Lowers the MTU and TCP MSS to avoid fragmentation of GRE and IPsec packets.
+
+The first configuration task for IKE peering is the configuration of the IKE policy.
+
+Then create a named IPsec profile, in which you can specify a transform set and encapsulation mode that the hub will use to protect its GRE tunnels.
+
+Create an mGRE tunnel interface, and configure basic GRE settings inside its configuration mode. You have to configure the multipoint GRE mode, tunnel source IP address, and a tunnel key. The tunnel key is required, and will have to match the tunnel key configured on spoke routers, and allows you to run multiple parallel DMVPNs on the same set of devices. A GRE tunnel key therefore uniquely identifies a DMVPN network.
+
+Create an NHRP server inside the mGRE tunnel interface. Specify an NHRP network ID, an NHRP authentication key, and dynamically register multicast capabilities if spokes so desire.
+
+Inside the mGRE interface, specify the IPsec traffic protection profile. This will indicate the set of algorithms and the IPsec encapsulation method that IKE will negotiate to protect GRE tunnels with all spokes.
+
+Finally, inside the mGRE interface, configure an IP address, set the IP MTU size and TCP MSS value.
+
+
+What occurs if no IKE policy is specifically configured for use with DMVPN?
+the tunnel successfully negotiates by using the default IKE policy
+
+<h3>DMVPN Spoke Configuration</h3>
+
+
+These steps represent the detailed configuration sequence that is needed to configure a DMVPN spoke:
+
+(Optional) Configure an IKE policy to interface with the hub and other spokes. If you do not configure an IKE policy, the spoke will use default IKE policies.
+
+Generate or configure authentication credentials to authenticate the hub and other spoke devices. Typically, you will enroll the spoke into a PKI to obtain a certificate for this purpose.
+
+Similar to configuring the hub, configure an IPsec profile and inside the profile, an optional IPsec transform set. If you do not configure a transform set, the router will use default IPsec transform sets.
+
+Create mGRE tunnel interface.
+
+Configure NHRP client parameters inside the mGRE tunnel interface.
+
+Inside the mGRE tunnel interface, configure tunnel protection. (Associate the IPsec profile with the mGRE interface.)
+
+Inside the mGRE tunnel interface, configure all required and optional IP parameters. (IP address, IP fragmentation, and TCP segmentation parameters)
+
+Configuration Scenario
+
+This figure shows the configuration scenario that will be used in the DMVPN spoke configuration task sequence. You will configure the following features on the DMVPN spoke router:
+
+An IKE policy and peer authentication credentials
+
+NHRP client, using an NHRP network ID and authentication key, and the location of the NHRP server.
+
+An IPsec profile, specifying the required IPsec SA parameters for transmission protection.
+
+A single Cisco IOS Software mGRE interface that will interface with IPsec to create IPsec/GRE tunnels to the hub and other spokes. Alternatively, you can configure a point-to-point GRE interface to the hub, if you plan to use this DMVPN in a strict hub-and-spoke mode.
+
+The addressing information that is used for the physical and logical (tunnel) interfaces is given in the figure. The configuration scenario assumes that there is full IP connectivity between physical interfaces of all routers in the transport network.
+
+<b>
+crypto isakmp policy 10
+auth rsa-sig
+group 14
+crypto ipsec profile MYIPSECPROFILE
+!
+interface Tunne10
+tunnel mode gre multipoint
+tunnel source GigabitEthernet0/0
+tunnel key 12345
+
+ip nhrp network-id 1
+ip nhrp authentication HdRtKgX5
+ip nhrp nhs 10.1.1.1		------Tunnel address of NHRP SERVER
+ip nhrp map multicast 172.17.0.1 -- Multicast and broadcast messages are transmitted across the NBMA network to the hub router.
+ip nhrp map 10.1.1.1 172.17.0.1	-----Static Mapping of the Hub Router's Tunnel Address to its Reachable NBMA Address
+
+tunnel protection ipsec profile MYIPSECPROFILL
+ip address 10.1.1.2 255.255.0.0
+ip mtu 1400
+ip tcp adjust-mss 1360
+</b>
+
+To configure a DMVPN on Spoke on the Cisco router, use the commands that are described in this table:
+
+<b>
+crypto isakmp policy 10 auth rsa-sig
+group 14
+</b>
+Creates a new IKE policy. This example uses certificates for IKE authentication.
+
+<b>
+crypto ipsec profile MYIPSECPROFILE
+</b>
+Creates an IPsec profile and includes nondefault transform set in the profile.
+
+<b>
+interface Tunnel0 tunnel mode gre
+multipoint tunnel source
+GigabitEthernet0/0 tunnel key 12345
+</b>
+
+Creates a new point-to-multipoint GRE interface. Specifies the tunnel source, which will be the IKE/IPsec endpoint IP address of the spoke. Specifies a tunnel key that matches the tunnel key of the hub.
+
+<b>
+ip nhrp network-id 1 ip nhrp
+authentication HdRtKqX5 ip nhrp nhs
+10.1.1.1 ip nhrp map multicast
+172.17.0.1 ip nhrp map 10.1.1.1
+172.17.0.1
+</b>
+Creates an instance of an NHRP client.
+
+<b>
+tunnel protection ipsec profile
+MYIPSECPROFILE
+</b>
+Assigns the configured IPsec profile to the
+mGRE interface.
+
+<b>
+ip address 10.1.1.2 255.255.0.0 ip mtu
+1400 ip tcp adjust-mss 1360
+</b>
+Enables IP processing on this interface by assigning it an IP address. Lowers the MTU and TCP MSS to avoid fragmentation of GRE and IPsec packets.
+
+
+The first configuration task for IKE peering is the configuration of the IKE policy.
+
+Then, create a named IPsec profile, in which you can specify a transform set and encapsulation mode that the spoke will use to protect its GRE tunnels.
+
+Create an mGRE tunnel interface, and configure basic GRE settings inside its configuration mode. You have to configure the multipoint GRE mode, tunnel source IP address, and a tunnel key. The tunnel key will have to match the tunnel key configured on the hub.
+
+Create an NHRP client inside the mGRE tunnel interface. Specify an NHRP network ID, an NHRP authentication key, the hub as the NHRP server, and dynamically register the spoke multicast capabilities with the hub to enable dynamic routing protocol peering, if desired.
+
+Inside the mGRE interface, specify the IPsec traffic protection profile. This will indicate the set of algorithms and the IPsec encapsulation method that IKE will negotiate to protect GRE tunnels with a hub.
+
+Finally, inside the mGRE interface, configure an IP address, set the IP MTU size and TCP MSS value.
+
+<h3>DMVPN Routing Configuration</h3>
+
+
+Routing protocols usually need additional configuration.
+
+The DMVPN cloud is an Nonbroadcast Multiaccess (NBMA) network.
+
+Routing protocol peering occurs only between the spoke and the hub.
+
+Tuning the routing protocol on the hub specifies whether the network will be hub-and-spoke or a full mesh.
+
+Some considerations must be made when running dynamic routing protocols across the DMVPN, especially when you are implementing a spoke-to-spoke design, because the DMVPN cloud is like an NBMA network. Many routing protocols have an IP multicast mechanism that is used to discover other participating nodes. For this purpose, you must configure NHRP multicast maps on spoke routers to register this capability with the hub. You configure the hub router with a dynamic multicast map that will replicate multicast packets to all spokes. This configuration allows the hub and spokes to exchange multicast and broadcast information, but does not permit spokes to receive broadcasts from other spokes.
+
+In a DMVPN, routing protocol peering (neighbor relationships) occurs only between each spoke and the hub. There is never spoke-to-spoke peering. Therefore, the hub will pass information about all spoke networks to other spokes.
+
+It is important to note that the tuning of the routing protocol functions on the hub is the main factor that will determine whether your DMVPN will operate in strict hub-and-spoke or partially meshed or fully meshed topology. The only other factor is the choice of the GRE interface for the spokes: a point-to-point GRE interface on the spoke will only allow a strict hub-and-spoke topology, while a mGRE interface on the spokes will allow the use of both topologies.
+
+EIGRP in DMVPN Configuration
+
+Hub and spoke with Enhanced Interior Gateway Protocol (EIGRP)
+
+router eigrp 1
+ no auto-summary
+!
+interface Tunnel 0
+  no ip split-horizon eigrp 1
+
+Full mesh with EIGRP
+
+router eigrp 1
+ no auto-summary
+!
+interface Tunnel 0
+  no ip next-hop-self eigrp 1
+  no ip split-horizon eigrp 1
+To configure an EIGRP routing in DMVPN, use the commands that are described in this table:
+
+
+<table border="1">
+
+<tr>
+<td>Commands</td>
+<td>Description</td>
+</tr>
+<tr>
+<td>router eigrp 1 no auto-summary</td>
+<td>Disables route summarization</td>
+</tr>
+<tr>
+<td>interface Tunnel 0 no ip split-horizon eigrp 1</td>
+<td>Enables propagation of spoke routes to other spokes via the hub</td>
+</tr>
+<tr>
+<td>interface Tunnel 0 no ip next-hop-self eigrp 1</td>
+<td>Preserves spoke next-hop addresses in advertisements</td>
+</tr>
+</table>
+
+
+You can use EIGRP to deploy either a strict hub-and-spoke DMVPN, or a partially meshed or fully meshed DMVPN.
+
+EIGRP deployment is straightforward in a strict hub-and-spoke DMVPN deployment. You should typically disable automatic summarization on the hub, and disable the EIGRP split-horizon feature in order for the hub to propagate spoke network information to other spokes, because they are reachable over the same mGRE interface.
+
+Spoke-to-spoke, partially meshed, or fully meshed DMVPN networks present a unique challenge because the spokes cannot directly exchange information with each other, even though they are on the same logical subnet. This limitation requires the hub router to advertise the subnets from other spokes on the same subnet. In addition, the advertised route must contain the original next hop (which is the spoke router) as learned by the hub router.
+
+Note
+The outside address space of the tunnel should not be included in any protocol running inside the tunnel.
+
+As with all EIGRP networks, the number of neighbors should be limited to ensure that the hub router can re-establish communications after a major outage. If the DMVPN cloud is configured with a /24 network prefix, the neighbor count is limited to 254, which is a safe operational limit. Beyond this number, a compromise is required to balance reconvergence with recovery. In large EIGRP networks, it might be necessary to adjust the EIGRP holdtime to allow the hub more time to recover without thrashing.
+
+
+OSPF in DMVPN Configuration
+
+Hub and spoke with OSPF—Hub configuration
+
+interface Tunnel0
+ ip ospf network point-to-multipoint
+Full mesh with OSPF
+
+
+interface Tunne10
+ip ospf network broadcast
+ip ospf priority 104 	--------HUB ONLY
+ip ospf priority 0	--------SPOKES ONLY
+
+All routers are configured with OSPF network type broadcast.
+
+To configure OSPF routing in DMVPN, use the commands that are described in this table:
+
+<table border="1">
+<tr>
+<td>Commands</td>
+<td>Description</td>
+</tr>
+<tr>
+<td>interface Tunnel0 ip ospf network point-to-multipoint</td>
+<td>Creates the tunnel network as a point-to-multipoint network</td>
+</tr>
+<tr>
+<td>interface Tunnel0 ip ospf priority 10</td>
+<td>Ensures that the hub will be the designated router</td>
+</tr>
+<tr>
+<td>interface Tunnel0 ip ospf network broadcast</td>
+<td>Creates the tunnel network as a broadcast network</td>
+</tr>
+</table>
+
+Running OSPF over a DMVPN network has some of the same challenges as running OSPF over other types of networks. Because only the hub is in direct communications with all branches, it should be configured as the DR on the DMVPN subnet. There is not typically a BDR for this type of configuration. A BDR is possible if a second hub is placed on the same subnet.
+
+In strict hub-and-spoke DMVPNs, you should include the tunnel interface in the OSPF routing process, and configure the tunnel interface as a point-to-multipoint OSPF network type on the hub router, and as a point-to-point network type on the branch routers. In this case, there is no need to elect a DR on the DMVPN subnet. The hub router serves as the primary for the subnet. The branches consider the hub as the only path off the subnet, thus simplifying the Dijkstra's algorithm for the OSPF area. Use a suitable OSPF priority to ensure that the hub is always elected as the DR.
+
+To create a partially meshed or fully meshed DMVPN, configure the mGRE tunnel on the hub router as an OSPF broadcast network. Each spoke router should be configured with an OSPF priority of 0 to prevent a spoke from becoming a DR or BDR. In addition, if the spoke is configured with point-to-point GRE and the hub is configured with an mGRE interface, the hello timer on the spoke should be changed from the default of 10 seconds to 30 seconds to match the hello timers on the mGRE interface. The tunnel IP MTU must match on all of the GRE interfaces that are OSPF-adjacent. In addition, OSPF areas running over DMVPN can be not-so-stubby or totally stubby areas to reduce LSA flooding over the WAN.
+
+Which OSPF network type should be used in a full-mesh DMVPN topology?
+broadcast
+
+<h3> Verify DMVPN</h3>
+
+
+Cisco IOS Software includes DMVPN validation features.
+
+Use the <b>show interface tunnel</b> command to verify the state of GRE tunnels.
+
+Use the <b>show ip nhrp</b> command to display NHRP-mapping information on a device.
+
+Use the <b>show ip nhrp nhs detail</b command to display NHRP next-hop server information.
+
+Use the <b>show dmvpn detail</b> command to verify proper operation of DMVPN control functions.
+
+Use the <b>show ip route</b> command to verify routing in the DMVPN network.
+
+Verifying the State of GRE Tunnels
+
+Line protocol on a GRE tunnel interface is up if there is a route to the tunnel destination (unless you configure GRE keepalives).
+
+Line protocol on an mGRE tunnel interface is always up.
+
+Verify GRE peering using ping to tunnel addresses, or by observing IGP neighborships (both require NHRP if mGRE is used).
+
+Verifying the State of GRE Tunnels (Cont.)
+
+After configuring a hub-and-spoke GRE tunnel, verify the state of it by using the <b>show interface tunnel<b> command. The line protocol on a GRE tunnel interface is up as long as there is a route to the tunnel destination, unless you configure GRE keepalives (which are not recommended if you will also use a dynamic routing protocol over the tunnel). The line protocol on an mGRE tunnel interface is always up.
+
+You can quickly verify that a GRE tunnel is actually passing traffic by using the ping command and specifying the (inner) tunnel IP addresses of the remote GRE peer as target IP addresses. Another option is to observe if a routing protocol neighbor relationship establishes successfully over the tunnel (if you have configured a routing protocol). Again, both approaches require NHRP if mGRE is used.
+
+
+Verifying NHRP Mappings
+
+On the hub, you should see mappings for all registered spokes.
+
+<b>Hub# show ip nhrp<b>
+
+On a spoke, you should see a static mapping for the hub, a local mapping, and dynamic mappings for any spokes that the local spoke sends traffic to.
+
+<b>Spoke# show ip nhrp</b>
+
+On the hub (the NHRP server), you should see NHRP mappings for all registered spokes
+
+On a spoke (the NHRP client), you should see a static mapping for the hub, a local mapping for the local spoke, and dynamic mappings for any spokes that the local spoke is sending traffic to
+
+Debugging NHRP
+
+On the spoke, the command below shows issues with NHRP registration (most likely a network ID or authentication key mismatch).
+
+<b>Spoke# show ip nhrp nhs detail</b>
+
+If the req-failed field displays a number greater than 0, this is a good hint that there is a network ID or authentication key mismatch, or a connectivity problem with the next-hop server.
+
+This command shows the details of all spoke-to-hub tunnels:
+
+<b>Hub# show dmvpn detail</b>
+
+
+In the output, you should see entries for all connected spokes. The additional per-spoke information available is as follows:
+
+The spoke NBMA address, on the physical interface or loopback, where tunnel is attached
+
+The spoke tunnel address, as set on the spoke GRE or mGRE tunnel
+
+The tunnel state, UP for successfully established tunnel
+
+The tunnel uptime
+
+The target network, which represents the NHRP client address of the spoke
+
+The <b>show dmvpn detail</b> command will reveal additional information about DMVPN peers. In addition to information already displayed by show dmvpn, detailed output includes IKE SA information: local and remote IP addresses and IKE status. IPsec statistics will show the number of packets that the router has encrypted and decrypted. If these counters are not increasing and traffic is not flowing through the DMVPN, there could be a problem with IPsec SAs or routing.
+
+
+Hub-and-Spoke Routing and IKE Peering (Spoke)
+
+In hub-and-spoke networks, all routes to spoke networks should be reachable over the hub.
+
+Only a single spoke-to-hub IKE session (IKE SA) should be present on the spoke.
+
+<b>Spoke# show ip route eigrp</b>
+
+Full-Mesh Routing and IKE Peering (Spoke)
+
+In spoke-to-spoke networks, all routes to spoke networks should be reachable directly over the spoke.
+
+IKE sessions should also be established with all other spokes to which traffic is currently being forwarded.
+
+<b>Spoke# show ip route eigrp</b>
+
+When verifying routing in strict hub-and-spoke DMVPNs, issue the show ip route command on a spoke to verify that all other spoke networks are routed through the hub. The next hop for each spoke prefix should be the tunnel (inner) IP address for the hub. You can also check that there is only one IKE SA and that it is established with the hub, by using the show crypto isakmp sa command.
+
+When verifying routing in a partially meshed or fully meshed DMVPN, issue the show ip route command on a spoke and check that all spoke networks are routed directly toward the spokes, with the tunnel (inner) IP addresses shown as next hops for spoke prefixes. There should be an IKE session with the hub, and, potentially, IKE sessions with some other spokes as well, depending on with which spokes the local spoke is currently exchanging traffic.
+
+<h3>Implement Cisco IOS DMVPN</h3>
+
+
+<h4> Configure HQ as DMVPN Hub</h4>
+
+<h4>Dynamic Multipoint VPN (DMVPN)</h4>
+
+DMVPN provides complete connectivity while simplifying configuration as new sites are deployed. It is considered a zero-touch technology because no configuration is needed on the DMVPN hub routers as new spokes are added to the DMVPN network. This facilitates a consistent configuration where all spokes can use identical tunnel configuration (that is, can be templatized) to simplify support and deployment.
+
+Spoke sites initiate a persistent VPN connection to the hub router. Network traffic between spoke sites does not have to travel through the hubs. DMVPN dynamically builds a VPN tunnel between spoke sites on an as-needed basis. This allows network traffic, such as for VoIP, to take a direct path, which reduces delay and jitter without consuming bandwidth at the hub site.
+
+DMVPN was released in three phases, and each phase was built on the previous one with additional functions. All three phases of DMVPN need only one tunnel interface on a router, and the DMVPN network size should accommodate all the endpoints associated to that tunnel network. DMVPN spokes can use DHCP or static addressing for the transport and overlay networks. They locate the other spokes’ IP addresses (protocols and NBMA) through NHRP.
+
+DMVPN tunnels can have IPsec enabled to secure the connectivity between sites.
+
+
+<h4>Phase 1: Spoke-to-Hub</h4>
+
+DMVPN Phase 1 was the first DMVPN implementation and provides a zero-touch deployment for VPN sites. VPN tunnels are created only between spoke and hub sites. Traffic between spokes must traverse the hub to reach the other spoke.
+
+
+<h4> Phase 2: Spoke-to-Spoke</h4>
+
+DMVPN Phase 2 provides additional capability from DMVPN Phase 1 and allows spoke-to-spoke communication on a dynamic basis by creating an on-demand VPN tunnel between the spoke devices. DMVPN Phase 2 does not allow summarization (next-hop preservation). As a result, it also does not support spoke-to-spoke communication between different DMVPN networks (multilevel hierarchical DMVPN).
+
+
+<h3>Phase 3: Hierarchical Tree Spoke-to-Spoke</h3>
+
+
+DMVPN Phase 3 refines spoke-to-spoke connectivity by enhancing the NHRP messaging and interacting with the routing table. With DMVPN Phase 3 the hub sends an NHRP redirect message to the spoke that originated the packet flow. The NHRP redirect message provides the necessary information so that the originator spoke can initiate a resolution of the destination host/network.
+
+In DMVPN Phase 3, NHRP installs paths in the routing table for the shortcuts it creates. NHRP shortcuts modify the next-hop entry for existing routes or add a more explicit route entry to the routing table. Because NHRP shortcuts install more explicit routes in the routing table, DMVPN Phase 3 supports summarization of networks at the hub while providing optimal routing between spoke routers. NHRP shortcuts allow a hierarchical tree topology so that a regional hub is responsible for managing NHRP traffic and subnets within that region but spoke-to-spoke tunnels can be established outside of that region.
+
+In this task, you will configure the HQ router as the DMVPN hub router.
+
+Step 1
+On the HQ router, create a new IKE policy. Routers connecting with DMVPN will use PSK for authentication.
+
+Use following parameters for IKE policy:
+
+Encryption: AES 256
+
+Hash algorithm: SHA 384
+
+Authentication: Pre-shared key
+
+Key exchange method: 14
+
+<b>
+HQ(config)# crypto isakmp policy 10
+HQ(config-isakmp)# encryption aes 256
+HQ(config-isakmp)# hash sha384
+HQ(config-isakmp)# authentication pre-share
+HQ(config-isakmp)# group 14
+HQ(config-isakmp)# exit
+</b>
+
+An IKE Phase 1 crypto policy is configured using AES 256 for encryption, SHA 384 for data integrity, Diffie-Hellman group 14 (2048-bit) for key exchange, and pre-shared password authentication.
+
+On the HQ router, define an ISAKMP pre-shared key and bind it to the 0.0.0.0 address. Use “CiscoKey” as the PSK.
+
+<b>
+HQ(config)# crypto isakmp key CiscoKey address 0.0.0.0
+</b>
+
+The address is set to 0.0.0.0 because the edge devices may acquire different IP addresses, and/or spoke-to-spoke communication may occur between any spokes.
+
+
+On the HQ router, create an IPsec profile named MYDMVPNPROFILE and a transform set named DMVPNSET. Include the DMVPNSET transform set in the profile.
+
+Use the following parameters for the transform set:
+
+ESP transform using AES 256 cipher
+
+ESP transform using HMAC-SHA 384 authentication
+
+Transport mode
+
+<b>
+HQ(config)# crypto ipsec transform-set DMVPNSET esp-aes 256 esp-sha384-hmac 
+HQ(cfg-crypto-trans)# mode transport 
+HQ(cfg-crypto-trans)# exit
+HQ(config)# crypto ipsec profile MYDMVPNPROFILE
+HQ(ipsec-profile)# set transform-set DMVPNSET
+HQ(ipsec-profile)# exit
+</b>
+
+
+An IPsec transform set is configured using AES 256 for encryption and SHA 384 for data integrity. Transport mode is selected. IPsec can run in two modes, transport mode and tunnel mode. In transport mode, the original IP header is not encrypted and there is no additional IP header added. In tunnel mode, which is the default for tunnels, a new IP header is added, and the original IP header is encrypted. IPsec transport mode adds approximately 36 bytes, while tunnel mode adds approximately 52 bytes. When using DMVPN with IPsec, it is not desirable to use tunnel mode. DMVPN uses GRE which means that a new IP header is already added by GRE. The GRE encapsulation happens on the tunnel interface before the encryption process takes place. When using DMVPN and IPsec together, IPsec transport mode should be used to save on the overhead.
+
+
+On the HQ router, create a new point-to-multipoint GRE interface.
+
+Use the following parameters for the GRE interface:
+
+Tunnel interface number: 1
+
+Tunnel mode: gre multipoint
+
+Tunnel source: Ethernet 0/0 interface
+
+Tunnel key: 12345
+
+<b>
+HQ(config)# interface Tunnel1
+HQ(config-if)# tunnel mode gre multipoint
+HQ(config-if)# tunnel source Ethernet 0/0
+HQ(config-if)# tunnel key 12345
+</b>
+
+
+The Tunnel 1 interface is created. It is configured as point-to-multipoint GRE interface (mGRE). It will use the Ethernet 0/0 interface as the local source for GRE traffic. A tunnel key is defined. Historically, it was necessary to configure a tunnel key if you sourced multiple mGRE tunnels off the same interface of a single hub router. This is no longer a requirement in DMVPN Phase 3 using mGRE, as will be explained later in this discovery.
+
+On the HQ router, configure NHRP server parameters in the mGRE interface.
+
+Use the following NHRP parameters:
+
+NHRP network ID: 1
+
+NHRP authentication string: NHRPkey
+
+NHRP multicast addresses: dynamically learned
+
+
+<b>
+HQ(config-if)# ip nhrp network-id 1
+HQ(config-if)# ip nhrp authentication NHRPkey
+HQ(config-if)# ip nhrp map multicast dynamic
+</b>
+
+
+First, an instance of an NHRP server is defined and is assigned an NHRP network ID. For added security, NHRP authentication is enabled. Finally, the ip nhrp map multicast dynamic command allows NHRP to automatically add spoke routers to the multicast NHRP mappings when these spoke routers initiate the mGRE tunnel and register their unicast NHRP mappings. This is needed to enable dynamic routing protocols to work over the mGRE tunnels between the hub and spokes.
+
+
+On the HQ router, assign the configured IPsec profile to the mGRE interface.
+<b>
+HQ(config-if)# tunnel protection ipsec profile MYDMVPNPROFILE
+</b>
+
+The MYDMVPNPROFILE profile is assigned to the tunnel interface so that DMVPN traffic will be secured using IPsec.
+
+On the HQ router, enable IP processing on the Tunnel 1 interface by assigning IP address 10.1.1.1/24 to the interface.
+
+<b>
+HQ(config-if)#  ip address 10.1.1.1 255.255.255.0
+</b>
+
+On the HQ router Tunnel 1 interface, adjust the MTU and the TCP maximum segment size to avoid fragmentation of GRE and IPsec packets.
+
+Use the following parameters:
+
+Interface MTU: 1400
+
+TCP MSS: 1360
+
+<b>
+HQ(config-if)# ip mtu 1400 
+HQ(config-if)# ip tcp adjust-mss 1360
+</b>
+
+MTU is configured with the interface parameter command <b>ip mtu mtu</b>. Typically, an MTU of 1400 is used for DMVPN tunnels. The TCP Adjust MSS feature ensures that the router will edit the payload of a TCP three-way handshake if the MSS exceeds the configured value. The command is ip tcp adjust-mss mss-size. Typically, DMVPN interfaces use a value of 1360 to accommodate IP, GRE, and IPsec headers.
+
+<h4>Configure Branch Routers as DMVPN Phase 1 Spokes</h4>
+
+In this task, you will configure the BRANCH1 and BRANCH2 routers as the DMVPN spoke routers. The DMVPN spoke routers will communicate only via the DMVPN hub router.
+
+On BRANCH1 and BRANCH2 routers, create a new IKE policy. Routers connecting with DMVPN will use PSK for authentication.
+
+Use the following parameters for IKE policy:
+
+Encryption: AES 256
+
+Hash algorithm: SHA 384
+
+Authentication: Pre-shared key
+
+Key exchange method: 14
+
+<b>
+BRANCH1(config)# crypto isakmp policy 10
+BRANCH1(config-isakmp)# encryption aes 256
+BRANCH1(config-isakmp)# hash sha384
+BRANCH1(config-isakmp)# authentication pre-share
+BRANCH1(config-isakmp)# group 14
+BRANCH1(config-isakmp)# exit
+
+BRANCH2(config)# crypto isakmp policy 10
+BRANCH2(config-isakmp)# encryption aes 256
+BRANCH2(config-isakmp)# hash sha384
+BRANCH2(config-isakmp)# authentication pre-share
+BRANCH2(config-isakmp)# group 14
+BRANCH2(config-isakmp)# exit
+</b>
+
+On the BRANCH1 and BRANCH2 routers, define an ISAKMP pre-shared key and bind it to the 0.0.0.0 address. Use “CiscoKey” as the PSK.
+
+<b>
+BRANCH1(config)# crypto isakmp key CiscoKey address 0.0.0.0
+
+BRANCH2(config)# crypto isakmp key CiscoKey address 0.0.0.0
+</b>
+
+Even though you are initially establishing a hub-and-spoke topology, using the 0.0.0.0 address now avoids having to add further ISAKMP PSK bindings later for the Phase 2 spoke-to-spoke connections.
+
+On the BRANCH1 and BRANCH2 routers, create an IPsec profile named MYDMVPNPROFILE and a transform set named DMVPNSET. Include the DMVPNSET transform set in the profile.
+
+Use the following parameters for the transform set:
+
+ESP transform using AES 256 cipher
+
+ESP transform using HMAC-SHA 384 authentication
+
+Transport mode
+
+<b>
+BRANCH1(config)# crypto ipsec transform-set DMVPNSET esp-aes 256 esp-sha384-hmac 
+BRANCH1(cfg-crypto-trans)# mode transport 
+BRANCH1(cfg-crypto-trans)# exit
+BRANCH1(config)# crypto ipsec profile MYDMVPNPROFILE
+BRANCH1(ipsec-profile)# set transform-set DMVPNSET
+BRANCH1(ipsec-profile)#  exit
+
+BRANCH2(config)# crypto ipsec transform-set DMVPNSET esp-aes 256 esp-sha384-hmac 
+BRANCH2(cfg-crypto-trans)# mode transport 
+BRANCH2(cfg-crypto-trans)# exit
+BRANCH2(config)# crypto ipsec profile MYDMVPNPROFILE
+BRANCH2(ipsec-profile)# set transform-set DMVPNSET
+BRANCH2(ipsec-profile)#  exit
+</b>
+
+On the BRANCH1 and BRANCH2 routers, create a new point-to-point GRE interface.
+
+Use the following parameters for the GRE interface:
+
+Tunnel interface number: 1
+
+Tunnel mode: GRE ip (this is the default value; entering the command is optional)
+
+Tunnel source: Ethernet 0/0
+
+Tunnel destination: 192.0.2.3
+
+Tunnel key: 12345
+
+<b>
+BRANCH1(config)# interface Tunnel1
+BRANCH1(config-if)# tunnel mode gre ip
+BRANCH1(config-if)# tunnel source Ethernet 0/0
+BRANCH1(config-if)# tunnel destination 192.0.2.3
+BRANCH1(config-if)# tunnel key 12345
+
+BRANCH2(config)# interface Tunnel1
+BRANCH2(config-if)# tunnel mode gre ip
+BRANCH2(config-if)# tunnel source Ethernet 0/0
+BRANCH2(config-if)# tunnel destination 192.0.2.3
+BRANCH2(config-if)# tunnel key 12345
+</b>
+
+For DMVPN Phase 1, the spokes are configured as point-to-point GRE tunnels, while the hub is configured to use mGRE instead.
+
+On the BRANCH1 and BRANCH2 GRE interfaces, create an instance of an NHRP client.
+
+Use the following NHRP parameters:
+
+NHRP network ID: 1
+
+NHRP authentication string: NHRPkey
+
+NHRP server IP address: 10.1.1.1
+
+NHRP multicast map: 192.0.2.3
+
+<b>
+BRANCH1(config-if)# ip nhrp network-id 1
+BRANCH1(config-if)# ip nhrp authentication NHRPkey
+BRANCH1(config-if)# ip nhrp nhs 10.1.1.1 
+BRANCH1(config-if)# ip nhrp map multicast 192.0.2.3 
+BRANCH1(config-if)# ip nhrp map 10.1.1.1 192.0.2.3
+
+BRANCH2(config-if)# ip nhrp network-id 1
+BRANCH2(config-if)# ip nhrp authentication NHRPkey
+BRANCH2(config-if)# ip nhrp nhs 10.1.1.1 
+BRANCH2(config-if)# ip nhrp map multicast 192.0.2.3 
+BRANCH2(config-if)# ip nhrp map 10.1.1.1 192.0.2.3
+</b>
+
+On the BRANCH1 and BRANCH2 routers, assign the configured IPsec profile to the GRE interface.
+
+Note
+Please make a note that you need to execute below commands in tunnel interface mode.
+BRANCH1(config-if)# tunnel protection ipsec profile MYDMVPNPROFILE
+
+BRANCH2(config-if)# tunnel protection ipsec profile MYDMVPNPROFILE
+
+
+On the BRANCH1 and BRANCH2 GRE interfaces, enable IP processing by assigning an IP address to the interfaces.
+
+Use the following IP addresses:
+
+On the BRANCH1 Tunnel 1 interface: 10.1.1.2/24
+
+On the BRANCH2 Tunnel 1 interface: 10.1.1.3/24
+
+<b>
+BRANCH1(config-if)# ip address 10.1.1.2 255.255.255.0
+
+BRANCH2(config-if)# ip address 10.1.1.3 255.255.255.0
+</b>
+
+On the BRANCH1 and BRNACH2 GRE interfaces, adjust the MTU and TCP maximum segment size to avoid fragmentation of GRE and IPsec packets.
+
+Use the following parameters:
+
+Interface MTU: 1400
+
+TCP MSS: 1360
+
+<b>
+BRANCH1(config-if)# ip mtu 1400
+BRANCH1(config-if)# ip tcp adjust-mss 1360
+BRANCH1(config-if)# exit
+
+BRANCH2(config-if)# ip mtu 1400
+BRANCH2(config-if)# ip tcp adjust-mss 1360
+BRANCH2(config-if)# exit
+</b>
+
+<h4>Configure OSPF Routing in DMVPN Phase 1</h4> 
+
+In this task, you will configure OSPF routing between the DMVPN hub-and-spoke routers. The OSPF routing will be configured so that the DMVPN spoke routers will communicate via the DMVPN hub router.
+
+
+On the HQ router, configure the Tunnel 1 interface as an OSPF point-to-multipoint network.
+<b>
+HQ(config)# interface Tunnel1
+HQ(config-if)# ip ospf network point-to-multipoint
+HQ(config-if)#  exit
+</b>
+When you enable OSPF on a tunnel interface, the default OSPF network type is point-to-point. When the OSPF network type is set to point-to-point, the router is only expecting to see one neighbor adjacency on that interface. However, HQ is receiving OSPF hellos from multiple routers (BRANCH1 and BRANCH2). To fix this issue, change the OSPF network type to point-to-multipoint.
+
+
+On the HQ router, enable OSPF Area 0 on the Tunnel 1 interface and Area 1 on the loopback 0 interface.
+
+<b>
+HQ(config)# router ospf 1
+HQ(config-router)# network 10.1.1.0 0.0.0.255 area 0
+HQ(config-router)# network 192.168.1.0 0.0.0.255 area 1
+HQ(config-router)# exit 
+HQ(config)# exit
+</b>
+
+On the BRANCH1 and BRANCH2 routers, configure the Tunnel 1 interface as an OSPF point-to-multipoint network.
+
+<b>
+BRANCH1(config)# interface Tunnel1
+BRANCH1(config-if)# ip ospf network point-to-multipoint
+BRANCH1(config-if)# exit
+
+BRANCH2(config)# interface Tunnel1
+BRANCH2(config-if)# ip ospf network point-to-multipoint
+BRANCH2(config-if)# exit
+</b>
+
+On the BRANCH1 and BRANCH2 routers, enable OSPF Area 0 on the Tunnel 1 interface. Also, enable OSPF area 2 on the loopback 0 interface on BRANCH1 and enable OSPF area 3 on the loopback 0 interface on BRANCH2.
+
+<b>
+BRANCH1(config)# router ospf 1
+BRANCH1(config-router)# network 10.1.1.0 0.0.0.255 area 0
+BRANCH1(config-router)# network 192.168.2.0 0.0.0.255 area 2
+BRANCH1(config-router)# exit 
+BRANCH1(config)# exit
+BRANCH2(config)# router ospf 1
+BRANCH2(config-router)# network 10.1.1.0 0.0.0.255 area 0
+BRANCH2(config-router)# network 192.168.3.0 0.0.0.255 area 3
+BRANCH2(config-router)# exit
+BRANCH2(config)# exit
+</b>
+After entering the OSPF commands on BRANCH1 and BRANCH2, console messages confirm the newly formed OSPF adjacency with HQ.
+
+<h4></h4>
+Verify DMVPN Phase 1 Hub and Spoke Operation
+
+
+In this task, you will verify a DMVPN hub-and-spoke operation.
+
+On the HQ router, verify the status of the ISAKMP SA. You should see two active sessions.
+<b>
+HQ# show crypto isakmp sa
+</b>
+
+
+The output shows that an ISAKMP security association is established for both BRANCH1 and BRANCH2. “QM_IDLE” indicates that the SA has successfully authenticated using IKE Phase 2—Quick Mode (QM).
+
+On the HQ router, verify the IPsec SA. You should see two active sessions.
+<b>
+HQ# show crypto ipsec sa
+</b>
+The output shows that an IPsec security association has been established with both BRANCH1 and BRANCH2. Traffic is being successfully encrypted and decrypted as it flows from hub to spoke and vice versa.
+
+On the HQ router, verify the status of NHRP and DMVPN.
+
+<b>
+HQ# show ip nhrp
+</b>
+
+
+On the BRANCH1 router, verify the status of NHRP and DMVPN details.
+
+<b>
+BRANCH1# show ip nhrp
+</b>
+
+The branch router is configured with a static mapping to reach the HQ router. The DMVPN details show the tunnel source and destination IP addresses, and the type of tunnel. The IKEv1 SA is active and packets are successfully being encapsulated outbound and decapsulated inbound on the spoke router.
+
+On the BRANCH1 router, verify OSPF routes in the routing table. You should see a route to BRANCH2’s Loopback 0 network (192.168.3.0/24) reachable via HQ-ISR (10.1.1.1).
+
+<b>
+BRANCH1# show ip route ospf
+</b>
+
+BRANCH1 uses a next hop of 10.1.1.1 (HQ) to reach the 192.168.3.0/24 network on BRANCH2. There is currently no direct path between branch routers. All inter-branch traffic must be routed through the hub router (HQ).
+
+From the BRANCH1 router, trace to the 192.168.3.1 address (BRANCH2 loopback 0 interface). Source the trace from the BRANCH1 Loopback 0 interface. You should see that a packet is routed via the HQ-ISR router (10.1.1.1), as expected.
+
+
+<b>
+BRANCH1# traceroute 192.168.3.1 source Loopback 0
+</b>
+
+
+The trace takes two hops to reach its destination on BRANCH2, passing through the HQ router since it is acting as the DMVPN hub for this Phase 1 hub-and-spoke topology.
+
+<h4>Configure DMVPN Phase 2 Spoke-to-Spoke Communication</h4>
+
+In this task, you will configure the DMVPN spokes to communicate directly by enabling multipoint interfaces on the branch routers.
+
+On the BRANCH1 and BRANCH2 routers, change the tunnel mode to mGRE on the tunnel interface.
+
+<b>
+BRANCH1(config)# interface Tunnel 1
+BRANCH1(config-if)# tunnel mode gre multipoint 
+BRANCH1(config-if)# no tunnel destination 
+BRANCH1(config-if)# tunnel mode gre multipoint
+
+BRANCH2(config)# interface Tunnel 1
+BRANCH2(config-if)# tunnel mode gre multipoint 
+BRANCH2(config-if)# no tunnel destination 
+BRANCH2(config-if)# tunnel mode gre multipoint
+</b>
+
+Notice that you will receive an error message if you try to change the tunnel mode to mGRE without first removing the static destination. The tunnel interface will reset after enabling mGRE and the OSPF neighbor adjacency with HQ will also reset.
+
+Currently, the tunnel interfaces on HQ, BRANCH1 and BRANCH2 are configured as OSPF network type point-to-multipoint. The recommended OSPF type to use for DMVPN Phase 2 is broadcast. You will make the necessary changes in the next step.
+
+On the HQ, BRANCH1 and BRANCH2 routers, configure the Tunnel 1 interface with the OSPF broadcast network type. On the BRANCH1 and BRANCH2 routers, configure the Tunnel 1 interface with an OSPF priority 0. This means that only the HQ router, with default OSPF priority 1, will become the designated router (DR).
+
+<b>
+HQ(config)# interface Tunnel1 
+HQ(config-if)# ip ospf network broadcast
+
+BRANCH1(config)# interface Tunnel1
+BRANCH1(config-if)# ip ospf network broadcast
+BRANCH1(config-if)# ip ospf priority 0
+
+BRANCH2(config)# interface Tunnel1 
+BRANCH2(config-if)# ip ospf network broadcast 
+BRANCH2(config-if)# ip ospf priority 0
+</b>
+
+You will receive OSPF neighbor down messages as you transition the network type to broadcast. After a few moments, you should see messages indicating that the OSPF neighbor adjacencies have been re-established. For example, on router HQ:
+
+<h4>Verify DMVPN Spoke-to-Spoke Communication</h4> 
+
+In this task, you will verify the DMVPN spoke-to-spoke direct communication.
+
+On the HQ router, verify the OSPF neighbor adjacencies before testing inter-branch connectivity.
+<b>
+HQ# show ip ospf neighbor 
+</b>
+
+The HQ router should have two OSPF neighbors that are fully adjacent. Notice that BRANCH1 and BRANCH2 are listed as DROTHERs since their OSPF priority is set to 0. This ensures that the HQ router will always by the DR on the network.
+
+On the BRANCH1 router, verify the ISAKMP SA. You should see one active session.
+
+<b>
+BRANCH1# show crypto isakmp sa 
+</b>
+
+BRANCH1 currently has only one active ISAKMP security association established with the HQ router.
+
+On the BRANCH1 router, verify the IPsec SA. You should see one active session.
+
+<b>
+BRANCH1# show crypto ipsec sa
+
+</b>
+BRANCH1 currently has only one IPsec security association established with the HQ router.
+
+On the BRANCH1 router, verify OSPF neighbors. You should see one OSPF neighbor via the Tunnel1 interface.
+<b>
+BRANCH1# show ip ospf neighbor 
+</b>
+
+BRANCH1 has one fully established OSPF neighbor (HQ). Notice that HQ is the DR on the network.
+
+On the BRANCH1 router, verify OSPF routes in the routing table. You should see an OSPF inter-area route from the BRANCH2 router (192.168.3.0/24), reachable directly via BRANCH2 (10.1.1.3).
+
+<b>
+BRANCH1# show ip route ospf
+</b>
+OSPF is reporting to BRANCH1 that the next hop to reach the 192.168.3.0/24 network is the 10.1.1.3 address on BRANCH2, instead of the HQ address of 10.1.1.1 that was observed earlier during DMVPN Phase 1.
+
+
+From the BRANCH1 router, trace the BRANCH2 Loopback 0 IP address, 192.168.3.1. Source the trace from the BRANCH1 loopback 0 interface. You may see initial packets routed through the HQ router, if the spoke-to-spoke tunnels have not negotiated yet. Once the tunnels are negotiated, the first hop in the trace should be the tunnel interface of the BRANCH2 router. Run the traceroute command a few times until you see this behavior.
+
+<b>
+BRANCH1# traceroute 192.168.3.1 source Lo0
+BRANCH1# traceroute 192.168.3.1 source Lo0
+</b>
+
+The first trace appears to go through the HQ router before reaching the BRANCH2 router. This is because the dynamic spoke-to-spoke tunnel has not yet been established. This first trace triggers the negotiation of the new tunnel. The second trace then reaches its destination directly after one hop to BRANCH2.
+
+On the BRANCH1 router, verify the ISAKMP SA again. You should see two active sessions. The BRANCH1 router opened a new ISAKMP session to the BRANCH2 router.
+
+<b>
+BRANCH1# show crypto isakmp sa
+</b>
+
+A new ISAKMP SA has been established and is active between BRANCH1 and BRANCH2.
+
+On the BRANCH1 router, verify the IPsec SA again. You should see two active sessions. The BRANCH1 router opened an IPsec session to the BRANCH2 router.
+
+<b>
+BRANCH1# show crypto ipsec sa 
+</b>
+
+Two IPsec SAs are established in BRANCH1, one to the HQ router and one to the BRANCH2 router.
+
+<h4>Enable DMVPN Phase 3 Functionality</h4>
+
+
+The Phase 3 DMVPN configuration for the hub router adds the interface parameter command ip nhrp redirect on the hub router. This command checks the flow of packets on the tunnel interface and sends a redirect message to the source spoke router when it detects packets hairpinning out of the DMVPN cloud. Hairpinning is when traffic is received and sent out of an interface in the same cloud (identified by the NHRP network ID). For instance, packets coming in and going out of the same tunnel interface is a case of hairpinning.
+
+The Phase 3 DMVPN configuration for spoke routers uses the multipoint GRE tunnel interface and uses the command ip nhrp shortcut on the tunnel interface.
+
+In this task, you will enable DMVPN Phase 3 to improve spoke-to-spoke direct communication.
+
+
+On the HQ router, enable NHRP redirect and change the OSPF network type of the Tunnel 1 interface to point-to-multipoint.
+
+<b>
+HQ(config)# interface Tunnel 1
+HQ(config-if)# ip nhrp redirect
+HQ(config-if)# ip ospf network point-to-multipoint 
+</b>
+
+It is recommended to use the OSPF network type point-to-multipoint when enabling DMVPN Phase 3 with NHRP redirect. Doing so will cause the OSPF neighbor adjacencies to temporarily go down as there is currently an OSPF network mismatch with BRANCH1 and BRANCH2.
+
+On the BRANCH1 and BRANCH2 routers, enable NHRP shortcuts and change the OSPF network type of the Tunnel 1 interface to point-to-multipoint. Also, remove the OSPF priority command.
+
+<b>
+BRANCH1(config)# interface Tunnel 1
+BRANCH1(config-if)# ip nhrp shortcut 
+BRANCH1(config-if)# no ip ospf priority 0
+BRANCH1(config-if)# ip ospf network point-to-multipoint 
+
+BRANCH2(config)# interface Tunnel 1
+BRANCH2(config-if)# ip nhrp shortcut 
+BRANCH2(config-if)# no ip ospf priority 0
+BRANCH2(config-if)# ip ospf network point-to-multipoint 
+</b>
+After enabling the point-to-multipoint OSPF network type on BRANCH1 and BRANCH2, the OSPF adjacencies with HQ are re-established.
+
+On the BRANCH1 router, clear all crypto and GRE tunnels by disabling and re-enabling the Tunnel 1 interface. This ensures that all further tests are conducted in a fresh DMVPN Phase 3 environment. Verify the ISAKMP SA status after the OSPF neighbor adjacency with HQ is re-established.
+
+<b>
+BRANCH1(config)# interface Tunnel 1
+BRANCH1(config-if)# shutdown
+BRANCH1(config-if)# no shutdown
+BRANCH1# show crypto isakmp sa
+</b>
+BRANCH1 establishes a single active ISAKMP SA with HQ. The (deleted) entries are failed attempts as the GRE tunnel with HQ is being rebuilt. These entries will get flushed automatically.
+
+
+From the BRANCH1 router, trace the BRANCH2 Loopback 0 IP address, 192.168.3.1. Source the trace from the BRANCH1 loopback 0 interface. You may see initial packets routed through the HQ router, as the spoke-to-spoke tunnels have not negotiated yet. Once the tunnels are negotiated, the first hop in the trace should be the tunnel interface of the BRANCH2 router. Run the traceroute command a few times until you see this behavior.
+
+<b>
+BRANCH1# traceroute 192.168.3.1 source Lo0
+BRANCH1# traceroute 192.168.3.1 source Lo0
+</b>
+
+On the BRANCH1 router, verify the ISAKMP SA and the IPsec SA.
+<b>
+BRANCH1# show crypto isakmp sa
+BRANCH1# show crypto ipsec sa   
+</b>
+
+BRANCH1 now has two ISAKMP SAs, one with HQ and one with BRANCH2. Traffic between BRANCH1 and BRANCH2 is being successfully encrypted/decrypted. The same applies for traffic between BRANCH1 and HQ.
+
+On the BRANCH1 router, verify the status of NHRP.
+
+<b>
+BRANCH1# show ip nhrp
+</b>
+
+Notice the NHRP mappings: router, rib, and nho. The flag rib nho indicates that the router has found an identical route in the routing table that belongs to a different protocol. NHRP has overridden the other protocol’s next-hop entry for the network by installing a next-hop shortcut in the routing table. BRANCH1 is now using the 10.1.1.3 next-hop address to reach the 192.168.3.0/24 network on BRANCH2.
+
+On the BRANCH1 router, verify the status of DMVPN tunnels.
+
+<b>
+BRANCH1# show dmvpn detail     
+</b>
+
+The output displays the status of DMVPN tunnels on BRANCH1 where there are two new spoke-to-spoke tunnels (highlighted). The DLX entry represents the local (no-socket) routes. The original tunnel to HQ remains as a static tunnel. The DT2 entry indicates that the next-hop has been overridden by NHRP.
+
+On the BRANCH1 router, verify the OSPF routes in the routing table.
+
+<b>
+BRANCH1# show ip route ospf
+</b>
+
+NHRP tightly interacts with the routing/forwarding tables and installs or modifies routes in the Routing Information Base (RIB), also known as the routing table, as necessary. When an entry exists with an exact match for the network and prefix length, NHRP overrides the existing next hop with a shortcut. The original protocol is still responsible for the prefix, but the overwritten next-hop address is indicated in the routing table by the percent sign (%).
+
+The next-hop IP address for the OSPF inter-area remote network (highlighted) still shows 10.1.1.1 as the next-hop address but includes a percent sign (%) to indicate a next-hop override.
+
+On the BRANCH1 router, verify explicit NHRP shortcut information in the routing table.
+
+<b>
+BRANCH1# show ip route next-hop-override 
+</b>
+
+The command show ip route next-hop-override displays the routing table with the explicit NHRP shortcuts that were added. In the output, notice that the NHRP shortcut is indicated by the NHO marking and shown underneath the original entry with the correct next-hop IP address.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

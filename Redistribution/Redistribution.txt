@@ -1,0 +1,1039 @@
+<h1>Configuring Redistribution</h1>
+
+if the network becomes complex, it may be necessary to introduce new routing protocols.
+The process of transition from one routing protocol to another is gradual, and multiple routing protocols may be present in the network at the same time. Running multiple IP routing protocols can lead to an increase in routing update traffic as the network grows, which can slow the network down.
+
+Cisco routers allow internetworks using different routing protocols, referred to as routing domains or autonomous systems, to exchange routing information through a feature called route redistribution.
+
+
+Redistribution is how routers connect different routing domains so that they can exchange and advertise routing information between the different autonomous systems.
+
+
+Multiple routing protocols may be necessary in the following situations:
+
+<ul>
+  <li>When you are migrating from an older Interior Gateway Protocol (IGP) to a new IGP. Multiple redistribution boundaries may exist until the new protocol has completely displaced the old protocol. A common example of this implementation is a merger between two companies that are each using a different routing protocol.</li>
+  <li>When the use of a new protocol is desired, but the old routing protocol is needed for host systems—for example, for UNIX host-based routers that are running RIP.</li>
+  <li>When departments do not want to upgrade their routers to support a new routing protocol.</li>
+  <li>In mixed-router vendor environments. In these environments, you can use a routing protocol that is specific to Cisco, such as Enhanced Gateway Routing Protocol (EIGRP), in the Cisco portion of the network and a common standards-based routing protocol, like Open Shortest Path First (OSPF), to communicate with devices from other vendors.</li>
+</ul>
+
+
+Redistribution is the process of sharing the information about routes that the router has learned with other routing protocols.the redistribution process must selectively insert the routes that are learned. Redistribution can lead to routing loops, which must be avoided. Only routes that are in the routing table are redistributed.
+
+
+<h3>Redistribution of Route Information</h3>
+
+Within each Autonomous System (AS), the internal routers have complete knowledge about their network. The router that interconnects the autonomous systems is called a boundary router. The boundary router must be running all the routing protocols that will be exchanging routes. 
+
+
+These redistributed routes could have been learned via a different routing protocol, such as when redistributing between EIGRP and OSPF, and they also could have been learned from static routes or by a direct connection to a network.
+
+
+Redistribution is always performed outbound. The router that is doing redistribution does not change its routing table.
+
+
+<h3>Determine Default Metrics for Redistributed Routes</h3>
+
+
+When a router advertises a link that is directly connected to one of its interfaces, the initial or seed metric—also referred to as the default metric—that is used is derived from the characteristics of that interface, and the metric increases in increments as the routing information is passed to other routers.
+
+
+For OSPF, the seed metric is based on the bandwidth of the interface. For EIGRP, the seed metric is based on the interface bandwidth and delay. For RIP, the seed metric starts with a hop count of 0 and increases in increments from router to router.  This seed metric is defined during redistribution configuration.
+
+
+The <b>default-metric<b> command, which is used in routing process configuration mode, establishes the seed metric for all redistributed routes.
+
+Cisco routers also allow the seed metric to be specified as part of the <b>redistribution</b> command, either with the <b>metric</b> option or by using a route map. Whichever way you set the initial seed metric, you should set it to a value that is larger than the largest metric within the receiving AS, to help prevent suboptimal routing and routing loops.
+
+
+The default seed metric values for redistributed routes for each IP routing protocol are as follows:
+
+<ul>
+  <li>RIP and EIGRP: The metric is infinity; you must specify a default metric, or routes will not be redistributed. The exception to this rule is redistributed connected or static routes and routes that are being redistributed between two EIGRP autonomous systems.</li>
+  <li>OSPF: The redistributed routes are external type 2 routes with a metric of 20, except for redistributed BGP routes, which have a default type 2 metric of 1.</li>
+  <li>BGP: When routes are redistributed into BGP, the IGP metric itself is not preserved as an IGP metric; however, BGP derives the MED value from the IGP metric, and this MED is advertised to eBGP neighbors. BGP then applies its own path attributes (such as Local Preference, AS Path, and MED) for route selection.</li>
+</ul>
+
+<h4>Configure Redistribution from OSPF to EIGRP</h4>
+
+
+
+
+<b>
+R1(config)# router eigrp CISCO
+R1(config-router)# address-family ipv4 unicast autonomous-system 100
+R1(config-router-af)# topology base 
+R1(config-router-af-topology)# redistribute ospfv3 10 metric 1500 100 255 1 1500
+</b>
+
+In the case of EIGRP configured using named mode, the redistribute command is entered in address family topology configuration mode. This enables the redistribution of one routing domain into the EIGRP routing domain. The command identifies the source routing protocol (the protocol from which updates are accepted) and the target routing protocol (the protocol that accepts routing updates).
+
+To configure redistribution into EIGRP, the following command syntax is used:
+
+<b>Router(config-router-af-topology)# redistribute protocol process-id [ metric bandwidth-metric delay-metric reliability-metric load-metric mtu-bytes ] [ route-map name ]
+</b>
+
+<table border="1">
+<tr>
+<td>protocol</td>
+<td>This keyword is the routing protocol that provides the routes. It can be one of the following: connected, BGP, EIGRP, EGP, IS-IS, mobile, OSPF, static, or rip.</td>
+</tr>
+<tr>
+<td>process-id</td>
+<td>For BGP, EGP or EIGRP, this keyword is an autonomous system number. For OSPF, this keyword is an OSPF process ID. RIPv1 and v2 do not use either.</td>
+</tr>
+<tr>
+<td>metric</td>
+<td>(Optional) Specifies the metric for redistributed routes.</td>
+</tr>
+<tr>
+<td>bandwidth-metric</td>
+<td>Maximum bandwidth of the route, in kilobits per second (kb/s). The range is from 1 to 4294967295.</td>
+</tr>
+<tr>
+<td>delay-metric</td>
+<td>EIGRP route delay metric, in microseconds. The range is from 1 to 4294967295.</td>
+</tr>
+<tr>
+<td>reliability-metric</td>
+<td>EIGRP reliability metric. The range is from 0 to 255. An EIGRP metric of 255 signifies 100 percent reliability.</td>
+</tr>
+<tr>
+<td>load-metric</td>
+<td>Effective bandwidth of the route. The range is from 1 to 255. An effective bandwidth of 255 denotes 100 percent load.</td>
+</tr>
+<tr>
+<td>mtu-bytes</td>
+<td>Minimum maximum transmission unit (MTU) size of the route in bytes. The range is from 128 to 4352.</td>
+</tr>
+<tr>
+<td>route-map</td>
+<td>(Optional) The route map that should be queried to filter the importation of routes from this source routing protocol to the current routing protocol. If not specified, all routes are redistributed. If this keyword is specified, but no route map tags are listed, no routes will be imported.</td>
+</tr>
+<tr>
+<td>name</td>
+<td>Route-map name</td>
+</tr>
+
+</table>
+
+On EIGRP They are imported into the routing table as D EX (EIGRP external) routes because they are imported from the OSPF domain.
+<b>
+R1(config)# router eigrp CISCO
+R1(config-router)# address-family ipv6 unicast autonomous-system 200
+R1(config-router-af)# topology base
+R1(config-router-af-topology)# redistribute ospf 10 metric 1500 100 255 1 1500
+-
+R1(config-router-af-topology)# redistribute ospf 10 metric 1500 100 255 1 1500 include-connected
+</b>
+
+You need to add the <b>include-connected</b> command for connected interfaces on R1 to be advertised to the R2 router. 
+
+With IPv4, connected interfaces are automatically advertised into the routing protocol for interfaces on which the source protocol is running. In IPv4, you do not need to explicitly define that connected subnets must be advertised to the target routing protocol.
+
+In IPv6, it is up to the administrator to decide whether the connected subnets are included into redistribution. With the <b>include-connected</b> command, you instruct the target routing protocol to redistribute the routes that are learned by the source protocol, and also the connected interfaces, if the source routing protocol is running on them.
+
+Also, notice that under the EIGRP IPv6 address family, it is not possible to specify OSPFv3 as the source protocol for redistribution. Instead, the ospf keyword automatically assumes OSPFv3 since the command is being entered under the IPv6 address family.
+
+
+<h4>Configure Redistribution from EIGRP to OSPF</h4>
+<b>
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv4 unicast 
+R1(config-router-af)# redistribute eigrp 100
+</b>
+If you are using OSPFv2, you must include the subnets keyword when enabling redistribution. The keyword subnets is necessary for classless networks to be advertised. Without this keyword, only routes that are in the routing table with the default classful mask will be redistributed.
+
+When you configure redistribution into the OSPF, the following command syntax is used:
+<b>
+Router(config-router-af)# redistribute protocol [process-id] [metric metric-value] [metric-type type-value] [match {internal | external 1 | external 2}] [subnets]
+</b>
+
+
+<table border="1">
+<tr>
+<td>protocol</td>
+<td>This keyword is the routing protocol that provides the routes. It can be one of the following: connected, BGP, EIGRP, EGP, IS-IS, mobile, OSPF, static, or rip.</td>
+</tr>
+<tr>
+<td>process-id</td>
+<td>For BGP, EGP or EIGRP, this keyword is an autonomous system number RIPv2 does not use either.</td>
+</tr>
+<tr>
+<td>metric metric-value</td>
+<td>This optional parameter is used to specify the metric for the redistributed route. When redistributing into protocols other than OSPF, if this value is not specified and no value is specified using the default-metric router configuration command, routes have a metric of infinity and are not used.</td>
+</tr>
+<tr>
+<td>metric-type type-value</td>
+<td>This keyword is an optional OSPF parameter that specifies the external link type. This keyword can be 1 for type 1 external routes, or 2 for type 2 external routes. The default is 2.</td>
+</tr>
+<tr>
+<td>match</td>
+<td>(Optional) For the criteria by which OSPF routes are redistributed into other routing domains. It can be one of the following: . internal-Routes that are internal to a specific autonomous system. . external 1-Routes that are external to the autonomous system, but are imported into OSPF as type 1 external routes. . external 2-Routes that are external to the autonomous system, but are imported into OSPF as type 2 external routes.</td>
+</tr>
+<tr>
+<td>route-map</td>
+<td>(Optional) The route map that should be queried to filter the importation of routes from the source routing protocol to the current routing protocol. If not specified, all routes are redistributed. If this keyword is specified, but no route map tags are listed, no routes will be imported.</td>
+</tr>
+<tr>
+<td>subnets</td>
+<td>(Optional) For redistributing routes into OSPF, the scope of redistribution for the specified protocol.</td>
+</tr>
+</table>
+
+External routes can be sent as E1 or as E2. 
+
+External LSAs appear in the routing table and are marked as external type 1 (E1) or external type 2 (E2) routes. The cost of an external route varies depending on the external type that is configured on the ASBR. The following external packet types can be configured:
+
+E1: Type O E1 external routes calculate the cost by adding the external cost to the internal cost of each link that the packet crosses. Use this type to avoid suboptimal routing when there are multiple ASBRs advertising an external route to the same AS.
+
+E2 (default): The external cost of O E2 routes is fixed and does not change across the OSPF domain. The default cost for an E2 route is 20. Use this type if only one ASBR is advertising an external route to the AS.
+
+ redistribute the IPv4 EIGRP routes into OSPF as type-1 (E1) routes.
+<b>
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv4 unicast 
+R1(config-router-af)# redistribute eigrp 100 metric-type 1
+</b>
+
+If external routes are received as E2 routes (which is the default setting), then the cost is the same regardless of the topology in the OSPF domain. If external routes are received as E1 routes, then the internal OSPF cost is added to the external cost.
+
+Configure the redistribute command for the IPv6 address family under the OSPFv3 process. Do not forget to add the include-connected keyword.
+
+<b>
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv6 unicast
+R1(config-router-af)# redistribute eigrp 200 include-connected
+-------
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv6 unicast
+R1(config-router-af)# redistribute eigrp 200 metric-type 1 include-connected
+</b>
+
+
+Notice how EIGRP routes are now redistributed into OSPF with metric type 1. The total cost for external routes that is shown in the routing table includes the costs of intra-area OSPF links.
+
+<h3>Calculation of Costs for OSPF E1 and E2 Routes</h3>
+
+
+The cost of an external route varies depending on the external type that is configured on the Autonomous System Border Routers (ASBR). The following external packet types can be configured:
+
+
+<table border="1">
+<tr>
+<td>Router Designator</td>
+<td>Description</td>
+<td>Cost Calculation</td>
+</tr>
+<tr>
+<td>O E1</td>
+<td>Type 1 external route</td>
+<td>Adding the external cost to the internal cost of each link that the packet crosses.</td>
+</tr>
+<tr>
+<td>O E2</td>
+<td>Type 2 external route</td>
+<td>External cost of O E2 packet routes is always the external cost only.</td>
+</tr>
+</table>
+
+
+E1: Type O E1 external routes calculate the cost by adding the external cost to the internal cost of each link that the packet crosses. Use this type to avoid suboptimal routing when there are multiple ASBRs advertising an external route to the same AS.
+
+E2 (default): The external cost of O E2 packet routes is always the external cost only. Use this type if only one ASBR is advertising an external route to the AS.
+
+In a large network, which has multiple paths to the distribution router, it is important how you advertise redistributed routes. You can use E1 rather than E2 routes in a large network that has multiple paths to the ASBR.
+
+
+If an OSPF router receives both type E1 and type E2 routes for the same destination, the type E1 route is always preferred over type E2 regardless of the actual calculated cost.
+
+What is the default metric value for OSPF Type 2 External routes? -> 20
+
+
+<h3>Types of Redistribution</h3>
+
+There are several ways that you can implement redistribution between two routing protocols.
+
+
+One-point redistribution defines only one redistribution point between two routing protocols. Routes are redistributed on one router only. The redistribution can be:
+
+One-way
+
+Two-way
+
+
+One-way redistribution means that routes from routing protocol A are redistributed into routing protocol B but not vice versa. Two-way redistribution means that routes from routing protocol A are redistributed into routing protocol B, and routes from routing protocol B are also redistributed into routing protocol A.
+
+One-way redistribution requires the use of a default route or static routes. If routes are redistributed from routing protocol A into routing protocol B, routing protocol B devices are aware of all the routing information. At the same time, devices in the routing protocol A autonomous system are aware of routing information for their own AS only, and reachability for destinations that are outside the routing protocol A autonomous system requires the use of a default route or one or more static routes.
+
+One-way or two-way redistribution at one point is always safe, because one-point redistribution represents the only exit and entrance from one routing protocol to another. Routing loops cannot be inadvertently created.
+
+Multipoint redistribution is redistribution between two routing protocols that takes place on two or more separate devices that are running both routing protocols. Two possibilities exist:
+
+Multipoint one-way redistribution
+
+Multipoint two-way redistribution
+
+Multipoint redistribution is likely to introduce routing loops. Problems often result from differences in administrative distance between the two protocols, and incompatible metrics.
+
+<h3></h3>
+
+Mutual Redistribution
+
+Mutual or two-way multipoint redistribution requires careful design and consideration.
+
+During redistribution, metric information can be lost.
+
+To avoid problems, statically assigned metrics can be used in redistribution points.
+
+Generic multipoint two-way redistribution is highly problematic and requires careful design and configuration.
+
+Routing protocols have incompatible metrics, and during redistribution, the metric information can be lost. To avoid problems that are associated with incompatible metrics, statically assigned metrics can be used in redistribution points.
+
+Several problems can occur during multipoint two-way redistribution:
+
+Suboptimal routing (only part of the total cost is considered in routing decisions)
+
+Self-sustained routing loops upon route loss
+
+To prevent routing loops in multipoint redistribution scenarios, you should consider the following recommendations during configuration:
+
+Insert only internal routes from routing protocol A to B and vice versa.
+
+Tag routes in redistribution points, and filter that is based on tags when doing redistribution.
+
+Propagate metrics from routing protocol A to routing protocol B properly (though this solution is not enough to prevent loops).
+
+Use default routes to avoid two-way redistribution.
+
+<h3>Need for Redistribution Manipulation</h3>
+
+ Cisco IOS allows manipulation of redistributed route information by using features such as prefix lists, distribute lists, and route maps.
+
+
+ollowing are some of the reasons for redistribution manipulation:
+
+Metric or external route type change required
+
+Subset of routes to be redistributed
+
+Solution: prefix lists, distribute lists, and route maps
+
+<h3>Filtering Tools: Distribute Lists</h3>
+
+
+One of the ways to control routing updates is a technique that is called a distribute list. It allows you to apply an access list to routing updates.
+
+Used for controlling redistribution by using Access Control List (ACLs) or prefix lists
+
+ACL defines which subnets will be redistributed or denied into the target protocol
+
+
+<b>
+R3(config)# access-list 7 permit 10.10.11.0 0.0.0.255
+R3(config)# access-list 7 permit 10.10.12.0 0.0.0.255
+R3(config)# router ospfv3 10
+R3(config-router)# address-family ipv4 unicast
+R3(config-router-af)# redistribute eigrp 100
+R3(config-router-af)# distribute-list 7 out eigrp 100
+</b>
+
+Classic access lists do not affect traffic that is originated by the router. When you link an access list to a distribute list, routing updates can be controlled no matter what their source is.
+
+Access lists are configured in global configuration mode and are then associated with a distribute list under the routing protocol. The access list should permit the networks that should be advertised or redistributed and deny the networks that should be filtered.
+
+The router then applies the access list to the routing updates for that protocol. Options in the distribute-list command allow updates to be filtered based on three factors:
+
+Incoming interface
+
+Outgoing interface
+
+Redistribution from another routing protocol
+
+
+A distribute list filter can be applied to transmit, received, or redistributed routing updates.
+
+
+Use the <b>distribute-list out</b> command to assign the access list to filter outgoing routing updates or to assign it to routes that are being redistributed into the protocol.
+The <b>distribute-list</b> out command cannot be used with link-state protocols for blocking outbound Link-State Advertisements (LSAs) on an interface. 
+
+
+Use the <b>distribute-list in</b> command to filter incoming routing updates that are coming in through an interface. This command prevents most routing protocols from placing the filtered routes in their databases. When this command is used with OSPF, the routes are placed in the database but not in the routing table.
+
+
+<h3>Filtering Tools: Prefix Lists</h3>
+
+Traditionally, IP prefix filters were implemented using IP access lists combined with the distribute-list command. However, when access lists are used as route filters, they have several drawbacks:
+
+The subnet mask cannot be easily matched.
+
+Access lists are evaluated sequentially for every IP prefix in the routing update.
+
+Extended access lists can be cumbersome to configure.
+
+Prefix lists were introduced to address the limitations of access lists. Compared to access lists, prefix lists offer several advantages:
+
+Better performance
+
+Support for filtering based on prefix and prefix length
+
+More scalable and easier to read
+
+Example prefix list and its verification:
+<b>
+R1(config)# ip prefix-list PFL permit 10.10.11.0/24
+R1(config)# ip prefix-list PFL permit 10.10.12.0/24
+show ip prefix-list
+</b>
+
+
+Using the <b>ip prefix-list</b> command has several benefits in comparison with using the <b>access-list</b> command. The intended use of prefix lists is limited to route filtering, where access lists were originally intended to be used for packet filtering and were then extended to route filtering.
+
+A router transforms a prefix list into a tree structure, with each branch of the tree serving as a test. Cisco IOS Software determines a verdict of either “permit” or “deny” much faster this way than when sequentially interpreting access lists.
+
+You can assign a sequence number to <b>ip prefix-list</b> statements, which gives you the ability to sort statements if necessary. Also, you can add statements at a specific location or delete specific statements. If no sequence number is specified, then a default sequence number will be applied.
+
+Routers match networks in a routing update against the prefix list using as many bits as indicated. For example, you can specify a prefix list to be 10.0.0.0/16, which will match 10.0.0.0 routes but not 10.1.0.0 routes.
+
+
+The prefix list can specify the size of the subnet mask and can also indicate that the subnet mask must be in a specified range.
+
+
+Prefix lists are similar to access lists in many ways. A prefix list can consist of any number of lines, each of which indicates a test and a result. The router can interpret the lines in the specified order, although Cisco IOS Software optimizes this behavior for processing in a tree structure. When a router evaluates a route against the prefix list, the first line that matches will result in either a “permit” or “deny.” If none of the lines in the list match, the result is “implicitly deny.”
+
+Testing is done using prefixes. The router compares the indicated number of bits in the prefix with the same number of bits in the network number in the update. If they match, testing continues with an examination of the number of bits set in the subnet mask. The prefix list line can indicate a range within which the number must be to pass the test. If you do not indicate a range in the prefix line, the subnet mask must match the prefix size.
+
+<b>
+R3(config)# ip prefix-list PFL2 seq 5 permit 10.10.11.0/24
+R3(config)# ip prefix-list PFL2 seq 10 permit 10.10.12.0/24
+
+R3(config)# router ospfv3 10
+R3(config)# address-family ipv4 unicast
+R3(config-router-af)# redistribute eigrp 100
+R3(config-router-af)# distribute-list prefix PFL2 out eigrp 100
+</b>
+
+
+The defined prefix list PFL2 permits both desired networks and implicitly denies all others. You can attach the prefix list to the redistribution process via either a distribute list or a route map.
+
+
+What are two benefits of using prefix lists rather than access lists? (Choose two.)
+
+Prefix lists enable you to match routes in part of an address space with a subnet mask that is longer or shorter than a set number.
+
+Prefix lists give you better performance than access lists.
+
+<h3> Manipulate Redistribution</h3>
+
+configure two-way redistribution between OSPF and EIGRP routing domains for IPv4.
+<b>
+
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv4 unicast
+R1(config-router-af)# redistribute eigrp 100 
+
+R1(config)# router eigrp CISCO
+R1(config-router)# address-family ipv4 unicast autonomous-system  100
+R1(config-router-af)# topology base
+R1(config-router-af-topology)# redistribute ospfv3 10 metric 1500 100 255 1 1500
+</b>
+IPv4 EIGRP AS 100 routes are redistributed into OSPFv3 process ID 10, and IPv4 OSPFv3 routes are redistributed into EIGRP. Metric values are required for OSPF routes being redistributed into EIGRP.
+
+configure two-way redistribution between OSPF and EIGRP routing domains for IPv6.
+
+
+<h4>Configure Distribute Lists to Filter Redistribution for IPv4</h4>
+
+<b>
+(config)# access-list 5 deny 10.10.41.0 0.0.0.255 
+R1(config)# access-list 5 deny 10.10.42.0 0.0.0.255 
+R1(config)# access-list 5 deny 10.10.43.0 0.0.0.255 
+R1(config)# access-list 5 deny 10.10.44.0 0.0.0.255 
+R1(config)# access-list 5 permit any
+R1(config)# router eigrp CISCO 
+R1(config-router)# address-family ipv4 unicast autonomous-system 100
+R1(config-router-af)# topology base
+R1(config-router-af-topology)# distribute-list 5 out Ethernet 0/0
+</b>
+A distribute list allows the application of an access list to the routing updates. When you link an access list to a distribute list, routing updates can be controlled no matter what their source is.
+
+Configure access lists in global configuration mode, and then configure the associated distribute list under the routing protocol. The access list should permit the networks that will be advertised or redistributed and deny the networks that will remain hidden.
+
+
+<h4> Prefix List Operators</h4> 
+
+Operators within the prefix-list command are used to filter traffic based on a match of an exact prefix length or a match within a range:
+
+ge: The range is the value that is greater than or equal to the entered value, up to a full 32-bit length
+
+le: The range is the value that is less than or equal to the specified value length
+
+ge and le: The range is between the specified values
+
+The route must match the number of bits specified in the length parameter and match the range that is specified by the ge and/or le parameters.
+
+Examples:
+
+ip prefix-list ANY_ROUTE permit 0.0.0.0/0 le 32
+ip prefix-list ONLY_DEFAULT permit 0.0.0.0/0
+
+ip prefix-list List1 permit 192.168.0.0/16 le 20
+ip prefix-list List2 permit 192.168.0.0/16 ge 18
+192.168.0.0/16, List1: Match
+
+192.168.0.0/16, List2: No Match
+
+Prefix lists are configured to filter traffic based on a match of an exact prefix and prefix length or a match within a range when the ge and le keywords are used. The ge and le keywords are used to specify a range of prefix lengths. They provide a more flexible configuration than can be obtained using only the network/length arguments. A prefix list is processed using an exact match when neither the ge nor le keyword is specified.
+
+The prefix list entries for which you specify the ge or le option match any prefix within the address space that you specify by the network/length parameter, if the subnet mask length of the route falls within the range that you specify by the ge and le parameters.
+
+The first example prefix list, ANY_ROUTE, matches any route, while the second prefix list, ONLY_DEFAULT, matches only the default route.
+
+
+Edit redistribution from EIGRP to OSPF on R1 by applying a prefix list to a distribute list that will advertise all matching prefixes into OSPF in the range of 172.16.0.0/16 to /24.
+
+R1(config)# ip prefix-list EIGRP_TO_OSPF seq 5 permit 172.16.0.0/16 le 24
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv4 unicast
+R1(config-router-af)# distribute-list prefix EIGRP_TO_OSPF out eigrp 100
+
+Verify the hits for the prefix list on router R1.
+
+R1# show ip prefix-list detail 
+
+<h4>Configure Distribute Lists to Filter Redistribution for IPv6</h4>
+
+
+Define two IPv6 prefix lists. The first prefix list called “EIGRP_LINKS” should deny the 2001:DB8:0:13::/64 prefix but permit all others. The second prefix list called “OSPF_LINKS” should deny the 2001:DB8:0:11::/64 and 2001:DB8:0:12::/64 prefixes but permit all others.
+
+
+R1(config)# ipv6 prefix-list EIGRP_LINKS seq 5 deny 2001:DB8:0:13::/64
+R1(config)# ipv6 prefix-list EIGRP_LINKS seq 10 permit ::/0 le 128
+
+R1(config)# ipv6 prefix-list OSPF_LINKS seq 5 deny 2001:DB8:0:11::/64
+R1(config)# ipv6 prefix-list OSPF_LINKS seq 10 deny 2001:DB8:0:12::/64
+R1(config)# ipv6 prefix-list OSPF_LINKS seq 15 permit ::/0 le 128
+
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv6 unicast
+R1(config-router-af)# distribute-list prefix-list EIGRP_LINKS out eigrp 100
+
+
+R1(config)# router eigrp CISCO 
+R1(config-router)# address-family ipv6 unicast autonomous-system 100
+R1(config-router-af)# topology base 
+R1(config-router-af-topology)# distribute-list prefix-list OSPF_LINKS out Ethernet 0/0
+
+The distribute-list command is entered in IPv6 address family topology configuration mode. It is applied in the outbound direction to the interface connected to R2. All IPv6 EIGRP advertisements will be filtered by the associated prefix list, including the routes redistributed from OSPF.
+
+Notice that the IPv6 EIGRP neighbor relationship between R1 and R2 is reset after applying the distribute list.
+
+<h3> Filtering Tools: Route Maps</h3> 
+
+Route maps are a powerful tool for packet and route manipulation:
+
+Similar to access lists but more sophisticated
+
+Top-down processing.
+
+When a match is found, searching stops.
+
+Lines are sequentially numbered.
+
+Route maps are named, rather than numbered.
+
+Match and set criteria, similar to the if-then logic.
+
+Route maps are complex access lists that allow conditions to be tested against a packet or route using the match commands.If the conditions match, actions can be taken to modify attributes of the packet or route. These actions are specified by the set commands.
+
+A collection of route map statements that have the same route map name is considered one route map. Within a route map, each route map statement is numbered and can be edited individually.
+
+
+The statements in a route map are analogous to the lines of an access list. Specifying the match conditions in a route map is similar to specifying the source and destination addresses and masks in an access list.
+
+One major difference between route maps and access lists is that route maps can use the set commands to modify the packet or route.
+
+The common uses of route maps:
+
+Redistribution route filtering
+
+More sophisticated alternative to distribute lists
+
+Policy-based routing:
+
+Ability to determine a routing policy based on criteria other than the destination network
+
+BGP policy implementation:
+
+Primary tool for defining BGP routing policies
+
+Network administrators use the route map tool for many purposes. Several of the more common applications for route maps are as follows:
+
+
+Route filtering during redistribution: Redistribution nearly always requires some amount of route filtering. Although distribute lists can be used for this purpose, route maps offer an added benefit of manipulating routing metrics by using the set commands
+
+Policy-based routing: Route maps can be used to match source and destination addresses, protocol types, and end-user applications. When a match occurs, a set command describes the interface or next-hop address to which the packet should be sent. Policy-Based Routing (PBR) allows the operator to define a routing policy other than basic destination-based routing using the routing table.
+
+BGP: Route maps are the primary tools for implementing a BGP policy. Network administrators assign route maps to specific BGP sessions (neighbors) to control which routes are allowed to flow into and out of the BGP process. In addition to their use in filtering, route maps allow for sophisticated manipulation of BGP path attributes.
+
+
+Route map operation:
+
+List of statements.
+
+Top-down processing.
+
+The first match is applied.
+
+Line sequence numbers.
+
+permit and deny statements determine if the route will be redistributed.
+
+Implicit deny: routes are not redistributed.
+
+<b>
+route-map MyRouteMap permit 10
+       { match statement }
+       { set statements }
+route-map MyRouteMap deny 20
+       { match statement }
+       { set statements }
+route-map MyRouteMap permit 30
+       { match statement }
+       { set statements }
+(implicit deny any)
+</b>
+
+
+Route maps operate in a manner similar to access lists. When determining which routes will be redistributed from one protocol to the next, the router checks each route against the route map, beginning with the top line.
+
+Each line is sequence-numbered, both for top-down processing purposes and for editing purposes. Lines can be added or removed from a route map as changes are required.
+
+Each line has a permit or deny statement. If a route is matched in the matching statements and the line has a permit statement, the router sets the metrics or other defined conditions and permits the redistribution of that route. The route map stops processing at the first match.
+
+If the packet is matched and the route map line has a deny statement, the router stops at the matched line in the map and does not redistribute that route. Routes are filtered using this method.
+
+Routers search for matches on a line-by-line basis. If a router reaches the bottom of the route map without finding a match, it denies the route from being redistributed. There is always an implicit deny statement at the end of a route map.
+
+
+The match statement may contain multiple references.
+
+route-map MyRouteMap permit 10
+  match ip address ACL1 ACL2 ACL3
+Multiple match criteria in the same line: logical or
+
+Multiple match statements on separate lines: logical and
+
+route-map MyRouteMap deny 20
+ match ip address ACL1
+ match interface fastethernet0/0
+ match metric 3
+
+Matching statements in a route map can be complex. Multiple match criteria in the same line are processed with a logical or. Separate match criteria can also be applied vertically under a route map line. In this case, each match uses a logical and.
+
+A route map may consist of multiple route map statements. The statements are processed top-down, like statements are processed for an access list. The first match that is found for a route is applied. The sequence number is used for inserting or deleting specific route map statements in a specific place in the route map.
+
+The single-match statement may contain multiple conditions. At least one condition in the match statement must be true to consider the statement a match (logical or). A route map statement may contain multiple match statements. All match statements in the route map statement must be true to consider the route map statement a match (logical and).
+
+The sequence number specifies the order in which conditions are checked. For example, if there are two statements in a route map that is named MyRouteMap, one with sequence number 10 and the other with sequence number 20, the one with sequence number 10 is checked first. If the match conditions in the statement with sequence number 10 are not met, the statement with sequence number 20 is checked.
+
+
+As is true of an access list, there is an implicit “deny any” statement at the end of a route map. The consequences of this behavior depend on how the route map is used.
+
+Route map configuration generally consists of three parts:
+
+Defining the route map with the name
+
+route-map MyRouteMap permit 10
+Defining match action
+
+match ip address prefix-list MyList
+Defining set action
+
+set metric-type type-1
+
+You need to consider these steps when creating a route map:
+
+Define the route map conditions:
+
+Define the conditions to match.
+
+Define the action to be taken when each condition is matched (optional).
+
+Apply the route map (in the redistribute command, attach on interface and so on)
+
+
+In the above example, the match and set commands are used with the route-map command to define the conditions for policy routing. The match command specifies the condition under which policy routing occurs. The set command specifies the routing actions to perform if the criteria that are enforced by the match command are met.
+
+The sequence-number argument works as follows:
+
+If no entry is defined with the supplied tag, an entry is created with the sequence-number argument set to 10.
+
+If only one entry is defined with the supplied tag, that entry becomes the default entry for the following route-map command. The sequence-number argument of this entry is unchanged.
+
+If more than one entry is defined with the supplied tag, an error message is printed to indicate that a sequence-number argument is required.
+
+If no route-map map-tag command is specified (with no sequence-number argument), the whole route map is deleted.
+
+The set commands are used within a route map to change or add characteristics, such as metrics, to any routes that have met a match criterion.
+
+R3(config)# ip prefix-list PFL1 permit 10.10.11.0/24
+R3(config)# ip prefix-list PFL1 permit 10.10.12.0/24
+R3(config)# route-map rm_into_OSPF permit 10
+R3(config-route-map)# match ip address prefix-list PFL1
+R3(config-route-map)# set metric 25
+R3(config-route-map)# set metric-type type-1
+R3(config)# router ospfv3 10
+R3(config-router)# address-family ipv4 unicast
+R3(config-router)# redistribute eigrp 100 route-map rm_into_OSPF
+
+
+<h4>Configure Mutual Redistribution Between the OSPF and EIGRP Domains</h4>
+
+
+Configure two-way redistribution between the OSPF and EIGRP domains on routers R1 and R4.
+
+Enter the following commands on R1 and R4 router to enable two-way redistribution:
+<b>
+R1(config)# router eigrp CISCO
+R1(config-router)# address-family ipv4 unicast autonomous-system 100
+R1(config-router-af)# topology base
+R1(config-router-af-topology)# redistribute ospfv3 10 metric 10000 10 255 1 1500  
+R1(config-router-af-topology)# exit
+R1(config-router-af)# exit
+R1(config-router)# exit
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv4 unicast
+R1(config-router-af)# redistribute eigrp 100
+
+
+R4(config)# router eigrp CISCO
+R4(config-router)# address-family ipv4 unicast autonomous-system 100
+R4(config-router-af)# topology base
+R4(config-router-af-topology)# redistribute ospfv3 10 metric 10000 10 255 1 1500  
+R4(config-router-af-topology)# exit
+R4(config-router-af)# exit
+R4(config-router)# exit
+R4(config)# router ospfv3 10
+R4(config-router)# address-family ipv4 unicast 
+R4(config-router-af)# redistribute eigrp 100
+</b>
+The delay command expects a value to be entered in tens of microseconds. Entering a value of 1 is equivalent to 10 microseconds of delay.
+
+
+<h4>Apply Route Filtering Using Route Maps and ACLs</h4>
+
+
+On R1 and R4, configure ACLs to manipulate redistribution. One ACL must allow only internal loopback EIGRP routes, the other only internal loopback OSPF routes.
+
+To manipulate the redistribution process, you will need to create ACLs for matching OSPF and EIGRP routes respectively:
+<b>
+R1(config)# access-list 10 permit 10.2.0.0 0.0.3.255
+R1(config)# access-list 20 permit 10.1.0.0 0.0.7.255
+
+
+R4(config)# access-list 10 permit 10.2.0.0 0.0.3.255
+R4(config)# access-list 20 permit 10.1.0.0 0.0.7.255
+</b>
+
+configure route maps and set the match criteria to the previously defined ACLs.
+
+You need to configure the following route maps:
+<b>
+R1(config)# route-map intoOSPF permit 10
+R1(config-route-map)# match ip address 10
+R1(config-route-map)# exit
+R1(config)# route-map intoEIGRP permit 10 
+R1(config-route-map)# match ip address 20
+R1(config-route-map)# set metric 10000 10 255 1 1500
+
+
+R4(config)# route-map intoOSPF permit 10
+R4(config-route-map)# match ip address 10 
+R4(config-route-map)# exit
+R4(config)# route-map intoEIGRP permit 10 
+R4(config-route-map)# match ip address 20
+R4(config-route-map)# set metric 10000 10 255 1 1500
+</b>
+
+Route map intoOSPF permits routes that match ACL 10 to be redistributed into OSPF. Route map intoEIGRP permits routes that match ACL 20 to be redistributed into EIGRP and it also sets metric values for those routes. The implicit deny any at the end of each route map will prevent other routes from being redistributed.
+
+The metric for routes that are redistributed into EIGRP can be specified either in the route map or the redistribute command.
+
+Apply the configured route maps to the redistribute commands under the OSPF and EIGRP processes on both R1 and R4.
+
+<b>
+R1(config)# router eigrp CISCO
+R1(config-router)# address-family ipv4 unicast autonomous-system 100
+R1(config-router-af)# topology base
+R1(config-router-af-topology)# redistribute ospfv3 10 route-map intoEIGRP  
+R1(config-router-af-topology)# exit
+R1(config-router-af)# exit
+R1(config-router)# exit
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv4 unicast 
+R1(config-router-af)# redistribute eigrp 100 route-map intoOSPF
+
+
+R4(config)# router eigrp CISCO
+R4(config-router)# address-family ipv4 unicast autonomous-system 100
+R4(config-router-af)# topology base
+R4(config-router-af-topology)# redistribute ospfv3 10 route-map intoEIGRP
+R4(config-router-af-topology)# exit
+R4(config-router-af)# exit
+R4(config-router)# exit
+R4(config)# router ospfv3 10
+R4(config-router)# address-family ipv4 unicast 
+R4(config-router-af)# redistribute eigrp 100 route-map intoOSPF
+</b>
+
+
+
+<h4>Apply Route Filtering Using Route Tags</h4>
+
+Another option for manipulating two-way multipoint redistribution is to use route tagging.
+
+Route tags are simple labels that are attached to selected routes.
+
+Route tagging enables filtering of already redistributed routes.
+
+Route maps are used to set and match route tags.
+
+
+
+Two-way multipoint redistribution can introduce routing loops in the network. One option to prevent redistribution of already redistributed routes is to use route tagging. In the example, R4 tags all routes, which are redistributed from EIGRP into OSPF with route tag 50. Router R1 is configured to redistribute all OSPF routes into EIGRP except the routes, which are tagged with route tag 50.
+
+
+using the <b>set tag tag</b> route map configuration command. You also need to attach the created route map to the redistribute command, to manipulate the redistribution process, and to mark all redistributed routes with the configured tag.
+
+To match routes with tags, you can use the <b>match tag tag</b> route map configuration command. As with the configuration on R4, the route map must be attached to the <b>redistribute</b> command.
+
+In two-way multipoint redistribution scenarios, route tags must be applied and filtered in both directions and on both routers performing redistribution.
+
+Route tags are particularly useful when access lists or prefix lists would contain too many statements because of the number of networks that need to be matched.
+
+<b>
+R1(config)# route-map EIGRPtoOSPF deny 10
+R1(config-route-map)# match tag 60
+R1(config-route-map)# route-map EIGRPtoOSPF permit 20
+R1(config-route-map)# set tag 50
+R1(config-route-map)# exit
+R1(config)# route-map OSPFtoEIGRP deny 10
+R1(config-route-map)# match tag 50
+R1(config-route-map)# route-map OSPFtoEIGRP permit 20
+R1(config-route-map)# set tag 60
+</b>
+Notice that the route maps are mirror images of each other. The EIGRPtoOSPF route map denies any routes that have a tag of 60, while permitting all other routes and assigning them a tag of 50. The OSPFtoEIGRP route map denies any routes that have a tag of 50, while permitting all other routes and assigning them a tag of 60.
+<b>
+R4(config)# route-map EIGRPtoOSPF deny 10
+R4(config-route-map)# match tag 60
+R4(config-route-map)# route-map EIGRPtoOSPF permit 20
+R4(config-route-map)# set tag 50
+R4(config-route-map)# exit
+R4(config)# route-map OSPFtoEIGRP deny 10
+R4(config-route-map)# match tag 50
+R4(config-route-map)# route-map OSPFtoEIGRP permit 20
+R4(config-route-map)# set tag 60
+Both route maps are configured on R1 and R4 since both routers are performing two-way redistribution between OSPF and EIGRP.
+</b>
+
+Apply the newly configured route maps to the redistribute commands under the OSPF and EIGRP processes on both R1 and R4
+
+
+R1(config)# router eigrp CISCO
+R1(config-router)# address-family ipv4 unicast autonomous-system 100
+R1(config-router-af)# topology base
+R1(config-router-af-topology)# redistribute ospfv3 10 metric 10000 10 255 1 1500 route-map OSPFtoEIGRP  
+R1(config-router-af-topology)# exit
+R1(config-router-af)# exit
+R1(config-router)# exit
+R1(config)# router ospfv3 10
+R1(config-router)# address-family ipv4 unicast 
+R1(config-router-af)# redistribute eigrp 100 metric-type 1 route-map EIGRPtoOSPF
+
+R4(config)# router eigrp CISCO
+R4(config-router)# address-family ipv4 unicast autonomous-system 100
+R4(config-router-af)# topology base
+R4(config-router-af-topology)# redistribute ospfv3 10 metric 10000 10 255 1 1500 route-map OSPFtoEIGRP
+R4(config-router-af-topology)# exit
+R4(config-router-af)# exit
+R4(config-router)# exit
+R4(config)# router ospfv3 10
+R4(config-router)# address-family ipv4 unicast 
+R4(config-router-af)# redistribute eigrp 100 metric-type 1 route-map EIGRPtoOSPF
+The route maps are applied to the redistribution command under the appropriate routing process.
+
+Metrics are configured for redistribution into EIGRP since the route map did not include the necessary values.
+
+
+<h4> Modify the Administrative Distance to Avoid Suboptimal Routing</h4>
+
+Each router associates an administrative distance (AD) with every route it considers to be added to the routing table. When a router must consider multiple routes from different sources for the exact same prefix/length, the first item that is considered by the router is not the metric, but rather the AD. The lower the AD, the better the route.
+
+Note that the AD is a local setting on a router and cannot be advertised to neighboring routers.
+
+Each routing source has a default AD according to Cisco IOS. Sometimes, a given routing source has different defaults for different types of routes inside that routing source. For example, EIGRP has different AD values for EIGRP internal routes (AD 90) and EIGRP external routes (AD 170). The table shows the default administrative distances in Cisco IOS:
+
+<table border="1">
+<tr>
+<th>Administrative Distance</th>
+</tr>
+<tr>
+<td>Route Type</td>
+<td>Administrative Distance</td>
+</tr>
+<tr>
+<td>Connected</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Static</td>
+<td>1</td>
+</tr>
+<tr>
+<td>EIGRP Summary Route</td>
+<td>5</td>
+</tr>
+<tr>
+<td>EBGP</td>
+<td>20</td>
+</tr>
+<tr>
+<td>EIGRP (internal)</td>
+<td>90</td>
+</tr>
+<tr>
+<td>IGRP</td>
+<td>100</td>
+</tr>
+<tr>
+<td>OSPF</td>
+<td>110</td>
+</tr>
+<tr>
+<td>IS-IS</td>
+<td>120</td>
+</tr>
+<tr>
+<td>RIP</td>
+<td></td>
+</tr>
+<tr>
+<td>ODR</td>
+<td>160</td>
+</tr>
+<tr>
+<td>EIGRP (external)</td>
+<td>170</td>
+</tr>
+<tr>
+<td>IBGP</td>
+<td>200</td>
+</tr>
+<tr>
+<td>Unrechable</td>
+<td>255</td>
+</tr>
+</table>
+
+Cisco IOS supports the definition of different AD settings for all routing protocols. With EIGRP, the internal and external AD settings can be overridden with the distance eigrp command, as shown in the example.
+
+Router(config)# router eigrp CISCO
+Router(config-router)# address-family ipv4 unicast autonomous-system 100
+Router(config-router-af)# topology base
+Router(config-router-af-topology)# distance eigrp 90 100
+
+In the example, EIGRP has been configured with an AD of 90 for internal routes and an AD of 100 for external routes.
+
+OSPF can be configured to use a different AD for external routes, intra-area routes, and interarea routes with the distance ospf command.
+
+Router(config)# router ospfv3 10
+Router(config-router)# address-family ipv4 unicast
+Router(config-router)# distance ospf intra-area 100 inter-area 100 external 105
+In the example, OSPF has been configured with an AD of 100 for intra and inter-area routes, and an AD of 105 for external routes.
+
+For BGP, you can define the AD for external, internal, and local routes under BGP router configuration mode with the distance bgp command. External distance is for BGP external routes that are learned from external neighbors. Internal distance is for routes that are learned from BGP internal neighbors. Local distance is for routes that are entered in router configuration mode.
+
+Router(config)# router bgp 65001
+Router(config-router)# distance bgp 20 150 150
+In the example, BGP has been configured with an AD of 20 for external routes, and an AD of 150 for both internal and local routes.
+
+change the administrative distance to 100 for external EIGRP routes.
+
+R1(config)# router eigrp CISCO
+R1(config-router)# address-family ipv4 unicast autonomous-system 100
+R1(config-router-af)# topology base
+R1(config-router-af-topology)# distance eigrp 90 100
+
+The distance command is entered in address-family topology configuration mode. A value for both internal and external AD needs to be entered. In this example, 90 is the internal distance, and 100 is the external distance. Also notice that the neighbor relationship between R1 and R2 is reset after entering the new AD values.
+
+<h3> Identify Caveats of Redistribution</h3>
+
+Redistribution of routing information adds to the complexity of a network and increases the potential for routing confusion, so it should be used only when necessary.
+
+
+
+<table border="1">
+<tr>
+<td>Challenges</td>
+<td>Solutions</td>
+</tr>
+<tr>
+<td>Routing loops</td>
+<td>Distribute lists</td>
+</tr>
+<tr>
+<td>Incompatible routing information</td>
+<td>Route maps</td>
+</tr>
+<tr>
+<td>Suboptimal path selection</td>
+<td>Manipulation of metrics</td>
+</tr>
+<tr>
+<td>Inconsistent convergence time</td>
+<td>Manipulation of administrative distance</td>
+</tr>
+</table>
+
+The key issues that arise when you are using redistribution are as follows:
+
+Routing loops: Depending on how you employ redistribution, routers may send routing information that is received from one AS back into that same AS.
+
+Incompatible routing information: Because each routing protocol uses different metrics to determine the best path, path selection using the redistributed route information may be suboptimal. The metric information about a route cannot be translated exactly into a different protocol, so the path that a router chooses may not be the best. To prevent suboptimal routing, as a rule, you should assign to redistributed routes a seed metric that is higher than any routes that are native to the redistributing protocol. For instance, if RIP routes are being redistributed into OSPF and the highest OSPF metric is 50, the redistributed RIP routes should be assigned an OSPF metric that is higher than 50.
+
+Inconsistent convergence time: Different routing protocols converge at different rates. For example, RIP converges more slowly than EIGRP, so if a link goes down, the EIGRP network will learn about it before the RIP network.
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+
+<br>
+-->

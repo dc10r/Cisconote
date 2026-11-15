@@ -1,0 +1,369 @@
+<h1>Troubleshooting OSPF</h1> 
+
+
+This section focuses on the reasons why an Open Shortest Path First (OSPF) neighbor adjacency might not form and how you can identify them during the troubleshooting process. In addition, we examine the reasons why OSPF routes might be missing, and how we can determine the reason why they are missing. Finally, we look at issues relating to special area configuration and summarization. The troubleshooting process described in this section applies equally to all OSPF configuration methods (classic OSPFv2, classic OSPFv3, OSPFv3 address families) although the commands will vary slightly.
+
+In this section, you will be able to:
+
+Explore the components of OSPF troubleshooting
+
+Troubleshoot OSPF adjacency issues
+
+Troubleshoot OSPF routing issues
+
+Troubleshoot OSPF path selection issues
+
+Troubleshoot OSPF special areas
+
+Troubleshoot OSPF summarization
+
+
+R2# configure terminal
+R2(config)# router ospfv3 100
+R2(config-router)# address-family ipv4 unicast
+R2(config-router-af)# area 2 nssa
+
+
+R3(config)# interface Ethernet 2/0
+R3(config-if)# ospfv3 100 ipv4 area 0
+
+
+show ospfv3 interface brief
+show ospfv3 ipv4 interface
+show ospfv3 ipv6 interface 
+show ip protocols | begin ospfv3
+show ip ospf neighbors 
+show ip ospf virtual-links 
+
+R4# conf t
+R4(config)# interface Loopback 0
+R4(config-if)# ipv6 enable
+R4(config-if)# ospfv3 100 ipv4 area 0
+
+R5# conf t
+R5(config)# router ospf 10
+R5(config-router)# no area 55 virtual-link 1.1.1.1
+R5(config-router)# area 5 virtual-link 1.1.1.1
+
+Notice that the virtual link has no dead time, that Hello messages are supressed and that it supports DoNotAge (DNA) LSAs. The DNA bit means that all routers on the other side of the virtual link will not expect the LSAs to be reflooded over the virtual link on the usual 30-minute refresh interval. This helps reduce overhead over the virtual link, which often runs over slower links and less-powerful routers.
+
+
+R6# debug ospfv3 authentication 
+debug ospfv3 ipv4 hello 
+
+verifying the OSPF authentication key chain
+
+show key chain
+
+
+R7(config)# interface Ethernet 1/0
+R7(config-if)# ospfv3 100 ipv4 hello-interval 10
+
+R7(config)# interface Ethernet 1/0
+R7(config-if)# no ospfv3 100 ipv6 network
+
+The link local IPv6 address may be different in your output.
+
+<h3>Components of Troubleshooting OSPF</h3>
+
+Troubleshooting OSPF requires an understanding of the operation of the protocol and also of a specific approach methodology. The figure shows the major components of OSPF troubleshooting and the order in which the process flows.
+
+The major components of OSPF troubleshooting include the following:
+
+<ul>
+  <li>OSPF neighbor adjacencies</li>
+  <li>OSPF routing table</li>
+  <li>OSPF path selection</li>
+</ul>
+
+
+<h4>Troubleshooting OSPF Issues</h4> 
+
+
+
+When you are notified that there are connectivity issues in your network, you should first test connectivity by using the <b>ping</b> and <b>traceroute</b> commands. If there are connectivity issues and your network uses OSPF as the routing protocol, then follow the high-level steps below the figure to troubleshoot it.
+
+
+Verify that your router established an adjacency with a neighboring router by using the <b>show ip ospf neighbors</b> command. If an adjacency between two routers is not established, the routers cannot exchange routes. If the adjacency is not established, you should first verify that the interfaces are operational and enabled for OSPF. If the interfaces are operational and enabled for OSPF, you should also make sure that the interfaces on both routers are configured for the same OSPF area and that the interfaces are not configured as passive interfaces.
+
+If an adjacency between two routers is established, but you see no routes in the routing table when you use the <b>show ip route</b> command, you should first verify if there is another routing protocol with a lower administrative distance running in the network. In this case, OSPF routes would not be considered and will not be placed into the routing table. If no other routing protocols are configured, verify that all the required networks are advertised into OSPF. In the case of multiarea OSPF, you should also verify whether all regular nonbackbone areas are connected directly to Area 0 or to the backbone area. If a regular area is not connected to the backbone area, routers in this area will not be able to send and receive updates to and from other areas. A virtual link would need to be configured in this case.
+
+If you see all the required routes in the routing table but the path that the traffic takes is not correct, you should verify the OSPF cost on the interfaces on the path. You should also be careful in cases where you have interfaces that are faster than 100 Mbps, because all interfaces above this bandwidth will have the same OSPF cost, by default.
+<table border="1">
+<tr>
+<th>OSPFv3 Classic Mode</th>
+<th>OSPFv3 Address Family Mode</th>
+</tr>
+<tr>
+<th>show ipv6 ospf neighbor</th>
+<th>show ospfv3 neighbor</th>
+</tr>
+<tr>
+<th>show ipv6 ospf interface</th>
+<th>show ospfv3 interface</th>
+</tr>
+<tr>
+<th>show ipv6 ospf database</th>
+<th>show ospfv3 database</th>
+</tr>
+<tr>
+<th>show ipv6 ospf</th>
+<th>show ospfv3</th>
+</tr>
+</table>
+
+<h4>Troubleshoot OSPF Adjacency</h4>
+
+
+OSPF neighbors must form adjacency to be able to exchange routing information. OSPF neighbors go through several states during the adjacency establishment phase. The neighbors must transition to the FULL state to form the adjacency. To check the neighbor state, you could use the <b>show ip ospf neighbor</b> command. If neighbors are stuck in any other state, the adjacency will not be established.
+
+If the <b>show ip ospf neighbor</b> command does not reveal the neighbor, the router has not seen any "valid“ OSPF hello message from that neighbor or the hello packet has failed the basic check.
+
+
+To troubleshoot this type of error, verify the following issues:
+
+Verify the interface status with the <b>show interface</b> command. The interface to the neighbor must be in "up/up" state.
+
+Check the IP connectivity to the neighbor with the ping command. Ping the IP address of the neighbor and the multicast IP address 224.0.0.5, which is the address for hello messages.
+
+Check the interface access list with the show ip interface command.
+
+Check the OSPF status on the interface with the <b>show ip ospf interface</b> command. The command reveals all the interfaces with OSPF enabled.
+
+Check if the interface is configured as passive. You can use the <b>show ip ospf interface</b> command as well. An active OSPF interface should display a remaining time to the next hello message.
+
+If the router receives a hello packet with the same router ID, the router will ignore the hello packet. Verify that the router ID of the routers is not the same using the <b>show ip ospf</b> command.
+
+Verify that the hello parameters match on the neighboring interfaces. There are several parameters that must match to establish Full adjacency:
+
+OSPF area number: You can check it with the <b>show ip ospf interface</b> command.
+
+OSPF area type (such as stub or NSSA): To check it, use the <b>show ip ospf</b> command.
+
+Subnet and subnet mask: Check the IP address and the mask with the <b>show interface</b> command.
+
+OSPF hello and dead timers: Check with the <b>show ip ospf interface</b> command.
+
+Router could be stuck in several other states:
+
+Down state
+
+INIT state
+
+Exstart/Exchange state
+
+A dynamically discovered neighbor could be in the down state when the OSPF process does not receive the hello packet from the neighbor for a time period longer than the dead timer interval. The down state is transient, which means that the neighbor will either advance to other states or it will be deleted from the OSPF neighbor table.
+
+The neighbor could also be seen as down when it is manually configured with the neighbor command on the router. A manually configured neighbor is always kept in the OSPF neighbor table. When it is seen as down, it usually means that no hello message was received or that the dead timer expired. A manually configured neighbor can only be configured in NBMA networks or nonbroadcast point-to-multipoint networks.
+
+To troubleshoot the down state, follow the same procedure that was used when troubleshooting issues were there is no neighbor in the OSPF neighbor table.
+
+When a router is stuck in the INIT state, it indicates that the router has seen the hello packets from the neighbor, but the two-way communication was not established, because the router did not see its own router ID in the hello packets from the neighbor.
+
+The most likely reason is that neighbor has not received the hello packet from the router. There can be several issues and the items to check are listed here:
+
+Check the connectivity between the neighbors with the ping and the traceroute command.
+
+Check if the multicast IP address 224.0.0.5 is permitted in the input access list.
+
+Check if the OSPF authentication is enabled on both sides.
+
+A prerequisite for the neighbor relationship to form between the Branch and HQ routers is the OSI Layer 3 connectivity. The show ip interface brief output 
+
+A ping from the Branch router to the HQ router will confirm IP connectivity between the devices. If the ping is not successful, check the cabling and verify that the interfaces on connected devices are operational and that they are on a common subnet with the same subnet mask.
+
+If interfaces are operational, and there is IP connectivity between the devices, you have to verify that the interfaces on both routers are enabled for OSPF. If the interfaces on both routers are not enabled for OSPF, the adjacency will not form. The network command that you configure under the OSPF routing process indicates which router interfaces will participate in OSPF. You can use the <b>show ip ospf interface</b> command to verify which interfaces are enabled for OSPF. The output will also show you which interface is functional and the OSPF-related parameters. If connected interfaces on two routers are not enabled for OSPF, the neighbors will not form an adjacency.
+
+
+You can also use the <b>show ip protocols</b> command to verify which interfaces are configured for OSPF. The output will show you IP addresses or networks that are enabled using the network command. If an IP address on an interface falls within a network that has been enabled for OSPF, the interface will be enabled for OSPF. The output of this command will also show you if OSPF is enabled on an interface, using the <b>ip ospf area</b> command. 
+
+
+Next, verify that the OSPF area matches on both ends. If the OSPF area does not match on both ends, the adjacency will not form
+You can verify the area that an interface has been enabled for by using the show ip protocols command.
+
+HQ has the interface toward the Branch router configured as passive. This configuration explains why the routers do not form an adjacency.
+
+With OSPF running on a network, the <b>passive-interface</b> command stops both outgoing and incoming routing updates because the effect of the command causes the router to stop sending and receiving hello packets over an interface. For this reason, the routers will not become neighbors.
+
+To verify if any interface on a router is configured as passive, use the <b>show ip protocols</b> command in the privileged mode.
+
+An example in which you want to configure the interface as passive is handing off a link to a third-party organization that you have no control over (for example, an ISP). In this case, you would need to advertise this particular link through your own network but not allow the third party to receive hellos or send hellos to your device. That setting would be a security risk.
+
+To configure an interface as a passive interface in OSPF, use the <b>passive-interface interface</b> command in the OSPF router configuration mode. To disable the interface as passive, use the <b>no passive-interface interface</b> command.
+
+When you disable the passive interface, the routers should become adjacent, as indicated by the show <b>ip ospf neighbor</b> command output. The two routers should be in the FULL state in order to exchange LSAs.
+
+Routers will establish the FULL state only with the DR and BDR, while the established state will be two-way with other routers. Neighbors that are stuck in Exstart/Exchange state may occur if the maximum transmission unit (MTU) is mismatched. This more than likely occurs when you are connecting to a third-party router or where someone has modified the defaults. To check the MTU on the router, use the <b>show ip interface</b> command.
+
+<h3>Troubleshoot OSPF Routing Issues</h3>
+
+After you have verified that the adjacencies are correct, the next step is to verify the routing tables. The troubleshooting and verification components are as follows:
+
+If there is no route to a destination network in the routing table, verify that the OSPF neighbor is advertising the correct networks.
+
+If there is no OSPF route to a destination network in the routing table, verify whether there is a routing protocol with a lower administrative distance configured in the network.
+
+You can use the <b>show ip protocols</b>  to verify whether the router etwork is being advertised to the OSPF neighbors.
+
+the router is not configured to advertise the network to the neighbor. To solve this issue, you have to start advertising this network
+
+Now, consider another scenario where several routing protocols are configured on a router. If several routing protocols are configured on routers, the administrative distance will decide which protocol the router will use.
+
+ Recall that the routing protocol administrative distance influences which routes will be installed in the routing table. To verify which routing protocols are configured and their administrative distances, use the <b>show ip protocols</b> command:
+
+EIGRP with the administrative distance of 90 is more trustworthy than OSPF with the administrative distance of 110, 
+
+
+<h3>Troubleshoot OSPF Path Selection</h3>
+
+
+When you have redundant paths within a network, you have to make sure that traffic takes the desired path through the network. 
+
+Incorrect path selection does not usually lead to a loss of connectivity. However, certain links in a network should not be used, if possible. This case applies, for example, to backup WAN links, which can be charged by the amount of transferred data and can be expensive.
+
+Troubleshooting and verification components of OSPF path selection are as follows:
+
+If there are two OSPF paths to the destination network, verify the OSPF cost on both interfaces.
+
+two interfaces—a 1000-Mbps interface and a 100-Mbps interface, both will have the same OSPF cost with a value of 1
+Use the <b>show ip ospf interface<b> command to verify the OSPF cost on an interface:
+
+When you increase the OSPF cost on the interfaces on both routers, only the preferred route will be installed in the routing table:
+<b>
+Branch(config)# interface Serial0/0/0
+Branch(config-if)# ip ospf cost 10
+</b>
+
+The reference bandwidth can be changed from the default of 100 Mbps. You can verify what the reference bandwidth is by using the show ip ospf command:
+
+
+A changed reference bandwidth means a changed cost on the link. Make sure that all the routers within the OSPF AS have the same reference bandwidth. Change the bandwidth by using the <b>auto-cost reference-bandwidth bandwidth_in_Mbits_per_second</b> command from the router OSPF configuration mode.
+
+Which component of the SPF algorithm is inversely proportional to the bandwidth? link cost
+
+<h3>Troubleshoot OSPF Special Areas</h3>
+
+OSPF Stub
+
+. Preventsexternal routes
+· Uses default route
+
+<b>area area-id stub</b>
+
+
+OSPF Totally Stub
+
+. Prevents inter-area and external routes
+· Uses default route
+
+<b> area area-id stub no-summary </b>
+
+OSPF NSSA
+
+. Prevents external routes
+. Allows ASBR
+· Uses default route
+<b>area area-id nssa</b>
+
+
+OSPF Totally NSSA
+
+. Prevents inter-area and external routes
+. Allows ASBR
+· Uses default route
+
+<b>area area-id nssa no-summary</b>
+
+stub areas all routers in the area must have the <b>area area-id stub</b> command configured in global OSPF configuration mode. When an area is configured as a stub, external routes are filtered on the ABR router. Instead, the default route is propagated into the area.
+
+totally stubby area. To configure the totally stubby area, use the <b>area area-id stub no-summary</b> command on the ABR and the <b>area area-id stub</b> command on all other routers within the area. In addition to external routes, interarea routes are prevented as well on the ABR.
+
+Not-So-Stubby areas To configure an area as an NSSA area, all routers in the area must have the <b>area area-id nssa</b> command configured in global OSPF configuration mode.
+When an area is configured as an NSSA, external routes are filtered on the ABR router, but the injection of external routes are allowed thanks to redistribution on an Autonomous System Border Routers (ASBR). A default route can be propagated into the are
+
+totally NSSA area. To configure the totally NSSA area, use the <b>area area-id nssa no-summary</b> command on the ABR and the area area-id nssa command on all other routers within the area. In addition to external routes, interarea routes are prevented as well on the ABR, but redistribution is permitted thanks to the ASBR. Note that a default route is automatically propagated into the area. 
+
+When troubleshooting a stub or NSSA feature on the router, first issue the <b>show ip ospf process-id<b> command. If a stub is configured for the specific areas, you can see "It is a stub area" output under the area section.
+
+Use the <b>show ip ospf database</b> command to check the database on the router. If the stub area is configured, there should be no LSA type 5 and type 7. ou can also see additional LSA type 3 with ID 0.0.0.0. This LSA is a default route that is advertised by the ABR.
+
+ When an area is configured as a totally stubby area, only one summary LSA can be seen. This is the LSA with ID 0.0.0.0, which is a default route that is advertised by the ABR.
+
+ If the router is located in the area that is configured as an NSSA, you should see Type-7 LSAs. These LSAs will be translated into Type-5 by the ABR.
+
+use the <b>show ip route</b> command. When the router is located in the area that is configured as a stub, you should not see any O E1 or O E2 routes in the routing table. In addition, when the router is located in the totally stubby area, no O IA routes can be seen.
+
+To observe the hello message exchange, use<b> debug ip ospf hello</b>. If there is any stub mismatch between the routers, you can see the output that is similar to the example
+
+
+<h3>Troubleshoot OSPF Summarization</h3>
+
+Inter-Area
+· ABR
+· area area-id range
+
+External
+
+· ASBR
+. summary-address
+. summary-prefix
+
+
+Summarization is the consolidation of multiple routes into one single advertisement. There are two types of OSPF route summarization:
+
+Interarea route summarization
+
+Interarea route summarization is done on ABRs and applies to routes from within the area. This behavior does not have an effect on the external routes that are injected into OSPF via redistribution
+
+could be configured between any two areas, but it is better to summarize in the direction of the backbone.
+
+To summarize on the ABR for IPv4, use the <b>area area-id range ip-address mask</b> command, where area-id is the area containing networks to be summarized;the address and mask will specify the range of addresses to be summarized in on the range. Use the same command for IPv6, but specify a prefix instead.
+
+
+External route summarization
+
+External route summarization is specific to external routes that are injected into OSPF via redistribution. 
+
+This type of summarization is done on the ASBR. With OSPFv2, use the <b>summary-address ip-address mask</b> command to perform summarization. With OSPFv3, use the <b>summary-prefix </b>command for both IPv4 and IPv6 address families.
+
+When checking the routing table on the routers that perform summarization, you should see the summary route pointing to the Null0 interface. This route is created automatically in order to prevent possible routing loops.
+
+You can check the OSPF status with the <b>show ip ospf summary-address</b> command on the ABR router to verify which area ranges are configured for summarization.
+
+To check Type 3 or summary LSA, use the <b>show ip ospf database summary</b> command. You will be able to see all summary LSAs with the summary network number, network mask, metric, and some other parameters. You should use this command when troubleshooting, if the summary LSAs were received by the router.
+
+
+you can use <b>show ip ospf database external</b> to check type 5 or external LSAs. You will see all external LSAs, with their network number, mask, metric, and some other parameters.
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<th>x</th>
+<th>x</th>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+
+<br>
+-->

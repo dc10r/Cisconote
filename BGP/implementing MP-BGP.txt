@@ -1,0 +1,321 @@
+<h2>implementing MP-BGP</h2>
+
+The IPv6 Internet continues to use BGP, which has undergone modifications to support it. This extended BGP protocol, called MP-BGP, is capable of carrying a rich set of routing protocols, including IPv4 and IPv6, over a transport protocol, such as IPv4 or IPv6.
+
+
+<h3>MP-BGP Support for IPv6</h3>
+The original BGP was designed to carry only IPv4-specific information. A new extension was defined to also support other protocols such as IPv6.
+
+Multiprotocol Extension for BGP4
+
+· Enables other protocols besides IPv4.
+. New identifiers for the address family.
+
+IPv6-SpecificExtensions:
+
+· NLRI in IPv6 format.
+· Next-hop attribute in IPv6 format.
+
+BGP Transport Options for IPv6:
+· IPv4 TCP session transporting IPv6 information.
+· IPv6 TCP session transporting IPv6 information.
+
+
+router bgp 65001
+neighbor 192.168.2.2 remote-as 65002
+!
+address-family ipv4 unicast
+neighbor 192.168.2.2 activate
+network 192.168.1.0 mask 255.255.255.0
+
+address-family ipv6 unicast
+neighbor 192.168.2.2 activate
+network 2001:db8:1 :: /48
+
+!
+
+The BGP extension, MP-BGP, adds the capability to transport routing information for other protocols. Multiprotocol extensions are defined as new attributes. These new attributes define Network Layer Reachability Information (NLRI) where IPv6 addresses can be used.
+
+The next-hop must be of the same address type (address family) as the NLRI exchanged. An IPv6 route cannot have an IPv4 next-hop address.
+
+IPv6-specific extensions for MP-BGPv4 are as follows:
+
+
+Scoped addresses: NEXT_HOP contains a global IPv6 address, or potentially a link-local address, when there is link-local reachability with the peer. When link-local addresses are used for peering with a neighbor BGP router, these link-local IPv6 addresses are used as next-hop IP addresses for the routes that are carried by the BGP. Usually, the next-hop IPv6 addresses need to be changed to global IPv6 by attaching a route map to the neighbor configuration statement.
+
+IPv6 address format: NEXT_HOP and NLRI are expressed as IPv6 addresses and prefixes in the multiprotocol attributes.
+
+Note
+You can run MP-BGP over IPv4 or IPv6 transport and can exchange routes for IPv4, IPv6, or both. BGP uses the TCP protocol for peering and this has no relevance to the routes carried inside the BGP exchanges. Both IPv4 or IPv6 can be used to transport a TCP connection on the network layer.
+
+
+<h4> Exchanging IPv6 Routes over an IPv4 Session</h4>
+
+
+The type of MP-BGP routing information is independent of the transport session protocol.
+
+The IPv4 TCP sessions can also carry IPv6 routing information when adding IPv6 support to networks. An existing neighbor can be activated for the IPv6 address family and IPv6 routing information will be sent over the same neighbor session.
+
+BGP with multiprotocol extensions enables the use of many address families. Address families define the type of addresses being carried. The most common address families are IPv4, IPv6, and VPNv4 and VPNv6 for MPLS VPN routes.
+
+
+An address family is activated within BGP using the address-family command in BGP routing protocol configuration (router configuration mode). The unicast keyword specifies the IPv6 unicast address family. By default, the router is placed in configuration mode for the IPv6 unicast address family if the unicast keyword is not specified with the address-family ipv6 command. Afterwards, an IPv6 neighbor needs to be activated within that address family, using the neighbor activate command.
+
+
+You can advertise networks in the respective router address-family configuration mode using the network command. The command is used to inject a prefix into the BGP database for only the specified address family. The ipv6-prefix argument in the network command must contain an address that is specified in hexadecimal format. The prefix-length argument is a decimal value that indicates how many of the high-order contiguous bits of the address comprise the prefix (the network portion of the address). A slash mark must precede the decimal value. There is no mask keyword when defining the network command for IPv6 addresses.
+
+
+<h4>Exchanging IPv6 Routes over an IPv6 Session</h4>
+
+MP-BGP also supports the exchange of IPv6 routes over an IPv6 session.
+
+router bgp 65100
+ neighbor 2001:db8:2::2 remote-as 65200
+ !
+ address-family ipv6 unicast
+  neighbor 2001:db8:2::2 activate
+  network 2001:db8:1::/48
+Separate TCP connections are used to exchange IPv6 routes
+
+Increased resource usage
+
+In the figure, a dedicated BGP session is established between two routers, using TCP over IPv6, and is used only for IPv6 routing.
+
+The IPv6 neighbor must be explicitly activated in an IPv6 address family, because an IPv6 address family is not enabled by default.
+
+By default, BGP sets its router ID to the IPv4 address of the highest address of the loopback interface, or if no loopback exists, to the highest IP address of the physical interface. If the router running BGP over IPv6 transport has no IPv4 interfaces configured, you need to manually specify the BGP router ID using the <B>bgp router-id IPv4_address</B> BGP configuration command.
+
+<h4>Comparing Single and Dual BGP Transport</h4> 
+
+You can combine both address families on one neighbor or configure two separate sessions. There are advantages to both approaches. Using a single neighbor can reduce the number of neighbor sessions. In an environment where many neighbors are configured, this implementation can significantly reduce the size and complexity of configuration.
+
+<table border="1">
+<tr>
+<td>Single TCP IPv4 Session</td>
+<td>Separate TCP (IPv4 and IPv6) Sessions</td>
+</tr>
+<tr>
+<td>Reduces number of neighbors</td>
+<td>Complete independence of IPv4 and IPv6</td>
+</tr>
+<tr>
+<td>IPv6 over IPv4 session requires modification of next-hop attribute</td>
+<td></td>
+</tr>
+<tr>
+<td>Duplicate neighbor configuration and handling</td>
+<td>Separate show commands for IPv4 and IPv6 address families</td>
+</tr>
+
+</table>
+
+
+On the other hand, when you use two separate sessions for IPv4 and IPv6, there is no need to implement route maps to overwrite next-hop parameters, and exchange of IPv4 and IPv6 routes is completely independent.
+
+
+<h3>IPv6 BGP Filtering Mechanisms</h3>
+
+MP-BGP offers the same set of IPv6 filtering and route manipulation capabilities as for IPv4. The mechanisms include incoming and outgoing prefix lists, filter lists (for AS path matching), and route maps, which provide a rich set of matching and manipulation tools. The order of the incoming and outgoing filtering process is identical to IPv4 and depicted in the figure.
+
+<h4>IPv6 Prefix List Filtering</h4>
+<b>
+ipv6 prefix-list large_networks seq 5 permit 2000::/3 le 48
+!
+router bgp 65100
+ bgp router-id 1.1.1.1
+ neighbor 2001:DB8:2::2 remote-as 65200
+ address-family ipv6
+  neighbor 2001:DB8:2::2 activate
+  neighbor 2001:DB8:2::2 prefix-list large_networks in
+  neighbor 2001:DB8:2::2 prefix-list large_networks out
+  network 2001:DB8::/32
+!
+</b>
+Prefix list accepts larger subnets from global address block.
+
+You can filter BGP routing updates based on of prefix information from BGP update messages. The example illustrates the use of a prefix list named "large_networks," which will allow only subnets with subnet masks less or equal to 48 within the 2000::/3 address block, which is part of the IPv6 address space that is currently allocated for global addresses. The filter is applied to the inbound and outbound announcements that are received from and advertised to a BGP peer
+
+<h4>IPv6 Path Selection with BGP Local Preference</h4>
+<b>
+router bgp 65100
+ neighbor 2001:DB8:2::2 remote-as 65200
+ neighbor 2001:DB8:3::3 remote-as 65300
+ address-family ipv6
+  neighbor 2001:DB8:2::2 activate
+  neighbor 2001:DB8:3::3 activate
+  neighbor 2001:DB8:2::2 route-map LP200 in
+  neighbor 2001:DB8:3::3 route-map LP50 in
+!
+route-map LP50 permit 10
+ set local-preference 50
+!
+route-map LP200 permit 10
+ set local-preference 200
+</b>
+
+
+You can tune the BGP path selection by modifying the local preference on routes that are received from a peer. In this example, routes that are received from AS 65200 will have a local preference of 200 instead of the default, which is 100. Routes from AS 65300 will have local preference lowered to 50. If the same route is received from both AS 65200 and AS 65300, the path via AS 65200 will be preferred.
+
+
+<h3>Configure MP-BGP for IPv4</h3>
+
+<h4>Configure BGP for IPv6</h4> 
+
+Examine the router configuration, the BGP table, and connectivity to other routers.
+
+<b>
+R1# show running-config | section router bgp
+R1# show bgp ipv6 unicast
+R1# show bgp ipv4 unicast summary
+R1# show bgp ipv6 unicast summary
+</b>
+
+
+The <b>show bgp ipv4 unicast</b> command is equivalent to the <b>show ip bgp</b> command. You can use either command to display the BGP IPv4 table. You should use the <b>show bgp ipv6 unicast</b> command to view the BGP IPv6 table, which now contains only a local prefix.
+
+
+The <b>show bgp ipv4 unicast</b> summary is equivalent to the <b>show bgp summary</b> command. It is used to display brief information about the IPv4 peering. The <b>show bgp ipv6 unicast summary</b> command is used to examine the overall information about peering for IPv6 addresses, whether over an IPv4 or IPv6 transport session. At this point, the peering for IPv6 prefixes is down.
+
+Announce the IPv6 network that is configured on the Loopback 1 interface. 
+<b>
+R2(config)# router bgp 65000
+R2(config-router)# address-family ipv6 unicast
+R2(config-router-af)# neighbor 172.16.12.1 activate
+R2(config-router-af)# network 2001:DB8:0:22 :: /64
+</b>
+
+
+When you enter the address-family ipv6 router configuration mode using the <b>address-family ipv6 unicast</b> command, you will be able to activate a neighbor for IPv6 exchange and advertise the Loopback 1 network using the network command.
+
+When any command is configured in the address-family ipv6 router configuration mode, the BGP configuration syntax is converted automatically from the traditional IPv4 style to the address-family based approach.
+
+
+You can use the <b>show bgp ipv6 unicast</b> summary and the <b>show bgp ipv6 unicast neighbors</b> commands on either end of the EBGP session to verify that the session is up and running, and that the IPv6 prefixes have been exchanged in both directions.
+
+You need to set the next-hop attribute using a route map.
+<b>
+R1# show running-config | section bgp
+router bgp 65100
+bgp log-neighbor-changes
+neighbor 172.16.12.2 remote-as 65000
+
+address-family ipv4
+network 192.168.11.0
+neighbor 172.16.12.2 activate
+exit-address-family
+!
+address-family ipv6
+network 2001:DB8: 0:11 :: /64
+neighbor 172.16.12.2 activate
+neighbor 172.16.12.2 route-map nh out
+exit-address-family
+
+!
+
+R1#show running-config | section route-map
+neighbor 172.16.12.2 route-map nh out
+route-map nh permit 10
+set ipv6 next-hop 2001:DB8: 0:12: :1
+</b>
+The route map that is named nh, attached to the BGP neighbor in the outbound direction, overwrites the next-hop parameter for all IPv6 routes with an appropriate IPv6 next-hop address.
+
+<b>
+R2(config)# route-map NH-R1
+R2(config-route-map)# set ipv6 next-hop 2001:DB8: 0:12: :2
+R2(config-route-map)# router bgp 65000
+R2(config-router)# address-family ipv6 unicast
+R2(config-router-af)# neighbor 172.16.12.1 route-map NH-R1 out
+</b>
+
+You need to use a route map to set the next-hop IP address to the desired IPv6 address. The address would not have to be directly connected to the neighbor, but it must be reachable from the neighbor perspective. The route map needs to be applied to the BGP neighbor in the outgoing direction in the IPv6 address family.
+
+Configure an internal BGP session between R2 and R3 Loopback 0 IPv6 addresses. Use IPv6 transport to exchange IPv6 networks. Advertise into BGP the IPv6 networks that are configured on the Loopback 1 interfaces.
+<b>
+R2(config)# router bgp 65000
+R2(config-router)# neighbor 2001:DB8:0:3 :: 3 remote-as 65000
+R2(config-router)# neighbor 2001:DB8:0:3 :: 3 update-source Loopback 0
+R2(config-router)# address-family ipv6 unicast
+R2(config-router-af)# neighbor 2001:DB8:0:3 :: 3 activate
+R2(config-router-af)# neighbor 2001:DB8:0:3 :: 3 next-hop-self
+R2(config-router-af)# network 2001:DB8:0:22 :: /64
+
+R3(config)# router bgp 65000
+R3(config-router)# neighbor 2001:DB8:0:2 :: 2 remote-as 65000
+R3(config-router)# neighbor 2001:DB8:0:2 :: 2 update-source Loopback 0
+R3(config-router)# address-family ipv6 unicast
+R3(config-router-af)# neighbor 2001:DB8:0:2 :: 2 activate
+R3(config-router-af)# neighbor 2001:DB8:0:2 :: 2 next-hop-self
+R3(config-router-af)# network 2001:DB8:0:33 :: /64
+</b>
+
+Internal BGP sessions for IPv6 route exchange are configured similarly to peering for IPv4 route exchange. You will typically configure the session between the loopback interface and therefore use the <b>neighbor update-source</b> command. The <b>neighbor update-source</b> command affects both address families, and is therefore configured in the global BGP configuration mode.
+
+
+You will commonly overwrite the next-hop address for external updates that are forwarded to internal peers using the <b>neighbor next-hop-self</b> command. This command is address-family specific, and is therefore in this scenario that is configured in the address family IPv6 router configuration mode.
+
+The neighbor needs to be activated in the desired address family. In this scenario, you will have separate BGP sessions for IPv4 and IPv6 exchanges. The IPv6 neighbor is activated only in the IPv6 address family.
+
+As IPv6 routes are exchanged over an IPv6 BGP session, the next-hop parameter is configured automatically and there is no need for a route map to modify it.
+
+Verify IBGP peering and connectivity for IPv6.
+<b>
+R3# show bgp ipv6 unicast summary
+</b>
+You can verify the BGP states on either IBGP peer. Each side will show that the IPv6 IBGP neighbor is up and running. The IPv6 networks are exchanged as expected. The BGP routes are being installed in the IPv6 routing table. You can successfully verify IPv6 connectivity between any routers in this topology.
+
+On R3, advertise into BGP the remaining IPv6 networks that are configured on the Loopback 2 to Loopback 5 interfaces.
+<b>
+R3(config)# router bgp 65000
+R3(config-router)# address-family ipv6 unicast
+R3(config-router-af)# network 2001:A::/96
+R3(config-router-af)# network 2001:B::/96
+R3(config-router-af)# network 2001:C::/64
+R3(config-router-af)# network 2001:D::/64
+</b>
+
+Notice that the first two networks have a prefix length of 96 bits, while the two others have a prefix length of 64 bits.
+
+On R2, configure an IPv6 prefix list to filter out the /96 networks that are being advertised to R1.
+<b>
+R2(config)# ipv6 prefix-list BLK-LONG-NETS seq 10 permit 2001::/16 le 64
+R2(config)# router bgp 65000
+R2(config-router)# address-family ipv6 unicast
+R2(config-router-af)# neighbor 172.16.12.1 prefix-list BLK-LONG-NETS out
+R2(config-router-af)# end
+R2# clear ip bgp 172.16.12.1 soft out
+</b>
+
+The <b>clear ip bgp 172.16.12.1 soft out</b> command was used to trigger route changes to immediately be sent to R1, without tearing down the existing IPv6 BGP session.
+
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

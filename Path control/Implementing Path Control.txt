@@ -1,0 +1,457 @@
+<h1>Implementing Path Control</h1>
+
+
+How does the router route the packets?
+
+Answer
+
+The router checks the destination IP address in the packet header and compares it to the entries found in its routing table to be able to send the packet to its next hop
+
+
+You may want to optimize the traffic path for some specific application or control the traffic path based on the network performance. You can accomplish all this with policy-based routing (PBR).
+
+To monitor network performance and change specific traffic paths that are based on the health of the network, you can use the Cisco IP Service Level Agreement (SLA) in combination with PBR.
+
+You can use a protocol called Bidirectional Forwarding Detection (BFD) that is designed to provide fast forwarding path failure detection times for all media types, encapsulations, topologies, and routing protocols.
+
+<h4>Need for Path Control</h4>
+
+Networks are designed to use redundancy to provide high availability. However, having redundancy does not guarantee resistance to failure. The use of multiple routing protocols and redundant connectivity options can result in inefficient paths for forwarding packets to their destinations. Each routing protocol has a different administrative distance, metric, and convergence time. Suboptimal routing frequently occurs after redistribution, because redistribution resets the administrative distance and metric.
+
+
+Convergence time is also important. First, protocols converge in different ways from each other and for different network designs. Second, slow convergence can result in an application sending traffic timeouts before a backup path is found to a destination. Path control is required to avoid performance issues and to optimize paths.
+
+You can use path control tools to change the default destination forwarding and optimize the path of the packets for some specific application
+
+Network engineers should also distinguish between switching all traffic to the backup link if there is a primary link failure, versus only switching some traffic to the backup link if the primary link is congested. Path control mechanisms can improve performance in such a situation. Similarly, load balancing can divide traffic among parallel paths.
+
+There is no easy way to solve all the issues with path control. It is important to establish a global strategy for path control that provides predictable and deterministic control over traffic patterns, taking into account the physical connectivity and the services that are running over the network infrastructure.
+
+
+<h3>PBR (policy-based routing) Features and Benefits</h3>
+
+PBR offers significant benefits in terms of implementing user-defined policies to control traffic in the internetwork. It provides solutions in cases where legal, contractual, or political constraints dictate that traffic is routed through specific paths. Some of the features of PBR are described below.
+
+Enable you to implement policies that selectively cause packets to take different paths:
+
+IP routing is destination-based.
+PBR overrides destination-based routing.
+
+Applied to incoming or locally generated packets.
+Require a route map to implement the policy.
+
+PBR is used to bypass the routing table. It enables you to configure different routing rules beyond the original IP routing table. One of the ways that it can be used is to route packets that are based on the source IP address instead of the destination IP address.
+
+PBR is applied to incoming or locally generated packets that are sent by the router itself. PBR is implemented using route maps, for which match commands are used to match the incoming packets, and a subset of the set commands is used to change the default destination-based routing.
+
+
+<h4>PBR Benefits</h4>
+
+Source-based path selection:
+
+Traffic from different users can use different paths for the same destination.
+
+Load sharing:
+
+Forces load sharing without regard to the routing table.
+
+
+You can achieve these benefits by implementing PBR in your network:
+
+Source-based transit-provider selection: ISPs and other organizations use PBR to route traffic that originates from different sets of users through different Internet connections across the policy routers.
+
+Load sharing: In addition to the dynamic load-sharing capabilities that are provided by destination-based routing that is supported by Cisco IOS Software, you can implement policies that are based on the traffic characteristics to distribute traffic among multiple paths.
+
+
+<h3> Explain How to Configure PBR</h3> 
+
+Following is an example of PBR configuration.
+------5
+interface Ethernet 0/0
+ip address 192.168.10.1 255.255.255.0
+ip policy route-map MYPBR
+------------------
+
+route-map MYPBR permit 10 --------2
+match ip address 100 -------------3
+set ip next-hop 172.16.1.2 -------4
+
+!
+access-list 100 permit ip 10.1.1.0 0.0.0.255 10.250.250.0 0.0.0.255 --1
+
+(Permit any IP traffic originating from the 10.1.1.0/24 subnet when it is heading toward the destination subnet 10.250.250.0/24.")
+
+1 Create an Access Control List (ACL) to match traffic.
+
+2 Define a route map.
+
+3 Match traffic to be policy routed.
+
+4 Set the action to take.
+
+5 Apply route map to incoming interface to affect traffic passing through the router.
+
+
+You can use requirements from the previous figure to create the implementation plan for PBR configuration. The implementation plan includes the following steps to configure and verify PBR on Cisco routers:
+
+Enable PBR by configuring the route map. Match the traffic using the match command with the access list. Then, set the action for manipulating path control using the set command.
+
+Apply the route map that is created to an incoming interface or to locally generated packets in the router.
+
+Verify PBR configuration with basic connectivity and path verification commands, and policy routing show commands.
+
+<h3>PBR Default Keyword</h3>
+
+<table border="1">
+
+<tr>
+<td>Command</td>
+<td>Explanation</td>
+</tr>
+<tr>
+<td>set ip next-hop ip-address [ ... ip-address ]</td>
+<td>Next hop addresses must be in a connected subnet; PBR forwards to the first address in the list for which the associated interface is up.</td>
+</tr>
+<tr>
+<td>set ip default next-hop ip-address [ ... ip-address ]</td>
+<td>Same logic as previous command, except PBR fist attempts to route based on the routing table.</td>
+</tr>
+<tr>
+<td>set interface type number [ ... type number ]</td>
+<td>PBR forwards packets using the first interface in the list that is up.</td>
+</tr>
+<tr>
+<td>set default interface type number [ ... type number ]</td>
+<td>Same logic as previous command, except PBR first attempts to route based on the routing table.</td>
+</tr>
+</table>
+
+The inclusion or omission of the <b>default</b> keyword when configuring PBR has a significantly impacts on how it operates. This parameter in effect tells Cisco IOS whether to apply PBR logic before trying to use normal destination-based routing, or whether to first try to use the normal destination-based routing, relying on PBR’s logic only if the destination-based routing logic fails to match a nondefault route.
+
+<h4>PBR for IPv6</h4>
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td>IPv4 Command</td>
+<td>IPv6 Command</td>
+</tr>
+<tr>
+<td>ip local policy route-map</td>
+<td>ipv6 local policy route-map</td>
+</tr> 
+<tr>
+<td>ip policy route-map</td>
+<td>ipv6 policy route-map</td>
+</tr>
+<tr>
+<td>match ip address</td>
+<td>match ipv6 address</td>
+</tr>
+<tr>
+<td>set ip next-hop</td>
+<td>set ipv6 next-hop</td>
+</tr>
+<tr>
+<td>set ip default next-hop</td>
+<td>set ipv6 default next-hop</td>
+</tr>
+<tr>
+<td>set interface (apply to both IPv4 and IPv6)</td>
+</tr>
+<tr>
+<td>set default interface (apply to both IPv4 and IPv6)</td>
+</tr>
+
+</table>
+
+
+In PBR for IPv6, use the ipv6 policy route-map or ipv6 local policy route-map command with match and set route-map configuration commands to define conditions for policy-routing packets. Most other IPv4 PBR commands have an equivalent for IPv6, as seen in the table, with the only exceptions being the set interface and set default interface commands which apply to both IPv4 and IPv6 PBR configurations.
+
+<b>
+R1(config)# route-map MYPBR permit 10
+R1(config-route-map)# match ip address EMP-SRV
+R1(config-route-map)# set ip next-hop 10.1.13.2
+</b>
+<h3>Implement PBR (policy-based routing)</h3> 
+
+Configure PBR on R1 to ensure that Employee LAN traffic destined to SRV1 takes the shorter, more direct path.
+
+ define a named extended ACL called “EMP-SRV” to match all IP traffic coming from the Employee LAN and destined to SRV1.
+<b>
+R1(config)# ip access-list extended EMP-SRV
+R1(config-ext-nacl)# permit ip 172.16.2.0 0.0.0.255 host 172.16.3.100
+</b>
+The ACL permits IP traffic from the 172.16.2.0/24 subnet destined for SRV1 at 172.16.3.100.
+
+On R1, create a route map called MYPBR and match the EMP-SRV ACL. Change the next hop for Employee LAN traffic to direct it to R3.
+
+<b>
+R1(config)# route-map MYPBR permit 10
+R1(config-route-map)# match ip address EMP-SRV
+R1(config-route-map)# set ip next-hop 10.1.13.2
+</b>
+
+
+On R1, apply the MYPBR route map to the incoming interface to affect traffic passing through the router.
+<b>
+R1(config)# interface Ethernet 0/2
+R1(config-if)# ip policy route-map MYPBR
+</b>
+The MYPBR route map is applied to the Ethernet 0/2 interface on R1 since that is the interface where the traffic is entering the router.
+
+
+<h4>Configure PBR and IP SLA for Guest LAN Traffic</h4>
+
+
+Using a Cisco IOS IP SLA to track the reachability of R4, configure PBR to ensure that Guest LAN traffic destined to the Internet takes the slower path through R3.
+
+The Cisco IOS IP Service Level Agreement (IP SLA) feature enables you to gather realistic information about how specific types of traffic are being handled end to end across a network. 
+
+To do this, an IP SLA device runs a preconfigured test and generates traffic that is destined for a far-end device. IP SLA can be configured to perform various tests. The simplest test involves Internet Control Message Protocol (ICMP) echo packets that are sent toward a target address. If the target answers with ICMP echo replies, IP SLA can then assess how well the source and destination were able to communicate. For the ICMP echo test, IP SLA can use any live device at the far end; after all, most networked devices will reply when they are pinged.
+
+It is possible to combine the Cisco IOS IP SLA feature with PBR. This feature allows you to make sure that the next hop is reachable before that route is used. If the next hop is not reachable, another route is used as defined in the policy-based routing (PBR) configuration. If no other route is present in the route map, the routing table is used.
+
+The PBR Object Tracking feature gives policy-based routing (PBR) access to all the objects that are available through the tracking process. The tracking process enables you to track individual objects—such as ICMP ping reachability. Object tracking functions in the following manner: PBR informs the tracking process that a certain object should be tracked, and the tracking process then notifies PBR when the state of that object changes.
+
+On R1, define a new IP SLA operation using the number 1. Select the icmp-echo test with a destination IP address of 10.1.34.1. Set the frequency of the operation to run every 10 seconds.
+
+<b>
+R1(config)# ip sla 1
+R1(config-ip-sla)# icmp-echo 10.1.34.1 source-ip 10.1.13.1
+R1(config-ip-sla-echo)# frequency 10
+R1(config-ip-sla-echo)# exit
+</b>
+
+The IP SLA is defined using the operation number 1. This number uniquely identifies the test. The test to run is an ICMP ping to address 10.1.34.1 every 10 seconds. This destination IP address is configured on Ethernet 0/0 interface on R4. 
+
+On R1, schedule the test to run immediately and to keep running forever.
+
+<b>
+R1(config)# ip sla schedule 1 life forever start-time now
+</b>
+
+
+The <b>ip sla<b> schedule command tells the router when to start the test, how long to let it run, and how long to keep the data that is collected. Set the lifetime with the <b>life</b> keyword: <b>forever</b> means that the operation will keep running forever, until you manually remove it. Otherwise, specify how many seconds it will run. By default, an IP SLA scheduled operation will run for 3600 seconds (1 hour). Set the start time with the <b>start-time</b> keyword. You can define the start time as a specific time or date, after a delay with the <b>after</b> keyword, or right now with the now keyword.
+
+On R1, verify IP SLA functionality.
+
+<b>
+R1# show ip sla configuration 
+R1# show ip sla statistics
+</b>
+
+ the show ip sla statistics command confirms that the IP address is reachable – R1 is receiving echo replies from R4, with no missed ICMP messages.
+
+On R1, define a named extended ACL called “SLA-TRAFFIC” which matches ICMP traffic sourced from the 10.1.13.1 address and destined for the 10.1.34.1 address.
+<b>
+R1(config)# ip access-list extended SLA-TRAFFIC
+R1(config-ext-nacl)# permit icmp host 10.1.13.1 host 10.1.34.1
+</b>
+
+On R1, define a new route map called “LOCAL-PBR” which matches the SLA-TRAFFIC ACL and sets a next hop of 10.1.13.2, ensuring that the IP SLA traffic takes the slower path through R3.
+
+<b>
+R1(config)# route-map LOCAL-PBR permit 10
+R1(config-route-map)# match ip address SLA-TRAFFIC
+R1(config-route-map)# set ip next-hop 10.1.13.2
+IP SLA traffic will now take the slower path through R3 to reach the 10.1.34.1 address.
+</b>
+
+On R1, apply the ip local policy global configuration command to enable PBR for locally sourced traffic matched by the LOCAL-PBR route map.
+<b>
+R1(config)# ip local policy route-map LOCAL-PBR
+</b>
+The LOCAL-PBR route map is applied as a local PBR policy on R1.
+
+On R1, enable debug ip policy to verify if IP SLA traffic is being policy routed.
+<b>
+R1# debug ip policy
+R1# undebug all
+</b>
+
+Now that the IP SLA is working correctly, it can be used with PBR for Guest LAN traffic.
+
+On R1, define a tracking object that will monitor the reachability of the IP SLA. The tracking object will then be used within a route map for PBR.
+
+<b>
+R1(config)# track 10 ip sla 1 reachability
+R1(config-track)# delay down 10 up 3
+</b>
+
+A tracking object using the number 10 is configured to verify the reachability of IP SLA number 1. The tracking object is configured to wait 10 seconds before reporting a failure of the IP SLA, and to wait 3 seconds when the IP SLA is re-established.
+
+On R1, verify the state of the tracking object.
+<b>
+R1# show track 
+</b>
+The output confirms that the IP SLA is reachable, up, and reporting normal operation.
+
+Now that the tracking object is configured and working correctly, define a named extended ACL on R1 called “GUEST-INTERNET” that matches all IP traffic sourced from the Guest LAN with any unknown destination.
+
+<b>
+R1(config)# ip access-list extended GUEST-INTERNET
+R1(config-ext-nacl)# permit ip 172.16.1.0 0.0.0.255 any
+</b>
+
+
+On R1, add a second permit statement to the MYPBR route map that will match the GUEST-INTERNET ACL and set the next hop to 10.1.13.2 for the matched traffic. Configure the set statement to verify the reachability of the tracked object.
+
+<b>
+R1(config)# route-map MYPBR permit 20
+R1(config-route-map)# match ip address GUEST-INTERNET
+R1(config-route-map)# set ip next-hop verify-availability 10.1.13.2 1 track 10
+</b>
+
+
+To configure PBR to use object tracking, use a modified version of the set command in the route map. For example, the earlier PBR configuration used the following set command: set ip next-hop 10.1.13.2.
+
+Instead, use the verify-availability keyword, as shown in the command set ip next-hop verify-availability 10.1.13.2 1 track 10.
+
+When the tracking object is up, PBR works as configured. When the tracking object is down, PBR acts as if the set command does not exist. That means that the router will still attempt to route the packet per the normal destination-based routing process. The number 1 in the command is a sequence number value. This allows multiple next hops to be used and attempted in a particular order.
+
+
+
+<h3>Bidirectional Forwarding Detection</h3>
+
+
+BFD provides a low-overhead, short-duration method of detecting failures in the forwarding path between two adjacent routers, including the interfaces, data links, and forwarding planes. BFD is a detection protocol that you enable at the interface and routing protocol levels. Cisco supports the BFD asynchronous mode, which depends on the sending of BFD control packets between two systems to activate and maintain BFD neighbor sessions between routers.
+
+
+
+BFD Characteristics
+
+Extremely lightweight hello protocol that uses UDP to test bidirectional communication
+
+Used to detect failures in the forwarding path between two adjacent routers
+
+Millisecond resolution of data plane failure
+
+Relies on routing protocols to detect neighbors
+
+Therefore, for a BFD session to be created, you must configure BFD on both systems (or BFD peers). Once BFD has been enabled on the interfaces and at the router level for the appropriate routing protocols, a BFD session is created, BFD timers are negotiated, and the BFD peers will begin to send BFD control packets to each other at the negotiated interval.
+
+
+BFD provides fast peer failure detection times independently of all media types, encapsulations, topologies, and routing protocols such as BGP, EIGRP, Intermediate System-to-Intermediate System (IS-IS), and Open Shortest Path First (OSPF). By sending rapid failure detection notices to the routing protocols in the local router to initiate the routing table recalculation process, BFD contributes to greatly reduced overall network convergence time.
+
+
+BFD does not have an autodiscovery mode. BFD treats routing protocols, such as OSPF, as clients for creating the BFD sessions. The routing protocol discovers the neighbor using its own detection mechanism and then uses this information to form the BFD session with the neighboring router. 
+
+If a link failure is detected by BFD, the client routing protocol is notified. This allows OSPF to tear down the routing neighbor adjacency immediately, instead of waiting multiple seconds for the hold timers to expire.
+
+
+Once a BFD session has been established and timer negotiations are complete, BFD peers send BFD control packets that act in the same manner as an Interior Gateway Protocol (IGP) hello protocol to detect liveliness, except at a more accelerated rate. The following information should be noted:
+
+BFD is a forwarding path failure detection protocol. BFD detects a failure, but the routing protocol must act to bypass a failed peer.
+
+Typically, BFD can be used at any protocol layer. However, the Cisco implementation of BFD supports only Layer 3 clients, in particular, the BGP, Enhanced Interior Gateway Routing Protocol (EIGRP), IS-IS, and OSPF routing protocols, as well as the high availability protocol HSRP and also static routing.
+
+Cisco devices will use one BFD session for multiple client protocols in the Cisco implementation of BFD. For example, if a network is running OSPF and EIGRP across the same link to the same peer, only one BFD session will be established, and BFD will share session information with both routing protocols.
+
+When you deploy any feature, it is important to consider all the alternatives and be aware of any trade-offs being made. The closest alternative to BFD in conventional EIGRP, IS-IS, and OSPF deployments is the use of modified failure detection mechanisms built into those routing protocols.
+
+If you set EIGRP hello and hold timers to their absolute minimums, the failure detection rate for EIGRP falls to within a one- to two-second range.
+
+If you use fast hellos for either IS-IS or OSPF, these Interior Gateway Protocol (IGP) protocols reduce their failure detection mechanisms to a minimum of one second.
+
+There are several advantages to implementing BFD over reduced timer mechanisms for routing protocols:
+
+Although reducing the EIGRP, IS-IS, and OSPF timers can result in minimum detection timer of one to two seconds, BFD can provide failure detection in less than one second.
+
+Because BFD is not tied to any particular routing protocol, it can be used as a generic and consistent failure detection mechanism for EIGRP, IS-IS, and OSPF.
+
+Because some parts of BFD can be distributed to the data plane, it can be less CPU-intensive than the reduced EIGRP, IS-IS, and OSPF timers, which exist wholly at the control plane.
+
+
+
+<h3>BFD Operational Modes</h3> 
+
+
+BFD has the following operational modes.
+
+In asynchronous mode routers periodically send control packets to activate and maintain BFD sessions.
+
+Asynchronous mode is available in two versions:
+
+Asynchronous mode without echo
+
+Asynchronous mode with echo (default value on Cisco routers)
+
+
+In demand mode, routers have an independent method of verifying connectivity to the other system; routers are not required to share control packets with each other unless requested.
+
+
+
+BFD is a detection protocol that is enabled at the interface and protocol levels. Cisco supports BFD asynchronous mode, which depends on the sending of BFD control packets between two systems to activate and maintain BFD neighbor sessions between routers. Therefore, in order for a BFD session to be created, BFD must be configured on both systems (or BFD peers). Once BFD has been enabled on the interfaces and at the router level for the appropriate protocols (NHRP and the routing protocol on overlay), a BFD session is created, BFD timers are negotiated, and the BFD peers will begin to send BFD control packets to each other at the negotiated interval. There are two operational modes for BFD: asynchronous mode and on-demand mode. On-demand mode is not supported on Cisco devices.
+
+
+
+<h4>Asynchronous Mode Without Echo</h4>
+
+BFD asynchronous mode without echo uses only control packets for negotiating session parameters and for detecting neighbor reachability. The BFD control packets have a UDP source port of 49152 and a destination port 3784.
+
+
+<h4>Asynchronous Mode with Echo</h4>
+
+
+Asynchronous mode with echo uses both control UDP 3784 and echo UDP 3785 packets for forming and maintaining the BFD session. The control packets are sent at a default rate of 2 seconds (BFD slow-timers rate), while the echo packets are sent at a high rate for fast neighbor detection. The neighboring router receiving the BFD echo packets does not actually process the packets contents; instead, the packets are simply looped back to the originating router, unchanged. The primary benefit of the echo function is that it more accurately tests the forwarding path between the two routers in comparison with the BFD without echo.
+
+
+Echo packets are IP packets addressed to the router itself but sent to the Layer 2 address of the next-hop node. The echo packets thoroughly test the complete bidirectional forwarding path between adjacent routers, as they have to be transmitted by the originating router, propagated to the adjacent router, received by its interface logic, switched by its forwarding engine, and sent back to the originator (because the IP packet is addressed to the router itself).
+
+
+For example, when R1 sends a BFD echo packet, it sets the destination IP address in the packet to its own interface IP address and the MAC address in the Layer 2 frame header to the MAC address of the neighbor (R2). When R2 receives the packet, it performs a Layer 3 lookup and sends the packet toward its final destination (back to R1).
+
+Before using BFD echo mode, you must disable the sending of Internet Control Message Protocol (ICMP) redirect messages by entering the <b>no ip icmp redirect</b> command, to avoid high CPU utilization.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->
+

@@ -1,0 +1,893 @@
+<h2>Optimizing BGP</h2>
+
+BGP can be used to perform PBR. To manipulate the best paths that are chosen by BGP, you need to understand the different attributes that BGP uses and how BGP selects the best path that is based on these attributes.
+
+The primary filtering tools include route maps and prefix lists. Also, an AS path list is a useful tool for influencing inbound BGP traffic. When BGP filtering is configured, it is important that you understand how you can force information propagation.
+
+<h3>Configure the Weight Attribute</h3>
+
+The first parameter analyzed in the process of the path selection is the weight attribute.
+
+The weight is configured locally on a router and is not propagated to any other routers. This attribute applies when one router is used with multiple exit points from an AS, as opposed to the local preference attribute, which is used when two or more routers provide multiple exit points.
+
+The weight can have a value from 0 to 65535. Paths that the router originates have a weight of 32768 by default, and other paths have a weight of 0 by default. Routes with a higher weight are preferred when multiple routes exist to the same destination.
+
+<b>
+GW2 (config) # router bgp 65000
+GW2 (config-router) # neighbor 192.168.1.1 remote-as 65000
+GW2 (config-router) # neighbor 192.168.1.1 weight 100
+GW2 (config-router) # neighbor 209.165.201.6 remote-as 65200
+</b>
+
+
+Weight is an attribute that is locally significant to a router. It is a property or parameter that is not seen on neighboring routers. When designing BGP networks using weights, network administrators should set the weights on every router. If there is more than one path for the same network, a router will choose the path with the highest weight. The default value for weight is 0.
+
+
+The first method is demonstrated in the figure. You can use the <b>neighbor ip-address weight weight-value</b> command to apply a given weight value to all updates that are received from the neighbor. 
+
+<b>
+R1(config)# ip prefix-list AS65020_ROUTES permit 209.165.201.0/24 le 28
+R1(config)# route-map RM-SET-Weight permit 10
+R1(config-route-map)# match ip address prefix-list AS65020_ROUTES
+R1(config-route-map)# set weight 150
+R1(config-route-map)# route-map RM-SET-Weight permit 20
+R1(config-route-map)# set weight 100
+R1(config-route-map)# exit
+R1(config)# router bgp 65040
+R1(config-router)# neighbor 209.165.202.1 route-map RM-SET-Weight in
+</b>
+
+There are three steps
+
+In the first step, you must create a route map. Use the <b>route-map<b> command in global configuration mode to create a route map and to enter route map configuration mode.
+
+a rule for changing the BGP weight attributes is created. Use the <b>match</b> command in route map configuration mode to define which incoming routes will be affected. Use the <b>set</b> command in route map configuration mode to change the weight attribute to the desired value. The first <b>set weight</b> command in the figure sets the weight to 150 for all routes that are matched by the prefix list
+
+As the last step, you need to apply a configured route map to the incoming or outgoing routes. Use the <b>neighbor route-map</b> command in router configuration mode to apply the route map to BGP updates for a specific neighbor.
+
+<h4>Configure BGP Path Selection</h4>
+
+On GW2, set the default weight for routes learned from GW1 to a nonzero value.
+
+Setting weight to a nonzero value will cause the prefixes received via IBGP to be preferred.
+
+<b>
+GW2(config)# router bgp 65000
+GW2(config-router)# neighbor 192.168.1.1 weight 10
+</b>
+When the default weight for GW1 is configured on GW2, the BGP table on GW2 does not immediately reflect the policy change. BGP applies the new policy when new updates are exchanged. You need to perform a hard or soft reset to resend the BGP updates from GW1 to GW2.
+<b>GW2# clear ip bgp 192.168.1.1 soft in
+</b>
+
+When you perform a soft BGP inbound reset on GW2, GW1 re-sends the BGP updates to GW2. GW2 applies the new policy with the nonzero weight value and starts preferring updates that are received from GW1 to the external updates that are received from ISP2
+
+<h4>Local Preference Attribute</h4>
+
+Local preference is a BGP attribute that provides information to routers in the AS about the path that is preferred for exiting the AS. A path with a higher local preference is preferred.
+
+The local preference is an attribute that is configured on a router and exchanged among routers within the same AS only. The default value for local preference on a Cisco router is 100. To change the default local preference value of 100, use the <b>bgp default local-preference</b> command.
+
+You can modify it by configuring a route map and using the <b>set local-preference</b> option.
+
+Remove the weight configuration on GW2. Use the local preference of 150 on GW1 to identify the ISP1 as the preferred uplink for the entire local AS 65000.
+<b>
+GW2(config)# router bgp 65000
+GW2(config-router)# no neighbor 192.168.1.1 weight 10
+
+GW1(config)# route-map prefer_isp1 permit 10
+GW1(config-route-map)# set local-preference 150
+GW1(config-route-map)# router bgp 65000
+GW1(config-router)# neighbor 209.165.201.2 route-map prefer_isp1 in
+</b>
+
+
+Apart from removing the weight configuration on GW2, you need to configure a route map that sets the local preference to a value higher than the default value of 100. The route map "prefer_isp1" includes one statement (permit 10). This statement matches all updates and sets the local preference to 150.
+
+<h4>AS Path Attribute</h4>
+
+Fourth BGP path selection criteria
+
+Prefer shorter AS paths (only length is compared)
+
+AS path prepending
+
+
+It is easy for an AS to select the appropriate path for outgoing traffic, but it is more complicated to influence other ASs to select the appropriate path for traffic that is returning to a specific AS. It is unlikely that the operator of an AS can request changes in router configurations in another AS. This limitation makes it virtually impossible to influence another AS to select the desired path that is based on the weight and local preference attributes, because both options would require configuration changes in the neighboring AS.
+
+If no BGP path selection tools are configured on the route to influence the traffic flow, BGP will use the shortest AS path—the fourth option in the path selection process. If the AS path is not manually manipulated by some administrative means, the path that is going over the fewest number of autonomous systems is selected by the router, regardless of available bandwidth.
+
+
+The AS that is attempting to influence the incoming traffic flow sends out External Border Gateway Protocol (EBGP) updates with a manipulated AS path attribute over the undesired path. Receivers of this update are less likely to select it as the best, because the AS path now appears to be longer. 
+
+ AS path prepending potentially allows the customer to influence the route selection of other ASs. The AS path is extended with multiple copies of the AS number of the sender. There is no exact mechanism to calculate the required prepended AS path length. The benefit of manipulating AS paths to influence route selection is that the configuration that is needed is done in the AS that is requesting a desired return path.
+
+AS paths can be manipulated by prepending AS numbers to the existing AS paths. Normally, AS path prepending is performed on outgoing EBGP updates over the undesired return path. The AS paths that are sent over the undesired link are made longer than the AS path that is sent over the preferred path. Because of this change, the undesired link is now less likely to be used as the return path.
+
+The length of the AS path is extended because additional copies of the AS number of the sender are prepended to the AS path attribute. To avoid clashes with BGP loop prevention mechanisms, no other AS number—except that of the sending AS—should be prepended to the AS path attribute.
+
+If another AS number is prepended in the AS path, the routers in the AS that has been prepended will reject the update because of BGP loop prevention mechanisms.
+
+Prepending can be configured on a router for all routing updates that are sent to a neighbor or only on a subset of these updates.
+
+ prepend one occurrence of the local AS number to the AS path advertised to ISP2 and resend the BGP updates to ISP2.
+<b>
+GW2(config)# route-map ASPath-Prepend permit 10
+GW2(config-route-map)# set as-path prepend 65000
+GW2(config-route-map)# router bgp 65000
+GW2(config-router)# neighbor 209.165.201.6 route-map ASPath-
+Prepend out
+
+GW2# clear ip bgp 209.165.201.6 out
+</b>
+When configuring path prepending, you need to decide how many occurrences of an AS number to prepend. This decision will depend on the AS topology around your AS. The more occurrences that you prepend, the larger is the scope of the influence on the surrounding ASs. In the lab topology, you need to prepend a single instance of your AS number to the AS path advertised to ISP2. ISP3 will receive updates about the networks in AS 65000 with a shorter path via ISP1 and a longer path via ISP2.
+
+You need to resend the BGP updates from GW2 to ISP2. You can perform a hard or a soft reset to trigger the updates.
+
+<h3>Configure the MED Attribute</h3>
+
+
+As an alternative to AS path prepending, the MED attribute, also called the BGP metric, can be used to indicate to EBGP neighbors about the preferred path into an AS.
+
+The MED attribute enables you to influence another AS about which path it should choose to reach a certain route when multiple entry points into an AS exist. The MED attribute is referred to as the BGP metric in the BGP table.
+
+
+The MED is exchanged between autonomous systems. The MED is sent to EBGP peers. Those routers propagate the MED within their AS, and the routers within the AS use the MED but do not pass it on to the next AS. When the same update is passed on to another AS, the metric is set back to the default of 0. To change this value, use the <b>default-metric number</b> command under the BGP process. All routes that are advertised to an EBGP neighbor are set to the value that is specified using this command.
+
+By default, a router compares the MED attribute only for paths from neighbors in the same AS. There is no guarantee that a neighboring AS will take the MED attribute into account. It could happen that a peering ISP simply overwrites or ignores announced values.
+
+<b>
+GW2(config)# route-map SET-MED permit 10
+GW2(config-route-map)# set metric 200
+GW2(config-route-map)# exit
+GW2(config)# router bgp 65000
+GW2(config-router)# neighbor 209.165.201.9 route-map SET-MED out
+</b>
+
+The figure shows how to manipulate inbound traffic using route maps to change the BGP MED attribute. The intention of the route maps is to designate GW1 as the preferred path to reach networks in AS 65000. Since the MED default value is 0, AS 65100 will prefer the link between GW1 and ISP1A to reach AS 65000.
+
+<h3>Configure BGP Route Filtering</h3>
+BGP allows you to filter updates that are received from or sent to a neighbor.
+
+BGP updates can be filtered inbound or outbound
+
+Prevent AS from becoming a transit AS
+
+Route maps, prefix lists, and AS path filters
+
+The primary route filtering tools include route maps and prefix lists. Apart from attribute setting and manipulation, a route map can deny updates, with the consequence of a network advertisement being dropped from the BGP update. Route maps provide a rich set of matching options, such as IP prefix, IP next-hop, AS path, community, extended community, local preference, route type (external/internal) or metric.
+
+Prefix lists represent a common BGP filtering tool. You can apply prefix lists on either incoming or outgoing neighbors in any combination. The incoming prefix list must permit the routes that are received from a neighbor before they are accepted into the BGP table.
+
+Outgoing routes must pass the outgoing prefix list before being transmitted to the neighbor. You can also use prefix lists to filter routes that are being redistributed into the BGP process from other routing protocols.
+
+
+<h4>Implementing AS Path Access Lists</h4>
+
+
+GW1(config)# ip as-path access-list 1 permit ^$
+GW1(config)# router bgp 65000
+GW1(config-router)# neighbor 209.165.201.1 filter-list 1 out
+
+^$ is a regular expression that indicates an empty AS-path string
+
+
+
+<table border="1">
+
+<tr>
+<td>BGP Route Filtering Based on AS Path</td>
+<td>Regular Expressions
+</td>
+</tr>
+<tr>
+<td>Announce only local routes to the ISP (AS pathneeds to be empty.)</td>
+<td>_ Matches any delimiter (beginning,end, space, tab, comma)</td>
+</tr>
+<tr>
+<td>Select routes that are based on a specific AS numberin the AS path.</td>
+<td>^ Matches beginning of string</td>
+</tr>
+<tr>
+<td>Accept routes for specific AS only from some BGP neighbors.</td>
+<td>$ Matches end of string</td>
+</tr>
+
+</table>
+
+
+
+<h3>Implement BGP Peer Groups</h3>
+
+
+By default, Cisco IOS Software builds BGP updates for each neighbor individually. Building BGP updates involves several router CPU-consuming tasks, including scanning the BGP table and applying various outgoing filtering mechanisms (filter lists, route maps, and prefix lists).
+
+
+A BGP peer group is a configuration template that is used when multiple BGP peers share similar parameters. Examples of commonly shared peer parameters include:
+
+
+To ease the burden of configuring many neighbors with identical or similar parameters (including route-maps, filter-lists, or prefix-lists),
+
+update-source and next-hop-self
+
+EBGP multihop
+
+router to run the
+
+authentication password
+
+wight
+
+prefix-lists, filter-lists, and route-maps
+
+
+Additional characteristics of peer groups:
+
+Individual parameters can still be overridden per neighbor.
+
+Internal and external peers cannot be mixed in the same peer group.
+
+To ease the burden of configuring many neighbors with identical or similar parameters (including route-maps, filter-lists, or prefix-lists), the concept of peer groups was introduced.
+
+The administrator configures the peer group with all the BGP parameters that are to be applied to many BGP peers. Actual BGP neighbors are bound to the peer group, and the network administrator applies the peer group configuration on each of the BGP sessions.
+
+BGP neighbors of a single router can be divided into several groups, each group having its own BGP parameters.
+
+With the use of peer groups, some of the router CPU utilization that is imposed by BGP update generation is significantly reduced, because the use of peer groups allows the router to run the BGP update (including all outgoing filter processing) only once for the entire peer group. 
+
+The router, after it has finished building the BGP update, sends it to each member of the peer group. The actual TCP transmission still has to be done on a per-neighbor basis because of the connection-oriented characteristics of BGP sessions.
+
+A peer group can be configured to do the following:
+
+Use the IP address of a specific interface as the source address when opening the TCP session, or use the next-hop-self feature
+
+Use, or not use, the EBGP multihop function
+
+Use, or not use, MD5 authentication on the BGP sessions
+
+Filter out any incoming or outgoing routes using a prefix list, filter list, or route map
+
+Assign a particular weight value to the routes that are received
+
+When actual neighboring routers are assigned to the peer group on a router, all the attributes that are configured for the peer group are applied to all peer group members.
+
+Cisco IOS Software optimizes the outgoing routes by running through the outgoing filters and route-maps only once and then replicating the results to each of the peer group members
+In reality, Cisco IOS Software assigns a peer group leader, for which the software generates an update, and this update is replicated by the leader to all other members of the peer group.
+
+Some parameters that are configured on the peer group can be overridden by neighbor configurations, but only if the individual configurations apply on incoming updates. Outgoing updates are always prepared for the peer group leader and then replicated to the other members of the peer group.
+
+Often, you must configure a single router with many neighbors, each neighbor having BGP parameters similar to the other neighbors.
+
+
+the enterprise border router maintains multiple sessions with ISP-owned BGP neighbors. These external sessions share several common parameters that make them well suited for a peer group configuration.
+
+
+There are other scenarios in which the peer groups are applicable. For example, IBGP sessions are almost always identically configured. If a full mesh is deployed within an AS, many peer configurations might exist. Configuring many IBGP neighbors with identical parameters lead to redundant configurations.
+
+
+Another use case is the configuration of an ISP router facing multiple customer-owned BGP peers. The customer ASs are all assumed to announce local networks only. All customer ASs should receive BGP updates with the same set of Internet routes, and the customer ASs are all assumed to generate only a few prefixes. This situation makes the neighbor configuration almost identical for each of the customers, with only a few changes that are specific to each neighbor.
+
+
+The peer group called ISP shares multiple common parameters: an outgoing filter list, incoming prefix list, and incoming route map. The individual neighbors, defined using their IP addresses, and AS numbers, have been assigned to the peer group. 
+
+
+GW1# show running-config
+<. . . output omitted . . >
+router bgp 65000
+neighbor ISP peer-group -----------------------------------Defining the ISP peer group
+neighbor ISP filter-list 10 out
+neighbor ISP prefix-list desired-subnets in
+neighbor ISP route-map filter in
+!
+neighbor 209.165.201.1 remote-as 65100
+neighbor 209.165.201.1 peer-group ISP ------- Applying the peer group to specific neighbors
+neighbor 209.165.201.5 remote-as 65200
+neighbor 209.165.201.5 peer-group ISP ------- Applying the peer group to specific neighbors
+!
+route-map filter permit 10
+match as-path 20
+set local-preference 150
+!
+route-map filter permit 20
+!
+ip as-path access-list 10 permit ^$ -------------------Only advertise local AS routes
+ip as-path access-list 20 permit ^65100 -----Prefer ISP1 (local preference)
+
+ip prefix-list desired-subnets permit 0.0.0.0/0 --Accept default route
+ip prefix-list desired-subnets permit 0.0.0.0/0 ge 8 le 24
+
+-
+<h3> Configure BGP Advanced</h3>
+
+<h4>Configure IBGP </h4>
+
+
+On GW1, start the BGP process and configure the IBGP session to GW2. Use the next-hop-self feature to change the next-hop attribute to the GW1 Loopback 0 address. This configuration will make the next-hop IP address for external updates reachable to GW2.
+
+<b>
+GW1(config)# router bgp 65000
+GW1(config-router)# bgp router-id 1.1.1.1
+GW1(config-router)# neighbor 192.168.2.2 remote-as 65000
+GW1(config-router)# neighbor 192.168.2.2 update-source loopback 0
+GW1(config-router)# neighbor 192.168.2.2 next-hop-self
+</b>
+On GW2, start the BGP process and configure the IBGP session to GW2. Use the next-hop-self feature to change the next-hop attribute to the GW2 Loopback 0 address. This configuration will make the next-hop IP address for external updates reachable to GW1.
+<b>
+GW2(config)# router bgp 65000
+GW2(config-router)# bgp router-id 2.2.2.2
+GW2(config-router)# neighbor 192.168.1.1 remote-as 65000
+GW2(config-router)# neighbor 192.168.1.1 update-source loopback 0
+GW2(config-router)# neighbor 192.168.1.1 next-hop-self
+</b>
+
+
+Routers must meet several requirements to become BGP neighbors:
+
+
+<ul>
+  <li>A local router’s AS number must match the neighboring router’s reference to that AS number with its neighbor command.</li>
+  <li>The BGP router IDs of the two routers must not be the same.</li>
+  <li>If configured, authentication must succeed.</li>
+  <li>Each router must be part of a TCP connection with the other router.</li>
+</ul>
+
+Like EIGRP and OSPF, BGP defines a 32-bit router ID (RID), written in dotted-decimal notation. And like EIGRP and OSPF, BGP chooses its RID the same general way, by using the following steps, in order, until a BGP RID has been chosen:
+
+Configured: Use the bgp router-id router subcommand.
+
+Highest loopback: Choose the highest numeric IP address of any active loopback interface, at the time the BGP process initializes.
+
+Highest other interface: Choose the highest numeric IP address of any active non-loopback interface, at the time the BGP process initializes.
+
+On GW1, use a single BGP peer group called “ISP” to configure EBGP sessions with ISP1 and ISP2. Use the directly adjacent IP addresses to establish the BGP peering sessions. Advertise the IP network of the Loopback 1 interface.
+</b>
+GW1(config)# router bgp 65000
+GW1(config-router)# neighbor ISP peer-group
+GW1(config-router)# neighbor 209.165.201.2 remote-as 65100
+GW1(config-router)# neighbor 209.165.201.2 peer-group ISP
+GW1(config-router)# neighbor 209.165.201.18 remote-as 65200
+GW1(config-router)# neighbor 209.165.201.18 peer-group ISP
+GW1(config-router)# network 192.168.11.0
+</b>
+Usually, if the neighbor configuration is accurate, a BGP adjacency change log message should appear at the console for each neighbor after entering these commands. In this case though, ISP1 and ISP2 have been pre-configured with MD5 authentication. This is preventing GW1 from establishing an EBGP adjacency with ISP1 and ISP2.
+
+On GW1, configure the ISP peer group with the MD5 password
+<b>
+GW1(config)# router bgp 65000
+GW1(config-router)# neighbor ISP password BGPPASSWORD
+</b>
+
+Both neighbor adjacencies are established when the correct MD5 password is added to the ISP peer group.
+
+BGP neighbor authentication can be configured on a router so that the router authenticates the source of each routing update packet that it receives. This authentication is accomplished by the exchange of an authentication key (password) that is shared between the source and destination routers.
+
+
+Like EIGRP and OSPF, BGP also supports MD5 neighbor authentication. To generate an MD5 hash value, BGP uses the shared secret key and portions of the IP and TCP headers and the TCP payload. The MD5 hash is then stored in TCP option 19, which is created specifically for this purpose by RFC 2385.
+
+The receiving BGP neighbor uses the same algorithm and shared secret to compute its own version of the MD5 hash. It then compares its own version with the one it received and either keeps the update or ignores it. If the shared secret is configured incorrectly, the BGP peering session will not be established.
+
+
+
+On GW1, modify the BGP timers to match the ISP1 and ISP2 BGP configuration.
+First, check the timer values that are configured on ISP1 and ISP2 for neighbor GW1.
+<b>
+ISP1# show ip bgp neighbors 209.165.201.1 
+ISP2# show ip bgp neighbors 209.165.201.17
+</b>
+
+The Hold Time attribute in the BGP OPEN message sets the Hold Timer in seconds for each BGP neighbor. Upon receipt of an UPDATE or KEEPALIVE message, the Hold Timer resets to the initial value. If the Hold Timer reaches zero, the BGP session is torn down, routes from that neighbor are removed, and an appropriate update route withdraw message is sent to other BGP neighbors for the impacted prefixes.
+
+BGP does not rely on the TCP connection state to ensure that the neighbors are still alive. KEEPALIVE messages are exchanged every one-third of the Hold Timer agreed upon between the two BGP routers. Cisco devices have a default Hold Time of 180 seconds, so the default Keepalive interval is 60 seconds. If the Hold Time is set for zero, no KEEPALIVE messages are sent between the BGP neighbors. Upon receipt of an OPEN message, the router calculates the value of the Hold Timer to use with this neighbor by using the smaller of either its configured Hold Time or the Hold Time received in the OPEN message.
+
+On GW1, manually configure the ISP peer group timer values to match those on ISP1 and ISP2 and verify that the values have been applied.
+<b>
+GW1(config)# router bgp 65000
+GW1(config-router)# neighbor ISP timer 30 90
+GW1(config-router)# end
+GW1# show ip bgp neighbors 209.165.201.2 
+</b>
+
+<h4>16-bit and 32-bit AS Numbers</h4>
+
+16-bit AS number:
+
+Notation: X (for example, “65001”)
+
+Public range from 1 to 64511 for use on the Internet
+
+Private range from 64512 to 65534 can be used in isolated environments
+
+Depleted
+
+32-bit AS number:
+
+Notation: X.Y (for example, “65100.65200”)
+
+Carried in a new attribute
+
+Compatible with old systems:
+
+AS 23456 is used in the old AS path to represent ASs using the new AS number format
+
+AS 0.X is used to encode old AS numbers into the new AS path attribute
+
+AS numbers come in two forms:
+
+16-bit AS numbers have been depleted due to a relatively small number space and the increased demand for companies to be multihomed for increased availability.
+
+32-bit AS numbers were introduced to provide more number space while maintaining backward compatibility with 16-bit systems to ease the migration. A 32-bit AS can use two notations: A single 32-bit number (X) referred to as “asplain” on Cisco routers, or two 16-bit numbers that are joined using a dot (for example, X.Y) referred to as “asdot."
+
+The 32-bit AS range can written in two parts. The old AS ranges from 0.1 to 0.65535; the new AS ranges from 1.0 to 65535.65535.
+
+AS numbers from 64512 to 65534 are still reserved for private usage in the new 32-bit system. According to RFC 6996, IANA has also reserved, for private use, a contiguous block of 94,967,295 AS numbers from 4200000000 - 4294967294. The equivalent range in dot notation is 64086.64086 to 65535.65534.
+
+Routers that are using the old system still use the 16-bit AS number field. When a router that is using the new AS range communicates with a router that is using the old AS range, it uses the reserved AS transition number 23456 in 16-bit form.
+
+Notice that the source AS number for the external networks is 4279500803. This is the “asplain” representation of ISP3’s 32-bit AS number 65300.3. By default, Cisco routers will use the “asplain” format to display AS numbers.
+
+On GW1 and GW2, configure BGP to display AS numbers using the “asdot” format. Verify the BGP tables to view the change.
+
+<b>
+GW1(config)# router bgp 65000
+GW1(config-router)# bgp asnotation dot
+
+GW2(config)# router bgp 65000
+GW2(config-router)# bgp asnotation dot
+</b>
+ISP3’s 32-bit AS number is now correctly displayed in the BGP table. The bgp asnotation dot router subcommand applies only to the local router. For example, ISP1 and ISP2 stills show ISP3’s AS number as 4279500803.
+
+<h4>Configure an AS Path Filter</h4>
+
+<h4>AS Path Access Lists</h4>
+
+On GW1 and GW2, configure an AS-Path access-list to ensure that AS 65000 does not become a transit AS. On GW1, configure an AS path list that matches only locally generated prefixes and apply the filter to the ISP peer group. This will automatically apply it to both ISP1 and ISP2.
+<b>
+GW1(config)# ip as-path access-list 1 permit ^$
+GW1(config)# router bgp 65000
+GW1(config-router)# neighbor ISP filter-list 1 out
+</b>
+
+On GW2, configure an AS path list that matches only locally generated prefixes and apply the filter to the external neighbor.
+
+<b>
+GW2(config)# ip as-path access-list 1 permit ^$
+GW2(config)# router bgp 65000
+GW2(config-router)# neighbor 209.165.201.6 filter-list 1 out
+</b>
+
+The regular expression (^$) matches any route that has an empty AS path attribute (that is, no character from start to end). Only locally originated routes have an empty AS path attribute; hence this regular expression is used when matching local routes.
+
+This type of filter is used by multihomed customers to send only their address space to their service providers, to prevent them from becoming a transit AS. AS 65000 only advertises its own prefixes (192.168.11.0 and 192.168.22.0) to its providers. Other prefixes that are received from one provider are not forwarded to the other provider.
+
+<h4>Configure the Local Preference Attribute and an AS-Path Filter</h4>
+
+
+For outbound traffic from AS 65000, the link with ISP1 is the most preferred, followed by the link between GW1 and ISP2. The slowest link between GW2 and ISP2 should be used as a last re-sort.
+
+
+<b>
+On GW1, configure an AS-Path access list to match routes received from neighboring AS 65100.
+</b>
+
+On GW1, configure a route-map that will first match the AS-Path access list and set a local preference of 200. All other routes should receive a local preference value of 150.
+
+<b>
+GW1(config)# route-map PREFER-ISP1-ISP2 permit 10
+GW1(config-route-map)# match as-path 10
+GW1(config-route-map)# set local-preference 200
+GW1(config-route-map)# route-map PREFER-ISP1-ISP2 permit 20
+GW1(config-route-map)# set local-preference 150
+</b>
+
+
+The route map “PREFER-ISP1-ISP2” includes two statements. The first is for updates received from ISP1. They will receive a local preference value of 200. The second statement sets a local preference value of 150 for all other routes (those from ISP2). Recall that the default value for the local preference attribute is 100, so that if the links from GW1 to ISP1 and ISP2 fail, the link from GW2 to ISP2 will be used as a last re-sort to leave AS 65000.
+
+On GW1, assign the route-map to the ISP peer group.
+
+<b>
+GW1(config)# router bgp 65000
+GW1(config-router)# neighbor ISP route-map PREFER-ISP1-ISP2 in
+</b>
+Since both ISP1 and ISP2 are part of the peer group configuration on GW1, it is possible to assign the route-map to them with one command. The route-map is applied inbound for updates received from ISP1 and ISP2.
+
+
+
+<h4>Configure the MED Attribute</h4> 
+
+<h4>Multi-Exit Discriminator</h4>
+
+The MED attribute can be used to influence neighboring autonomous systems to choose the correct return path back into the AS. The MED attribute is a hint to external neighbors about the preferred path into an AS when multiple entry points exist, as is the case between AS 65200 and AS 65000.
+
+You can apply the MED attribute on outgoing updates to a neighboring AS to influence the route selection process in that AS. The MED attribute is useful only when there are multiple entry points into an AS.
+
+The MED attribute, which is sent to an external neighbor, will be seen only within that AS. An AS that receives a route that contains the MED attribute will not advertise that MED beyond its local AS.
+
+The default value of the MED attribute is 0. A lower value of the MED attribute indicates a more preferred path.
+
+The MED attribute is considered a weak metric. In contrast with weight and local preference, a router will prefer a path with the smallest MED value, but only if the weight, local preference, AS-path, and origin code attributes are equal. Using the MED may not yield the expected result if the neighboring AS modifies any of the stronger BGP route selection mechanisms.
+
+
+The term that is used in Cisco IOS Software for MED is "metric." Metric also applies to the set command that is used in route maps, and also to show and debug commands.
+
+In this task, you will configure the MED attribute to influence inbound path selection from AS 65200.
+
+On GW2, influence the returning traffic flow to the AS 65000 networks, so that ISP2 will take the path via GW1 instead of the slower path through GW2. Adjust the MED by using a route map and apply the route map for ISP2 in the outbound direction
+
+<b>
+GW2(config)# route-map SET-MED permit 10
+GW2(config-route-map)# set metric 50
+GW2(config-route-map)# router bgp 65000
+GW2(config-router)# neighbor 209.165.201.6 route-map SET-MED out
+</b>
+
+By setting the MED to a nonzero value, ISP2 will prefer the updates that are received from ISP1, with the default MED value of 0.
+
+The route map is applied in the outbound direction because you are trying to influence the ISP2 neighbor router.
+
+
+<h4>Configure ISP1 to Advertise a Default Route</h4>
+
+<h4>Advertising a Default Route in BGP</h4> 
+
+
+
+There are four ways to advertise a default route in BGP:
+
+The network 0.0.0.0/0 command.
+
+The redistribute command configured under the BGP process.
+
+default-information originate command
+
+neighbor default-originate command
+
+network command
+
+The network 0.0.0.0/0 command injects the default route in the BGP RIB (BGP Routing Information Base).
+
+The prerequisite is to have the default route in the Routing Table via any other Routing Protocol or manually configured with a Static Route.
+
+Once in the BGP RIB, the default route is advertised to all BGP neighbors unless specifically denied by an outbound filter configured per neighbor.
+
+redistribute commands
+
+The redistribute command configured under the BGP process injects all the routes that exist in the Routing Table by a specific source routing protocol (and permitted by a route-map) in the BGP RIB (including default routes if any).
+
+default-information originate command
+
+The default-information originate command causes the default route to be artificially generated and injected into the BGP RIB, regardless of whether it is present in the routing table. The newly injected default will be advertised to all BGP peers (because it now resides in the BGP RIB)
+
+neighbor default-originate command
+
+The neighbor default-originate command is like the default-information originate command in that the default route is artificially generated. However, the neighbor default-originate command is different from the default-information originate command because the default route is advertised only to this specific BGP neighbor.
+
+In this task, you will configure ISP1 to advertise a default route to GW1.
+
+<b>
+ISP1(config)# router bgp 65100
+ISP1(config-router)# neighbor 209.165.201.1 default-originate
+<b>
+
+
+<h4>Configure ISP3 to Advertise a Summary of Its Loopback Interfaces.</h4>
+<h4>Aggregating BGP Networks</h4>
+
+When the BGP table is already populated with routes that should be summarized, you must configure a router to do so. The summarization of BGP routes is called aggregation.
+
+Use aggregation when a group of more specific routes has been injected into the BGP table at one stage but can be summarized at a later stage. The routes to be summarized could be IGP routes that have been redistributed into BGP. Before BGP advertises these routes to the rest of the network, an aggregation of the subnets into a larger announcement would be appropriate.
+
+In some networks, more specific routes are injected into the BGP table by some routers, and aggregation is done in another router or even in another AS. This approach is called proxy aggregation.
+
+When a router is configured to do aggregation, you must configure the route summary. If any route that is already in the BGP table is within the range that is indicated by the summary, then the summary route is also injected into the BGP table on the route and advertised to other routers. This action creates more information in the BGP table. To get any benefits from the aggregation, you must suppress the more specific routes that are covered by the route summary. This suppression is an option to the aggregate configuration command.
+
+When you suppress the more specific routes through configuration, they are still present in the BGP table of the router doing the aggregation. However, because the routes are marked as suppressed, they are never advertised to any other router.
+
+On ISP3, configure a BGP summary of the Loopback 1-4 subnets.
+
+<b>
+ISP3(config)# router bgp 65300.3
+ISP3(config-router)# aggregate-address 203.0.112.0 255.255.252.0
+</b>
+
+
+On ISP3, configure the BGP aggregation for 203.0.112.0/22 but suppress the more specific routes.
+</b>
+ISP3(config)# router bgp 65300.3
+ISP3(config-router)# aggregate-address 203.0.112.0 255.255.252.0 summary-only
+</b>
+
+The summary-only keyword will suppress the individual specific routes and only advertise the summary.
+
+The more specific routes are marked as suppressed by the lowercase letter s. The s means that they are still present and available in the BGP table of the router, but they are not advertised on any BGP session.
+
+One of the benefits of this approach is that the rest of the routers will receive only one route instead of many more specific routes. It eases the burden on the other routers by reducing the amount of memory that is required to hold the BGP table.
+
+Another benefit is that route flapping is reduced. The router that does the aggregation continues advertising the aggregate as long as there is at least one specific route within the range still available. If one of the more specific routes is lost but at least one remains, the aggregate itself is not lost. The flap of the more specific route is not visible to the rest of the network. This approach reduces the number of updates necessary and the CPU power that is required to process them.
+
+However, all route summarization in any routing protocol causes a loss of granularity (that is, a lack of more detailed network or subnet visibility). Suboptimal routing could be introduced when redundant paths are available to reach a group of networks that are advertised by a single route summary. Some of the networks could be more reachable via one of the paths, while others may be more reachable another way. From outside the immediate network, multiple paths may not be visible because only summary routes are advertised. Therefore, there is a risk that the least optimal path will be chosen.
+
+
+<h3>IBGP Scalability Issues in a Transit AS</h3>
+
+
+Classic IBGP split-horizon rules specify that updates that are received on an EBGP session should be forwarded on all IBGP and EBGP sessions. However, updates that are received on an IBGP session should be forwarded only to all EBGP sessions. This rule requires a BGP boundary router to be able to send routing updates to all other BGP-speaking routers in its own AS directly through a separate IBGP session to each of them.
+
+The primary reason for the IBGP split-horizon rule is to avoid routing information loops within the AS. If the information that is received through an IBGP session is forwarded on other IBGP sessions, the information might come back to the originator. This information is then forwarded again in a never-ending loop. The originator would not detect the loop because no BGP attributes are changed on IBGP sessions.
+
+The general design rule in classic IBGP is to have a full mesh of IBGP sessions. But a full mesh of IBGP sessions between n number of routers would require (n * (n – 1)) / 2 IBGP sessions. For example, a router with an AS that contains 10 routers would require (10 * (10 – 1)) / 2 = 45 IBGP sessions. Imagine the number of sessions (and the associated router configuration) that would be required for a single AS containing 500 routers.
+
+
+Route reflectors are BGP scalability mechanisms that enable routing information to be redistributed to all routers within an AS while eliminating the need for a fully meshed topology within the AS. This feature reduces the number of TCP sessions that must be maintained, thus lowering network overhead and CPU and memory resource requirements.
+
+
+Two different solutions are available to achieve greater scalability when you must accommodate the full-mesh rules of IBGP autonomous systems:
+
+Route reflectors modify the classic IBGP split-horizon rule and allow a particular router to forward incoming IBGP updates to an outgoing IBGP session under certain conditions. This router becomes a concentration router, or a route reflector.
+
+BGP confederations (which are not covered in this course) introduce the concept of several smaller autonomous systems within the original AS. The small autonomous systems exchange BGP updates between them using intraconfederation EBGP sessions.
+
+<h3>Route Reflector Split-Horizon Rules</h3>
+
+
+The IBGP route reflector design relaxes the need for a full mesh.
+The route reflector concept introduces processing overhead on the concentration router and, if it is configured incorrectly, can cause routing loops and instability.
+
+
+When you implement a route reflector-based IBGP network, the BGP routers are divided into route reflectors (which implement modified split-horizon rules) and clients (which are behaving like traditional IBGP routers).
+
+Route reflector clients are excluded from the full mesh. They can have any number of EBGP sessions but may have only one IBGP session, the session with their route reflector.
+
+Clients conform to the classic IBGP split-horizon rules and forward a received route from EBGP on their IBGP neighbor sessions. But the route reflector conforms to the route reflector split-horizon rules and recognizes that it has an IBGP session to a client. When the IBGP update is received from the client, the route reflector forwards the update to other IBGP neighbors, therefore alleviating the IBGP full-mesh requirement for its clients
+
+Similarly, when the route reflector receives an IBGP update from a neighbor that is not its client, it forwards the update to all its clients.
+
+Forwarding of an IBGP update in a route reflector does not change the next-hop attribute or any other common BGP attribute. This feature means that the client will use the optimum route with the recursive routing, regardless of the way that it has received the BGP route.
+
+Another example of route propagation in a route reflector-enabled network follows:
+
+Nonclients conform to the classic IBGP split-horizon rules and forward a received route from EBGP on their IBGP neighbor sessions.
+
+The upper route reflector that receives a route from a nonclient sends the route to EBGP peers and clients only. This is the reason why the IBGP update is also not sent to the bottom route reflector.
+
+The client receives the IBGP update and sends it to the EBGP peers.
+
+
+The table shows detailed IBGP split-horizon rules as modified by the introduction of BGP route reflectors. A "route reflector" in this context is a BGP speaker that can advertise IBGP learned routers to another IBGP peer and, hence, can reflect routes. IBGP peers of the route reflector fall under two categories: "clients" and "nonclients." The route reflector and its clients form a "cluster." All IBGP peers of the route reflector that are not part of the cluster are nonclients. A "classic" IBGP router is a router that does not support route reflector functionality.
+
+
+
+<table border="1">
+<tr>
+<th>Type of Router</th>
+<th>Incoming Update From</th>
+<th>Is Forwarded To</th>
+</tr>
+<tr>
+<td>Classic</td>
+<td>EBGP peer</td>
+<td>All peers (IBGP and EBGP)</td>
+</tr>
+<tr>
+<td>Classic</td>
+<td>IBGP peer</td>
+<td>EBGP peers</td>
+</tr>
+<tr>
+<td>Route reflector</td><td>EBGP peer</td><td>All peers (IBGP and EBGP)</td>
+</tr>
+<tr>
+<td>Route reflector</td>Nonclient IBGP peer<td></td><td>EBGP peers and clients</td>
+</tr>
+<tr>
+<td>Route reflector</td><td>Client IBGP peer</td><td>All peers but the sender</td>
+</tr>
+<tr>
+<td></td><td></td><td></td>
+</tr>
+<tr>
+<td>Client</td><td>EBGP peer</td><td>All peers (IBGP and EBGP)</td>
+</tr>
+<tr>
+<td>Client</td><td>EBGP peer</td><td>EBGP peers</td>
+</tr>
+</table>
+
+
+<h3>Redundant Route Reflectors</h3>
+
+Clients may have any number of EBGP peers but may have IBGP sessions only with their route reflector or reflectors. If the reflector fails, its client can no longer send BGP updates to, or receive them from, the rest of the AS. The route reflector is, therefore, a single point of failure
+
+
+Clients with only one route reflector will be unable to send any IBGP updates if the route reflector fails.
+
+Clients should establish an IBGP session with at least two route reflectors using different physical connections.
+
+To avoid introducing a single point of failure into the network, be sure to make the route reflector functionality redundant as the physical network. If a client will still be physically attached to the network after its route reflector has failed, the client should have a redundant route reflector. Thus, in all highly available networks, route reflectors must be redundant.
+
+
+Redundant reflectors solve the high-availability requirement.
+
+The concept of clusters is introduced to prevent IBGP routing loops between route reflectors.
+
+
+improper route reflection can result in an IBGP routing loop. This routing loop is impossible to detect. Extra BGP attributes thus are necessary to prevent these routing loops.
+
+<h4>Route Reflectors Clusters</h4> 
+
+A router that is acting as a route reflector client does not require any specific configuration. It has fewer IBGP sessions than it would have if it were part of the full mesh. But improper configuration of the client to also be a reflector could easily cause a loop. An IBGP route coming in from one of the real reflectors to the client could be forwarded by the client, erroneously acting as reflector, to the other reflector.
+
+
+A group of redundant route reflectors form a cluster with a unique cluster ID.
+
+The cluster ID is added to the cluster-list attribute when a route is reflected.
+
+Route is not reflected because the cluster ID is already in the cluster list.
+
+Route reflector clusters prevent IBGP routing loops in redundant route reflector designs.
+
+The role of the network designer is to properly identify which route reflectors and their clients will form a cluster. The designer assigns to the cluster a cluster ID number that is unique within the AS.
+
+The cluster ID number must be configured in the route reflectors. The clients should not be configured with this information.
+
+A route reflector router can reflect routes only within a single cluster. A route reflector can, however, participate in another cluster but only as a client. A client can function as a client only to a route reflector belonging to the same cluster.
+
+When a route is reflected, the reflector creates the cluster-list attribute and attaches it to the route if it does not exist. It then sets its cluster ID number in the cluster list or adds its cluster ID number to an already existing cluster-list attribute. A route that is ever reflected back to the same reflector for any reason will recognize its cluster ID number in the cluster list and not forward it again. The first route reflector that reflects the route also sets a BGP attribute, called originator-ID, and adds it to the BGP router ID of its client.
+
+The cluster-list and originator-ID attributes are nontransitive optional BGP attributes that allow routers that do not support route reflector functionality to coexist with route reflectors and their clients in the same AS.
+
+
+Based on cluster-list and originator-ID attributes, routers can implement two loop-prevention mechanisms:
+
+Any router that receives an IBGP update with the originator-ID attribute set to its own BGP router ID will ignore that update.
+
+Any route reflector that receives an IBGP update with its cluster ID already in the cluster list will ignore that update.
+
+ the client in the cluster forwards the received EBGP update to both reflectors. The route reflectors forward the update into the IBGP full mesh. This behavior means that they also send the update to each other. But a route reflector that receives a BGP update from another route reflector recognizes their common cluster ID number in the cluster-list attribute. Therefore, the newly received route update is ignored.
+
+
+<h4>dditional Route Reflector Loop-Prevention Mechanisms</h4>
+When a route is reflected, the route reflector sets the originator-ID BGP attribute (nontransitive optional BGP attribute) to the router ID of the peer from which it received the route. Any router that receives a route with its own router ID in the originator-ID attribute ignores that route.
+
+Every time a route is reflected, the router ID of the originating IBGP router is stored in the originator-ID BGP attribute.
+
+A router receiving an IBGP route with the originator ID set to its own router ID ignores that route.
+
+The BGP path selection procedure is modified to take into account the cluster list and originator ID.
+
+
+BGP path selection rules have been modified to select the best route in situations where a router might receive reflected and nonreflected routes or several reflected routes:
+
+It first compares the traditional BGP path selection parameters such as weight, local preference, origin, and MED.
+
+If these parameters are equal, the routes that are received from EBGP neighbors are preferred over routes that are received from IBGP neighbors.
+
+When a router receives two IBGP routes, the nonreflected routes (routes with no originator-ID attribute) are preferred over reflected routes.
+
+The reflected routes with shorter cluster lists are preferred over routes with longer cluster lists.
+
+If the additional route reflector-oriented selection criteria do not yield a decision, the rest of the traditional BGP path selection rules are followed.
+
+
+<h3>Configure BGP Route Reflectors</h3> 
+<h4>Configure Route Reflectors</h4>
+
+<b>
+R3(config)# router bgp 1
+R3(config-router)# bgp cluster-id 1
+R3(config-router)# neighbor 10.0.0.1 route-reflector-client
+R3(config-router)# neighbor 10.0.0.49 route-reflector-client
+</b>
+Notice that only the route reflector requires additional configuration. The command is entered for every router that will receive reflected routes from R3. In this case, R1 and R4.
+
+<h4>Monitoring Route Reflectors</h4>
+
+Use the following commands to monitor route reflector operation:
+
+<b>router# show ip bgp neighbors</b>
+Displays whether a neighbor is a route reflector client
+
+<b>router# show ip bgp network/length</b>
+Displays the routes that are received from the client as seen on the reflector
+
+Displays reflected routes as seen on the client (with originator ID and cluster ID information)
+
+To display information about the TCP and BGP connections to neighbors, use the show ip bgp neighbors EXEC command.
+
+<b>show ip bgp neighbors [address]</b>
+In this case, use the show ip bgp neighbors command on the router to see the status of the neighbor session. Use the address keyword to verify a specific neighbor. This command also displays if the router is configured as a route reflector client.
+
+To display entries in the BGP routing table, use the show ip bgp EXEC command.
+
+<b>show ip bgp [network/length [longer-prefixes]]</b>
+When details are displayed for a specific route entry in the BGP table, the cluster-list and originator-ID attributes are also shown. If you issue this command on the route reflector, you could see that a particular entry was received from a route reflector client. If you issue this command on the route reflector client, you could see entries in the BGP table that were reflected by the route reflector.
+
+
+<h3>BGP Authentication</h3> 
+
+
+BGP neighbor authentication can be configured on a router so that the router authenticates the source of each routing update packet that it receives. This authentication is accomplished by the exchange of an authentication key (sometimes referred to as a password) that is known to both the sending and the receiving routers.
+
+
+
+
+<ul>
+  <li>BGP authentication uses MD5.</li>
+  <li>Router generates and checks the MD5 digest of every segment that is sent on the TCP connection.</li>
+  <li>Router authenticates the source of each routing protocol packet that it receives.</li>
+  <li>Configure a key (password) for a neighbor.</li>
+</ul>
+
+BGP supports MD5 neighbor authentication. MD5 sends a message digest (also called a hash) that is created using the key and a message. The message digest is then sent instead of the key. The key itself is not sent to prevent it from being intercepted by an eavesdropper.
+
+
+Specifically, the sending router uses portions of the IP and TCP headers, TCP payload (including the BGP route advertisements), and a shared secret to generate the MD5 hash. The MD5 hash is then stored in TCP option 19, which is created specifically for this purpose by RFC 2385. The receiving BGP neighbor uses the same algorithm and shared secret to compute its own version of the MD5 hash. It then compares its own version with the version that it received. If the MD5 hash values are not identical, the receiving BGP neighbor discards the packet. In any other circumstance, the packet is accepted and processed by BGP.
+
+MD5 authentication must be configured with the same password on both BGP peers. Otherwise, the connection between the peers will not be made. Configuring MD5 authentication causes Cisco IOS Software to generate and check the MD5 digest of every segment that is sent on the TCP connection.
+
+If the authentication string is configured incorrectly, the BGP peering session will not be established. It is recommended that you enter the authentication string carefully and verify that the peering session is established after authentication is configured.
+
+<h4> BGP Authentication Configuration</h4> 
+To enable MD5 authentication on a TCP connection between two BGP peers, use the <b>neighbor password </b>router configuration command with the IP address to specify the individual BGP peer, or use the peer group name to specify the entire group of peers, followed by the shared password.
+
+<b>
+R1(config)# router bgp 65100
+R1(config-router)# neighbor 209.165.202.130 remote-as 65000
+R1(config-router)# neighbor 209.165.202.130 password secretkey
+
+R2(config)# router bgp 65000
+R2(config-router)# neighbor 209.165.202.129 remote-as 65100
+R2(config-router)# neighbor 209.165.202.129 password secretKey
+</b>
+
+Operationally, BGP neighbor authentication can be added to existing BGP sessions. The shared password may also be changed on existing sessions without terminating and re-establishing these sessions, as long as both sides of the BGP session are modified within the BGP session timeout window, which has a default of 180 seconds.
+
+In the figure, MD5 authentication for the BGP peering session between R1 and R2 is configured. The same password must be configured on the remote peer before the hold-down timer expires.
+
+The same command is used to enable MD5 authentication on a TCP connection between two BGP IPv6 peers. For example, the command <b>neighbor 2001:db8:0:10::1 password Ci5coAdmin</b> would enable MD5 authentication for neighbor 2001:db8:0:10::1. Remember that a similar command would be required on the peer neighbor for the local router.
+
+
+<h4> BGP Authentication Verification</h4>
+
+Use the <b>show ip bgp summary</b> and <b>show ip bgp neighbors</b> commands to verify that the authenticated BGP session is up and that the BGP peers exchange information about prefixes.
+
+<h4>BGP Authentication Issues</h4>
+
+*Oct 25 04:00:25.659: %TCP-6-BADAUTH: No MD5 digest from 209.165.202.130:11003 to 209.165.202.129:179
+If a router has a password that is configured for a neighbor, but the neighbor router does not have a configured password.
+
+*Mar 25 04:00:32.113: %TCP-6-BADAUTH: Invalid MD5 digest from 209.165.202.130:11004 to 209.165.202.130:179
+Two routers have different passwords that are configured.
+
+The example shows two logging messages that are displayed if BGP authentication is not correctly configured.
+
+The first message is displayed if a router has a password that is configured for a neighbor, but the neighbor router does not have a configured password.
+
+The second message is displayed if the routers have different passwords that are configured.
+
+Similar verification commands exist to check the status of BGP IPv6 peers. Use the <b>show bgp ipv6 unicast summary</b> and <b>show bgp ipv6 unicast neighbors</b> commands to verify that the authenticated BGP IPv6 session is up and that the BGP IPv6 peers exchange information about prefixes.
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

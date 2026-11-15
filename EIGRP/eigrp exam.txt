@@ -1,0 +1,117 @@
+eigrp exam
+
+Which IOS command can be used to display the calculated vector metrics of bandwidth,
+delay, load and reliability?
+
+show ip eigrp topology 192.168.10.0 255.255.255.0
+
+which two of the following are used in EIGRP metric calculations by default? (Choose
+two.)
+
+bandwith, delay
+
+
+Which two statements are true regarding EIGRP authentication using a pre-shared key to
+generate an MD5 digest? (Choose two.)
+
+EIGRP authentication prevents attackers from establishing a neighbor
+relationship with a legitimate router.
+
+EIGRP authenticates all EIGRP packets.
+
+
+Which transport layer protocol is used for exchange of EIGRP messages?
+
+EIGRP for IPv6 uses which multicast address?
+
+Which EIGRP feature limits Query message scope in a network to improve network
+stability and reduce resource utilization?
+stub routing
+
+
+
+What is the formula for selecting a feasible successor?
+
+The RD of the feasible successor route is less than the FD of the
+current successor route.
+
+Which two solutions are used in an EIGRP network to reduce DUAL computations?
+(Choose two.)
+summarization / EIGRP stub routing
+
+
+In an EIGRP network, where can summarization be applied?
+Any EIGRP router can perform summarization.
+
+What delay value is used in the EIGRP metric calculation?
+tens of microseconds
+
+What are two benefits of using named EIGRP configuration? (Choose two.)
+unifying IPv4 and IPv6 configuration commands / gathering all EIGRP configuration in one place
+
+EIGRP using named mode configuration supports which metric format?
+64-bit
+
+You plan to configure a summary route with the ip summary-address eigrp command.
+Which of the following, when added to such a command, would create a summary that
+includes all four of the following subnets: 10.1.100.0/25, 10.1.101.96/27,
+10.1.101.224/28, and 10.1.100.128/25?
+
+
+
+Which verification command shows you the presence or absence of EIGRP peers?
+show ip eigrp neighbors
+
+
+The following message appears after the debug eigrp packets command has been
+enabled: EIGRP: Fa0/0: ignored packet from 10.1.12.2, opcode = 5 (invalid
+authentication) What would cause this message to appear?
+
+The authentication key or string does not match between the EIGRP
+neighbors.
+
+
+Which verification command lets you see if automatic summarization is enabled or
+disabled?
+show ip protocols
+
+
+Which of the following would cause the router to go active on a route?
+A route is lost but the router has no feasible successor available.
+
+Which EIGRP table contains a list of FD and RD for all networks learned from each
+neighbor? EIGRP topology table
+
+Which packet type establishes neighbor relationships? Hello
+
+
+When implementing EIGRP unequal cost load balancing using the variance command,
+which two conditions must be met? (Choose two.)
+
+The route must be loop free, by meeting the feasibility condition.
+The metric of the route must be lower than the metric of the
+successor, multiplied by the value of the variance.
+
+Which verification command shows you the feasible distance of all received EIGRP IPv6
+routes? show ipv6 eigrp table
+
+What does the passive state in the EIGRP topology table signify?
+The network is up and operational, and conditions are normal.
+
+
+Routers R1 and R2 are EIGRP neighbors. R1 has been configured with the eigrp stub
+connected command. Which two of the following are true as a result? (Choose two.)
+
+R2 no longer learns EIGRP routes from R1 for routes not connected to R1.
+
+Which verification command shows you if there are any interfaces that are configured as
+passive? show ip protocols
+
+
+
+
+
+
+
+
+.

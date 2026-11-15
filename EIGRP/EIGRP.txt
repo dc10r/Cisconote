@@ -1,0 +1,863 @@
+<h1>EIGRP</h1>
+<h2>Enable IPv4 EIGRP Using Classic</h2>
+<b>
+Classic mode
+enable
+configure terminal
+router eigrp autonomous-system-number
+network ip-address [wildcard-mask] 
+eigrp router-id router-id 
+
+
+show running-config | section eigrp
+
+
+BR1> enable
+BR1# configure terminal
+BR1(config)# router eigrp 10
+BR1(config-router)# network 192.168.1.0 #uses /24 as default mask
+BR1(config-router)# network 192.168.2.0 #uses /24 as default mask
+BR1(config-router)# network 192.168.255.0 0.0.0.3
+BR1(config-router)# eigrp router-id 2.2.2.2
+</b>
+
+<h3>EIGRP AS Number</h3>
+To establish the EIGRP neighbor relationship between the two routers: the first prerequisite is that both routers belong to the same AS. The AS number uniquely identifies the EIGRP process on the router and is used to define the EIGRP routing domain. Routers from the same routing domain will exchange EIGRP routes and those routes will be marked as EIGRP internal routes. Routers with different AS numbers will not exchange routing information by default – you must configure redistribution between different routing domains. To start the EIGRP routing process on the router using classic mode, configure it using the <b>router eigrp autonomous-system-number</b> command.
+
+<h3>EIGRP Network Commands: </h3>
+To include one or more local interfaces in the EIGRP process, use the <b>network ip-address [wildcard-mask]</b> command. Interfaces that are matched by the network command will be enabled with EIGRP and will start to send and receive EIGRP packets.
+
+
+If you do not use the optional wildcard mask, the EIGRP process assumes that all directly connected networks that are part of the major class network will participate in the routing process. EIGRP will attempt to establish neighbor relationships from each interface that is part of that Class A, B, or C major network. 
+
+For example, if you have two Class B subnets 172.16.1.0/30 and 172.16.2.0/30, on interfaces, and you specify network 172.16.0.0 without a wildcard mask, you will include both interfaces in the EIGRP process. EIGRP will assume a default wildcard mask for the Class B network (0.0.255.255) when determining which interfaces to include in EIGRP.
+
+<h3>EIGRP Router ID:</h3>
+Each router in an EIGRP routing domain is identified by its router ID. It is used by a router each time that it communicates with its EIGRP neighbors. The EIGRP router ID is also used for validating the origin of external routes. If an external route is received with a local router ID, the route is discarded. You can set the router ID manually using the <b>eigrp router-id router-id</b> command. The router ID can be configured with any IP address except 0.0.0.0 and 255.255.255.255. A unique value should be configured for each router. If the router ID is not explicitly configured, the router will select the highest address of its loopback interfaces. If there is no loopback interface on the router, it will select the highest IP address of any other active local interface. The router ID is not changed unless the EIGRP process is cleared or if the router ID is manually configured.
+
+When you want to enable a routing protocol on all interfaces on the router, you can define a network and wildcard mask as 0.0.0.0 255.255.255.255 to match all interfaces.
+
+Alternatively, when you want to enable only a specific interface, you can use the wildcard mask 0.0.0.0 to match all four octets of the interface address.
+
+<h2>IPv6 EIGRP Using Classic Mode</h2>
+<b>
+ipv6 unicast-routing
+ipv6 router eigrp autonomous-system-number
+eigrp router-id router-id 
+
+
+BR2# configure terminal
+BR2(config)# ipv6 unicast-routing
+BR2(config)# ipv6 router eigrp 20
+BR2(config-rtr)# eigrp router-id 3.3.3.3
+BR2(config)# interface ethernet 0/0
+BR2(config-if)# ipv6 eigrp 20
+BR2(config-if)# exit
+BR2(config)# interface loopback 0
+BR2(config-if)# ipv6 eigrp 20
+BR2(config)# interface loopback 1
+BR2(config-if)# ipv6 eigrp 20
+BR2(config)# interface loopback 2
+BR2(config-if)# ipv6 eigrp 20
+</b>
+The essential command to enable routing of the IPv6 datagrams is <b>ipv6 unicast-routing </b>in global configuration mode. Without this command in the configuration, the router will send and receive IPv6 packets only locally on the interfaces. If you have configured IPv6 routing protocols on the router, the command <b>no ipv6 unicast-routing</b> will remove all IPv6 routing protocol entries from the IPv6 routing table.
+
+Configuring IPv6 EIGRP using classic mode consists of two steps. The initial step is to configure EIGRP for the IPv6 routing process using the <b>ipv6 router eigrp</b> command. When entering the command, you must specify the AS number, which has the same meaning as it does in IPv4 EIGRP using classic mode. It defines autonomous systems under the control of a single administrator, and it must match between all neighboring routers that intend to establish an EIGRP adjacency.
+
+Another important parameter is the <b>EIGRP router-ID router-ID</b>. If no IPv4 active address is configured on the router, the router will not be able to choose the EIGRP router ID. In this case, you must configure the router ID manually under the routing process.
+
+The second step in the IPv6 EIGRP classic mode configuration process is to enable the protocol on the interface. Before you enable IPv6 EIGRP using classic mode on the interface, it must have a valid IPv6 link-local address. This requirement is because <b>EIGRP for IPv6 uses link-local addresses to form EIGRP neighbor relationships</b>. You can enable IPv6 on the interface using the interface mode command <b>ipv6 enable<b>. In this case, the IPv6 link-local address will be assigned automatically to the interface. Or you can explicitly configure a global IPv6 address on the interface using the <b>ipv6 address<b> command. This configuration will automatically create the IPv6 link-local address. Finally, you can also manually configure the IPv6 link local address using the <b>ipv6 address ipv6-address link-local<b> command.
+
+<h2>Configure IPv4 and IPv6 EIGRP Using Named Mode</h2>
+
+
+router eigrp name
+show ip eigrp neighbors
+
+
+DIST(config)# router eigrp CISCO
+DIST(config-router)# address-family ipv4 autonomous-system 10
+DIST(config-router-af)#
+DIST(config-router-af)# eigrp router-id 4.4.4.4
+DIST(config-router-af)# network 0.0.0.0
+
+DIST(config)# router eigrp CISCO
+DIST(config-router)# address-family ipv6 autonomous-system 20
+DIST(config-router-af)# eigrp router-id 4.4.4.4
+
+DIST(config)# router eigrp CISCO
+Configure EIGRP named mode from global configuration mode using the router eigrp command followed by the name of the EIGRP virtual instance. The <b>name has local significance and does not need to match between neighboring routers</b>. This command defines a single EIGRP instance that can be used for all address families. At this point, the routing protocol is not yet enabled. You must define at least one address family first.
+
+
+
+DIST(config-router)# address-family ipv4 autonomous-system 10
+DIST(config-router-af)#
+
+This command enables the IPv4 address family and starts the EIGRP protocol for the defined autonomous system. The command puts you in the address family configuration mode, which are also reflected by the change of the prompt.
+
+In IPv4 address family configuration mode, you can enable EIGRP for specific interfaces using the network command and define other general parameters like router-id or eigrp stub.
+
+
+Unless specified otherwise, the address family is defined as a unicast address family by default. Unicast address families are used for the exchange of unicast routes.
+
+
+DIST(config-router-af)# eigrp router-id 4.4.4.4
+DIST(config-router-af)# network 0.0.0.0
+
+You can enable IPv4 EIGRP interfaces in named mode configuration with the network command the same way as with EIGRP using classic mode configuration. You can be specific and use a wildcard mask to select only individual interfaces, or you can use 0.0.0.0, which enables EIGRP on all IPv4-enabled interfaces. 
+
+DIST(config)# router eigrp CISCO
+DIST(config-router)# address-family ipv6 autonomous-system 20
+DIST(config-router-af)# eigrp router-id 4.4.4.4
+
+When defining the IPv6 address family, it is important to use the correct AS number. All four routers in the topology are configured with AS 20 for IPv6, so it is necessary that you use the same AS if you do not wish to reconfigure HQ, BR1 and BR2 as well. Keep in mind that there is no requirement for the AS number to match between IPv4 and IPv6 address families. It only has to match between neighbors within the same address family.
+
+
+Notice that the IPv6 EIGRP neighbor relationship is established when you define the IPv6 address family. IPv6 EIGRP named mode does not need to be enabled on individual interfaces. All IPv6-enabled interfaces are automatically included in the IPv6 EIGRP named mode process. To prevent an interface from being included in the EIGRP process, it must be shut down under the af-interface subconfiguration mode.
+
+Pv6 address family configuration will display in the running configuration as a unicast address family by default.
+
+Note that it is normal for the neighbor adjacencies to reset after entering the new router ID.
+<b>show ip eigrp neighbors
+show ip eigrp neighbors detail 
+sh ipv6 eigrp neighbors 
+show ip eigrp interfaces
+</b>
+
+sh ipv6 eigrp neighbors
+
+The output of the show ipv6 eigrp neighbors command is very similar to the output of the show ip eigrp neighbors command. Notice the difference in the address format field, since link-local IPv6 addresses are used to establish the EIGRP neighbor relationship. The meaning of other fields is identical to the IPv4 verification command. You should see a total of four IPv6 neighbors.
+
+
+show ip eigrp interfaces
+
+The output of the show ip eigrp interfaces command shows you the working interfaces on which EIGRP for IPv4 is enabled
+
+The Interface column in the output describes which interfaces are included in the IPv4 EIGRP process. The Peers column indicates the number of directly connected EIGRP neighbors over a specified interface. For more details, you can enter the show ip eigrp interfaces detail command, which shows you additional information such as the number of sent packets, the number of retransmits, and the values of hello-interval and holdtime timers.
+
+To preserve some resources and instruct routers to stop sending and receiving EIGRP packets on the specific interface, you can configure such interfaces as passive. These two commands are also available for IPv6: (show ipv6 protocols, show ipv6 eigrp interfaces)
+
+show ip eigrp interfaces detail 
+
+The same information can be viewed for IPv6 using the show ipv6 eigrp interfaces. You will notice that the output format is identical to what was produced by the IPv4 command
+
+
+The output of the <b>show ip protocols</b> command shows which networks were included in the IPv4 EIGRP process, and which routing information sources exist.
+
+
+BR1(config)# router eigrp 10
+BR1(config-router)# passive-interface default 
+
+When you issue the passive-interface default command, under the EIGRP process, the router immediately stops sending and receiving hello packets and routing updates on all interfaces. When configured, all existing neighborships are terminated.
+
+Disable the passive interface for the interface connecting BR1 to HQ, using the no passive-interface interface-name command.
+
+When you issue the no passive-interface interface-name command on the interface leading to the HQ router, the router starts sending EIGRP hellos and updates and the EIGRP neighbor relationships are re-established. These same commands also apply to IPv6 EIGRP.
+
+DIST(config)# router eigrp CISCO
+DIST(config-router)# address-family ipv4 autonomous-system 10
+DIST(config-router-af)# af-interface default
+DIST(config-router-af-interface)# passive-interface
+DIST(config-router-af-interface)# exit
+DIST(config-router-af)# af-interface serial 0/0
+DIST(config-router-af-interface)# no passive-interface
+DIST(config-router-af)# af-interface serial 0/1
+DIST(config-router-af-interface)# no passive-interface
+
+
+DIST(config-router-af)# address-family ipv6 autonomous-system 20
+DIST(config-router-af)# af-interface default
+DIST(config-router-af-interface)# passive-interface
+DIST(config-router-af-interface)# exit
+DIST(config-router-af)# af-interface serial 0/0
+DIST(config-router-af-interface)# no passive-interface
+DIST(config-router-af)# af-interface serial 0/1
+DIST(config-router-af-interface)# no passive-interface
+
+
+When you wish to configure the properties of all interfaces, you can use af-interface default configuration mode. In the output, you can see how the passive-interface command was entered for all interfaces, including Serial 0/0 and Serial 0/1 which connect DIST to HQ.
+
+To edit a single interface, enter af-interface configuration mode specifying the interface that you wish to edit. Once the Serial 0/0 and Serial 0/1 interfaces are configured with the no passive-interface command, IPv6 EIGRP neighbor adjacencies are re-established with HQ.
+
+Using the show ip protocols and the show ipv6 protocols verification commands, you can check which interfaces are marked as passive.
+
+BR2(config)# interface ethernet 0/0
+BR2(config-if)# ip hello-interval eigrp 10 1
+BR2(config-if)# ip hold-time eigrp 10 5
+HQ(config)# router eigrp CISCO
+HQ(config-router)# address-family ipv4 autonomous-system 10
+HQ(config-router-af)# af-interface ethernet 0/2
+HQ(config-router-af-interface)# hello-interval 1
+HQ(config-router-af-interface)# hold-time 5
+
+
+To dynamically learn about other devices on the directly attached networks and thus establish and maintain EIGRP neighbor relationships, EIGRP uses small hello packets. They are periodically sent approximately every 5 seconds on all types of interfaces except low-speed (T1 or slower) NBMA networks, where they are sent by default every 60 seconds. This time interval is called a hello timer.
+
+The hello packets are used by EIGRP to determine whether the neighbor is alive and functioning. These packets also contain the holdtime parameter, which is used by EIGRP-enabled routers to determine the length of time after which the neighbor relationship is declared dead if the neighbor stops sending hello packets. If this condition occurs, EIGRP will start looking for alterative routing paths. Holdtime defaults to three times the hello interval, or 15 or 180 seconds, depending on the underlying network.
+
+
+show ip eigrp interfaces detail 
+
+The hello interval defaults to 5 seconds on all interfaces. Notice that Ethernet 0/2 is now using the configured values of 1 second for hello and 5 seconds for holdtime.
+
+Usually, you change hello and hold timers to improve convergence time. This solution may appear particularly attractive on the low-speed NBMA links, where default hello and hold timers default to relatively long 60 and 180 seconds, respectively. However, there are potential caveats that you must take into consideration before you decide to change default timer values.
+
+In comparison with other IGPs, such as OSPF, EIGRP hello and hold timers between neighbors do not need to be identical to successfully establish the EIGRP neighbor relationship. However, asymmetrical timers may lead to flapping EIGRP neighborships and network instability.
+
+If you increase the hello interval on the link, it may lead to a situation in which the network needs more time to detect potential failure, with a longer convergence time. Conversely, decreasing the hello timer to extremely small values can lead to high utilization of the link with routing traffic.
+
+
+The process of sending and receiving hello packets is unidirectional, meaning that the router sends the hello packets unreliably using multicast and expects no acknowledgment from the other side. When the BR router receives a hello packet from the HQ neighbor, it dynamically forms a new EIGRP adjacency. Hello packets are sent out periodically to check neighbor availability.
+
+<b>  debug eigrp packets</b>
+Contrary to the process of sending and receiving hello packets, routing updates are sent and received bidirectionally. Update packets contain routing information and are always sent reliably. This is accomplished by an acknowledgment packet. Every update packet received must be acknowledged. The process of transmitting reliable packets consists of two steps: enqueuing and bundling routing updates on the interface and sending the reliable packet to the neighbor. The output of the debug command shows the two separate processes of sending and receiving update and acknowledge packet pairs.
+
+The numbers after “Seq" in the debug output represent sequence and acknowledgment numbers. If you look at the debug output carefully, you can also notice that each packet that is sent out reliably has a sequence number. An acknowledgment that confirms a successful receipt of the packet must carry the same number as the received packe
+
+
+The <b>show ip eigrp traffic</b> command gives you the information about which type of EIGRP packets were sent and received. This command can be useful when troubleshooting, especially with other EIGRP show and debug commands. The command output displays statistics for hellos, updates, and acknowledgment packets, as well as for queries and replies.
+
+Query packets are sent out when a router performs a route computation and does not have an alternative path to the destination network. The packet is sent reliably as multicast to the neighbors to determine if they have an alternative path for the destination.
+
+Reply packets are sent in response to a query packet. They are sent reliably as unicasts.
+
+The output of the <b>show ip route eigrp</b> command shows the EIGRP routes present in the routing table. In the output, you can see two EIGRP routes, one marked with the code D and the other with the code D EX. Code D represents EIGRP internal routes.
+
+An internal route that is originated within an EIGRP autonomous system. Meaning that a directly attached network that is configured in EIGRP is considered internal and is propagated through the EIGRP AS. External routes, on the other hand, were learned by another routing protocol and redistributed to EIGRP. They are represented with code D EX.
+
+The numbers in square brackets represent administrative distance and the EIGRP metric, respectively. The IP addresses after the word "via" represent next-hop IP addresses. At the end of the display line you can see the exit interface for the route.
+<h3>Choosing the Best Path</h3>
+
+<ul>
+  <li>EIGRP uses DUAL algorithm to calculate best paths to destination</li>
+  <li>RD is the reported distance, a composite metric value from the perspective of the neighboring router</li>
+  <li>Metric is calculated as advertised distance plus the metric to reach the neighbor</li>
+  <li>Successor route is route with the lowest metric</li>
+  <li>FD = metric value of the successor route</li>
+  <li>Feasible successor route = alternative route, which fulfills feasibility condition</li>
+</ul>
+
+
+
+EIGRP uses DUAL to calculate the best path to a destination network. It uses the distance information, also known as a composite metric, to select efficient, loop-free paths.
+
+DUAL calculates this composite metric by adding two values. The first value is the metric from the neighboring router to the destination network. This value is reported to the router and is called the reported distance, or RD. 
+
+It is also frequently referred to as advertised distance. 
+
+The second value is the metric from the local router to the router that reported the first value. 
+
+Among all metrics, from the local router to the destination network, the router will choose the one with the smallest composite metric and consider it the best path to the given destination. The selected value is called feasible distance, or FD.
+
+The route with the smallest metric is called the successor route and the next-hop router is called the successor. 
+
+Multiple successors may exist if they have the same FD to the destination network. In this case, EIGRP tries to insert all the successor routes into the routing table. Up to four successor routes may be added to the routing table by default.
+
+When more than one route exists for the given prefix in the topology table, the router verifies whether the route is a part of a loop-free topology
+
+The router uses a simple rule, which requires that the RD of an alternative backup route is always smaller than the FD of the best path. This condition is called the feasibility condition. Routes that satisfy this condition are considered backup routes and are called feasible successor routes. Next-hop routers are called feasible successors.
+
+
+The EIGRP topology table (<b>show ip eigrp topology</b>)is a data structure that contains all the prefixes learned from all EIGRP neighbors. 
+
+Code P in front of the prefix means that the prefix is in a passive state. A route is considered passive when DUAL is not executing any computation to discover the possible alternative paths. The passive state is the normal and desirable state for all routes. When all routes are in a passive state, the state network is fully converged.
+
+A route will stay in the passive state as long as there is at least one valid path to the destination that satisfies the FC. The feasibility condition is how EIGRP internally resolves the problem of routing loops. 
+
+In EIGRP, the distance or composite metric is an integer that is used to compare different paths towards the same destination network. Each received route includes a reported distance and is stored in the EIGRP topology table. In the output, it appears in the parentheses as the second number. 
+
+The total cost to the destination is the first number in the parentheses and reflects the reported distance plus the cost to reach the neighbor.
+
+The best path to the destination is based on the lowest total cost to the destination. The best path is selected as the successor route and the value of the total cost for the successor path is selected as the FD.
+
+The remaining paths become candidates for feasible successor routes. For a path to become a feasible successor, it must satisfy the feasibility condition. The reported distance of the path must be lower that the value of the feasible distance.
+
+From all the routes present in the topology table, EIGRP will try to insert only the successor routes into the routing table. If the router learns the same destination networks from other, more trusted routing sources, the EIGRP successor routes will not be inserted into the routing table. Feasible successor routes stay in the topology table in case the successor route fails.
+
+Display all the received routes in the BR topology table using the show <b>ip eigrp topology all-links</b> command.
+
+The show ip eigrp topology all-links command will display all possible paths to the destination. In addition to the successor and feasible successor routes, the topology table may also contain non-successor routes.
+
+A non-successor route is a route that does not satisfy the feasibility condition (he reported distance of the path must be lower that the value of the feasible distance). 
+When the router stays without routes that satisfy the FC, and a new path calculation for the prefix must be performed The route will transit into the active state, and the router will start querying neighbors for alternative routes.
+
+Cisco IOS-style extended ping command
+ping 192.168.1.1 repeat 100000 size 1000
+
+repeat 100000 — sends 100,000 ping packets instead of the default (usually 5 on Cisco devices). This is a stress/load test — it'll run for a long time and generate a lot of traffic.
+size 1000 — sets the packet size to 1000 bytes instead of the default (100 bytes on Cisco). Larger packets test how the network handles bigger payloads (useful for checking MTU issues, fragmentation, or throughput under load).
+
+This kind of command is typically used to:
+
+<ul>
+  <li>Stress-test a link or device (100,000 pings is a lot)</li>
+  <li>Check for packet loss or latency issues under sustained traffic</li>
+  <li>Test how the network handles larger packet sizes (e.g., near MTU limits)</li>
+</ul>
+
+By default, it takes 15 seconds for the hold timer to expire on Ethernet interfaces. During this time frame, ICMP packets are dropped. When BR realizes that the neighbor is down, it starts forwarding ICMP packets using the feasible successor route over the 172.16.2.0/30 link.
+
+A common real-world situation is that the Layer 2 status of the link does not reflect the operational status of the neighboring devices. If there is a need to speed up the convergence, the EIGRP timer can be adjusted or other status detection mechanisms can be deployed.
+
+If the continuous ping has not yet completed, end it by pressing Ctrl-Shift-6.
+
+<h2>EIGRP Metrics</h2>
+
+EIGRP classic mode uses a composite metric to calculate the best path to the destination.
+
+<ul>
+  <li>Metric weights or K-values determine which components used for metric calculation.</li>
+  <li>Bandwidth (k1) and delay(k3) are used by default.</li>
+  <li>Reliability and load can optionally be used but are not recommended.</li>
+  <li>Maximum Transmission Unit (MTU) is included in the update but is not used for the metric calculation.</li>
+</ul>
+
+EIGRP uses a composite metric to determine the best path to the destination. The metric value derives from a formula, which can use the following parameters:
+
+Bandwidth: The least value of the bandwidth for all links between the router, which computes the metric, and the destination. This parameter is referred to as “throughput” in EIGRP named mode.
+
+Delay: The cumulative delay that is obtained as the sum of values of all delays for all links between the source and destination. This parameter is referred to as “latency” in EIGRP named mode.
+
+Reliability: The worst reliability between source and destination, which is based on keepalives.
+
+Load: The worst load on the link between the source and the destination, which is based on the packet rate and the configured bandwidth of the interface
+
+You may have read that MTU is also used in EIGRP metric calculations. While it is true that the MTU value is exchanged in the routing updates along with other metric components, it is never used for the metric calculation. It is only used as a tie-breaker, when the router needs to ignore some equal-cost paths to the same destination, due to too many equal-cost paths. In such cases, the route with the highest minimum MTU is preferred. Hop count is also exchanged in the routing updates to show how many layer 3 hops must be traversed to reach a destination.
+
+By default, EIGRP classic mode uses only bandwidth and delay to calculate the metric. Optionally, the computation may include interface load and reliability, although Cisco does not recommend using them. All routers in the routing domain must use the same components for metric calculation, and changing the metric calculation on only one router can introduce connectivity issues in inconsistent environments.
+
+Which components are used for metric calculation is determined by metric weights, or K-values. The default K-values for EIGRP classic mode are K1 = 1, K2 = 0, K3 = 1, K4 = 0, and K5 = 0. If the K-values are set to default, the metric is based only on bandwidth and delay values.
+
+EIGRP named mode also uses a composite metric to calculate the best path to a destination.
+
+<ul>
+  <li>Uses 64-bit Wide Metrics</li>
+  <li>Uses throughput and latency by default</li>
+  <li>Calculates latency in picoseconds for high-speed link support</li>
+  <li>Supports RIB scaling</li>
+</ul>
+
+EIGRP named mode uses Wide Metrics, which supports 64-bit metric calculations. This allows for the support of high-speed links above 1 Gbps by measuring latency in picoseconds instead of microseconds. Wide Metrics uses the same default K-values as EIGRP classic mode but it also includes a new K-value, K6, for extended attribute support. By default, K6 = 0.
+
+One of the issues when using Wide Metrics relates to the large metric calculation for high-speed links. EIGRP named mode can no longer fit the 64-bit computed metric into a 4-byte unsigned long value that are needed by the Cisco RIB. The solution is to scale the route down to a size that can fit in the RIB. The command that achieves this is called <b>metric rib-scale</b> and its default value is 128. The Feasible Distance (FD) of a route is divided by 128 and the new value is used in the routing table for that particular route.
+
+EIGRP K values are the metrics that EIGRP uses to calculate routes. Mismatched K values can prevent neighbor relationships from being established and can negatively impact network convergence.
+
+To verify K-values, you can use the <b>show ip protocols command</b>.
+
+<h2>EIGRP Classic mode metric calcultation</h2>
+
+Metric = [(K1* bandwidth + [(K2 * bandwidth) / (256- load)] + K3 * delay) * K5/ (K4 + reliability)] * 256
+
+
+Metric = (Bandwith + delay) * 256
+
+Bandwith = 10(7) / (minimum bandwith along the path in kbps)
+delay = sum of all delays in the path in tens of microseconds
+
+<b> show ip eogrp topology ip-address  mask
+
+The format of the delay and bandwidth values that are used for EIGRP classic mode metric calculations is different from the format that is displayed by the <b>show interface</b> command. The EIGRP delay value is the sum of the delays in the path, in tens of microseconds, while the <b>show interface</b> output displays the delay in microseconds. The EIGRP bandwidth is calculated using the minimum bandwidth link along the path, in kilobits per second. The value 107 is divided by this value. The sum of bandwidth and delay is multiplied by 256 to ensure backward compatibility with the EIGRP predecessor IGRP.
+
+The values of delay that is displayed in the show interfaces output are not measured but calculated. Cisco IOS Software calculates them based on the negotiated or configured interface bandwidth.
+<h3>EIGRP Feasibility Condition</h3>
+
+<b>The reported distance must be strictly less than the feasible distance of the successor."</b>
+
+To be considered as a feasible successor route, the prefix must satisfy the feasibility condition: it is reported distance is lower than the feasible distance of the successor route. This behavior is the primary way that EIGRP ensures a loop-free topology through the network.
+
+And the feasibility condition, EIGRP uses both split horizon and poison reverse to prevent routing loops from occurring as changes propagate though the network. Recall that the split horizon rule states that a router should never advertise a route out of the interface through which it was learned. EIGRP applies this rule specifically to its successor routes and never advertises those routes out the interface on which they were learned. The poison reverse rule states that a route learned through an interface will be advertised as unreachable through that same interface. As with the case of split horizon, EIGRP applies this rule only to interfaces it is using for reaching the destination. In EIGRP, split horizon suppresses a QUERY, whereas poison reverse advertises a destination as unreachable.
+
+
+EIGRP uses split horizon or advertises a route as unreachable when:
+
+<ul>
+  <li>two routers are in startup mode (exchanging topology tables for the first time)</li>
+  <li>advertising a topology table change</li>
+  <li>sending a query</li>
+</ul>
+
+<h1>Optimizing EOGRP</h1>
+
+<h2>EIGRP Queries</h2> tema
+
+When the route is lost, the router sends query packets to all neighbors on interfaces other than the one that is used to reach the previous successor (split-horizon behavior). These packets are used to query if each of the neighbors has a route to the given destination. If a neighbor router has an alternate route, it answers the query and does not propagate it further. If a neighbor does not have an alternate route, it queries each of its own neighbors for an alternate path. The queries then propagate through the network, creating an expanding tree of queries. When a router answers a query, it stops the spread of the query through that branch of the network.
+
+You can observe routes in the active state by using the <b>show ip eigrp topology command<b>. Routes in the active state are marked with the letter A, while P indicates routers in the normal passive state.
+
+The EIGRP query propagation process is far from efficient. Many queries are sent, and each query is followed by a reply. Two major solutions exist to optimize the query propagation process and to limit the amount of unnecessary EIGRP load on the links. You can either use route summarization or the EIGRP stub routing feature to optimize how queries are exchanged.
+
+<h2>EIGRP Stub Routers</h2>
+
+The stability of large-scale EIGRP networks often depends on the scope of queries through the network. One way you can reduce the number of EIGRP queries and improve network scaling is to mark the spokes of a large network as stubs.
+
+EIGRP stub routing:
+<ul>
+  <li>Improves network stability</li>
+  <li>Reduces resource utilization</li>
+  <li>Simplifies remote router configuration</li>
+</ul>
+
+
+The EIGRP stub routing feature enables you to limit query message scope in the network. Routers that are configured as stubs do not forward EIGRP learned routes to other neighbors. More importantly, nonstub routers will not send query messages to stub routers. This behavior saves CPU cycles and bandwidth and speeds up convergence.
+
+This behavior reduces the total number of queries and bandwidth used. Configuring the remote routers as stubs also reduces the complexity of the topology and simplifies the configuration. Especially in hub and spoke topologies, where stub routing is enabled on dual-homed remote routers or spokes. This implementation means that you do not have to configure route filtering on remote routers to prevent them from appearing as transit paths to hub routers.
+
+<h2>EIGRP Stuck in Active</h2>
+
+When a router loses a route and sends a query message to its neighbors, it is expecting a response to that query message in the form of a reply packet. Failure to receive a response to a query message can lead to session termination.
+
+Router must receive replies to all queries sent before a new path is calculated
+
+If any reply is lost or missing:
+<ul>
+  <li>The route goes into stuck in active, or SIA, state.</li>
+  <li>Neighbor status is verified; if no response is received, neighbor relationship is reset</li>
+</ul>
+
+EIGRP uses a reliable multicast approach to search for an alternative route. Therefore, it is imperative that EIGRP receives a reply for each query that it generates in the network
+
+Once a route goes active and the query sequence is initiated, it can only come out of the active state and transition to the passive state. This is when it receives a reply for every generated query. If the router does not receive a reply to all the outstanding queries within 3 minutes (the default time), the route goes into the Stuck-In-Active (SIA) state.
+
+This timer is called the active timer. Once the active timer expires, the neighbor relationship is reset. This setting causes the router to go active on all routes that were known through the lost neighbor. This is also to readvertise all the routes that it knows to the lost neighbor.
+
+
+The most common reason for lost reply messages is an unreliable link between the two routers, on which some packets might get lost. While the routers receive enough packets to maintain the neighbor relationship, the router does not receive all the queries or replies. When this condition occurs, the affected devices will generate EIGRP DUAL-3-SIA error messages.
+
+
+<ul>
+  <li>If no reply is received, EIGRP uses additional messages to verify the status of the neighbor.</li>
+  <li>Halfway through the active timer expiration, SIA-Query is sent to verify the neighbor relationship.</li>
+  <li>SIA-Reply is sent by the neighboring router as a response.</li>
+</ul>
+
+Resetting a neighbor relationship due to a lost reply message is very aggressive behavior. In large environments with slower links, it can cause long convergence times and network instability.
+
+Two new additional EIGRP packets were introduced to overcome the described limitation. When no reply to a query is received, EIGRP sends an SIA-Query packet when the active timer is halfway through, after 90 seconds. This behavior enables the neighboring router to respond with an SIA-Reply and confirm to the upstream router that it is still searching for a replacement route.
+
+
+<h2>EIGRP Summary Routes</h2>
+
+
+Another way that you can reduce the number of query messages is to implement route summarization.
+
+<ul>
+  <li>Summarization limits query scope and improves convergence.</li>
+  <li>If a router receives an EIGRP query for a prefix, which is described in the routing table by a summary route, it immediately responds with a reply message.</li>
+</ul>
+
+Route summarization works best when the subnet planning process considers route summarization. To accommodate summarization, the engineer assigning subnets can assign larger address blocks to one part of the topology. The engineers working with that part of the internetwork can break the address blocks into individual subnets as needed. At the edge of that part of the network, the engineers can configure route summaries to be advertised to the other parts of the internetwork. In short, when possible, plan the route summaries before deploying the new parts of an internetwork, and then assign addresses to different parts of the internetwork within their assigned address blocks.
+
+
+EIGRP supports route summarization at any router, unlike OSPF, which requires that summarization be performed only at area border routers (ABR) or autonomous system border routers (ASBR). EIGRP’s flexibility helps when designing the internetwork, but it also poses some questions as to where to summarize EIGRP routes.
+
+Often, engineers plan route summarization for the same address block on multiple routers. Such a design takes advantage of redundancy and can be used to perform basic load balancing of traffic across the various paths through the internetwork
+<h2>Configure EIGRP Stub Routing, Summarization, and Default Routing</h2>
+
+The EIGRP query propagation process is not very efficient. Many queries are sent, and each query is followed by a reply. The EIGRP stub configuration option enables you to mark the routers as stubs and reduce the number of exchanged EIGRP queries.
+
+<h3>EIGRP Stub</h3> 
+There are several different EIGRP stub options that enable you to precisely specify which routes the EIGRP stub should advertise.
+
+Stub options (defaults are connected and summary):
+
+
+<ul>
+  <li>connected: Advertises connected routes that are included with a network command</li>
+  <li>summary: Advertises configured summary routes</li>
+  <li>receive-only: Prevents the stub from sending any type of route</li>
+  <li>static: Advertises static routes, if redistribute static command is configured</li>
+  <li>redistribute: Advertises redistributed routes, if redistribution is configured</li>
+
+</ul>
+
+
+A router that is configured as a stub shares information about connected and summary routes with all neighboring routers by default. You can combine all stub options except for receive-only to achieve the desired combination of advertised routes.
+
+The connected option permits the EIGRP stub router to advertise all connected routes for interfaces that are matched with an EIGRP network command. This option is enabled by default and is the most widely practiced stub option.
+
+The summary option permits the EIGRP stub router to send summary routes. You can either create summary routes manually, or create them automatically by enabling autosummary at a major network boundary router. The summary option is enabled by default.
+
+The static option permits the EIGRP stub router to advertise static routes. You still need to redistribute static routes into EIGRP using the redistribute static command.
+
+The redistribute option permits the EIGRP stub router to advertise all redistributed routes, assuming redistribution is configured on the stub router using the redistribute command.
+
+The receive-only option restricts the stub router from sharing any of its routes with any other router within an EIGRP AS. This option does not permit any other option to be specified, because it prevents any type of route from being sent. This option is rarely used. Two examples of when to use this option are when the router has a single interface, or if NAT with PAT is configured, so that all hosts are hidden behind a single WAN interface.
+
+enable stub routing using the <b>eigrp stub</b>
+
+BR1(config)# router eigrp 10
+BR1(config-router)# eigrp stub
+BR1(config)# ipv6 router eigrp 20
+BR1(config-rtr)# eigrp stub
+
+When you configure the  routers as stub, the EIGRP adjacencies need to be reestablished.
+
+The stability of large-scale EIGRP networks often depends on the scope of queries through the network. One way you can reduce the number of EIGRP queries and improve network scaling is to mark the spokes of a large network as stubs.
+
+The EIGRP stub routing feature enables you to limit query message scope in the network. Routers configured as stubs do not forward EIGRP learned routes to other neighbors, and more importantly, non-stub routers do not send query messages to stub routers. This will save CPU cycles and bandwidth and speeds up convergence.
+
+EIGRP stub routers announce their new status in EIGRP hello packets. This announcement tells the neighbors that the router on the other end of the link is a stub router, and that they must stop sending query packets to that router. This behavior results in improved convergence time because the central routers do not have to wait for query responses from the remote offices.
+
+
+You can observe if a neighboring router is configured as a stub by using the <b>show ip eigrp neighbors detail</b> and <b>show ipv6 eigrp neighbors detail</b> command
+
+The EIGRP stub options are also available for EIGRP using named mode configuration. The <b>eigrp stub</b> command is entered in address family configuration mode.
+
+
+<h3>Configure EIGRP IPv4 and IPv6 Summaries</h3>
+
+Reducing the number of routes in the routing table by using manual summarization improves network convergence and reduces the number of potential queries.
+
+To determine the summary route, you need to analyze the subnets that you want to summarize. You need to determine the highest-order bits that match in all the addresses. By converting the IP addresses to the binary format, you can identify the common bits shared among the subnets.
+
+DIST(config)# router eigrp CISCO
+DISt(config-router)# address-family ipv4 autonomous-system 10
+DIST(config-router-af)# af-interface serial 0/0
+DIST(config-router-af-interface)# summary-address 172.16.96.0/21
+IST(config-router-af)# af-interface serial 0/1
+DIST(config-router-af-interface)# summary-address 172.16.96.0/21
+
+When using EIGRP named mode, all interface-specific commands must be entered under address family interface configuration mode. Summarization, hello and dead timers, and passive interface settings are a few examples of available options.
+
+In IPv4 EIGRP address family interface configuration mode, you can summarize IPv4 prefixes using the summary-address command. You can specify the subnet mask either in decimal format or prefix length format, as shown in the example
+
+You can determine what type of summary route that you need to specify by analyzing common bits in the IP addresses. You will want to do this for all of the subnets that you want to summarize to one network. All bits that are common between addresses define the summary address and its mask.
+
+Note that the summary route is advertised only if a more specific component (a more specific entry) of the summary route is present in the routing table.
+
+
+When using IPv4 EIGRP classic mode, EIGRP summarization is configured on the interfaces that will advertise the summary by using the <b>ip summary-address eigrp as-number ip-address</b> interface command.
+
+When you instruct a router to announce an IPv4 or IPv6 summary route, it also adds this route to its own routing table. It points it at the Null interface to prevent routing loops. A packet forwarded to the Null interface is simply dropped, which prevents the router from forwarding the packet to a default route and possibly creating a routing loop.
+
+
+To determine the IPv6 summary route, you need to analyze the subnets you wish to summarize. You need to determine the highest-order bits that match in all the addresses. By converting the IP addresses to the partial binary format, you can identify the common bits shared among the subnets.
+
+DIST(config)# router eigrp CISCO
+DIST(config-router)# address-family ipv6 autonomous-system 20
+DIST(config-router-af)# af-interface serial 0/0
+DIST(config-router-af-interface)# summary-address 2001:DB8:0:90::/62
+DIST(config-router-af)# af-interface serial 0/1
+DIST(config-router-af-interface)# summary-address 2001:DB8:0:90::/62
+
+
+As with IPv4, you can configure IPv6 manual summarization in the address family interface configuration mode using the summary-address command. When you configure a summary route for IPv6 EIGRP, the router will resynchronize its neighbor relationship on the interface where summarization was configured. The DIST router will send only one aggregated route to the HQ router across both serial links instead of sending several prefixes.
+
+When using IPv6 EIGRP classic mode, EIGRP summarization is configured on the interfaces that will advertise the summary by using the <b>ipv6 summary-address eigrp as-number prefix</b> interface command.
+
+<h3>nnounce IPv4 and IPv6 Default Routes </h3>
+
+There are several ways that a router can obtain a default route.
+
+The default route can be statically defined using the ip route and ipv6 route commands. For example,
+
+HQ(config)# ip route 0.0.0.0 0.0.0.0 209.165.201.1
+HQ(config)# ipv6 route ::/0 2001:DB8:0:E::1
+
+It can be advertised by the routing protocol. EIGRP can redistribute a static default route using the redistribute static configuration command and advertise it to neighbors.
+
+The main purpose of using a default route is to decrease the size of the routing table. This requirement especially applies to the stub networks, where it is preferred to optimize the number of routes.
+
+Before a router installs the default route, it examines default route candidates:
+
+<ul>
+  <li>The candidate can be a statically configured default route that is defined locally with the commands <b>ip route 0.0.0.0 0.0.0.0 next-hop | interface or ipv6 route ::/0 next-hop | interface </b>. With these commands, interface is the outgoing interface through which all packets with unknown destinations will be forwarded. And next-hop is the address to which packets with unknown destinations will be forwarded.</li>
+  <li>The candidate is also a default route that is announced by the dynamic routing protocol. EIGRP can redistribute statically defined default routes by using the redistribute static configuration command.</li>
+</ul>
+
+In EIGRP, default routes cannot be directly injected as in OSPF, where you can use the default-information originate command.
+
+The router examines all default candidates and selects the best one based on the administrative distance and route metric.
+
+When selected, the router sets the gateway of last re-sort to the next hop of the selected candidate. This behavior does not apply when the best candidate happens to be one of the directly connected routes.
+
+Q(config)# router eigrp CISCO
+HQ(config-router)# address-family ipv4 autonomous-system 10
+HQ(config-router-af)# topology base
+HQ(config-router-af-topology)# redistribute static 
+HQ(config-router-af-topology)# address-family ipv6 autonomous-system 20
+HQ(config-router-af)# topology base                           
+HQ(config-router-af-topology)# redistribute static
+
+The <b>redistribute static</b> command redistributes all statically defined routes on HQ into the EIGRP process. Since the IPv4 and IPv6 default routes are the only static routes that are defined on HQ, only these routes will be redistributed.
+
+Notice that the <b>redistribute static</b> command is entered under the address family topology configuration mode as it has a direct impact on the IPv4 and IPv6 EIGRP topology tables.
+
+When using IPv4 or IPv6 EIGRP classic mode, the redistribute static command is entered under router configuration mode.
+
+Usually, when redistributing into EIGRP, an initial or "seed" metric must be specified for redistribution to work. This is required because EIGRP needs to know all metric components of a route (bandwidth, delay, reliability, load, MTU, hop count) which other routing protocols do not advertise. Exceptionally, in the case of static and connected routes, EIGRP can take the necessary metric values from the outgoing interface that is associated with the route.
+
+IPv4 Route 0.0.0.0 is marked with an asterisk (*), which indicates that it is a candidate for the default route. It is also labeled with D EX, which indicates that it is an external EIGRP route. EIGRP marks routes as external if they have learned by another routing protocol or if they reside in the routing table as static routes. This also applies to the IPv6 default route, which is similarly labeled with EX.
+
+Notice that both IPv4 and IPv6 EX routes have an administrative distance of 170, while internal EIGRP routes are assigned a value of 90
+
+<h3>EIGRP Load Balancing</h3>
+EIGRP can distribute traffic over multiple links leading to the same destination to increase the effective network bandwidth. It supports load balancing over equal-metric paths and also over unequal-metric paths.
+
+Load balancing = distribution of traffic across multiple links
+
+EIGRP supports:
+
+EIGRP enables load balancing between a maximum of four equal-metric paths by default. You can configure the maximum number of parallel routes that an IP routing protocol can support using the <b>maximum-paths</b> router configuration command. The actual number of maximum-paths that can be configured varies from device to device.
+
+"four." EIGRP enables by default load balancing between a maximum of four equal-metric paths. You can modify this value by using the maximum-paths configuration command.
+
+When a packet is process-switched, load balancing over equal-metric paths occurs on a per-packet basis. When packets are fast-switched, load balancing over equal-metric paths occurs on a per-destination basis. Cisco Express Forwarding switching supports both per-packet and per-destination load balancing, which is enabled by default.
+
+Load balancing over unequal-metric links are disabled by default but can be enabled using the <b>variance x</b> command. The variance command instructs the router to include routes with a metric of less than x times the minimum metric route for that destination. The variable x can take a value between 1 and 128. The default is 1, which means equal-metric load balancing. Traffic is also distributed among the links with unequal metrics, proportionately, concerning the metric. Only feasible successor paths can be included in EIGRP load balancing, to ensure that the topology stays loop-free.
+
+<h3> EIGRP Authentication</h3>
+
+In EIGRP, when authentication is enabled, every packet that is exchanged between the neighbors must be authenticated to ensure the identity of the neighbor. This is done by using identical pre-shared authentication keys, meaning the two neighbors must use the same pre-shared authentication key. EIGRP authentication is configured in the interface-configuration mode. What this means that packets exchanged between neighbors that are connected through an interface are authenticated.
+
+
+EIGRP Message Digest 5 (MD5) authentication can be configured in classic mode or named mode, while HMAC-SHA-256 authentication can only be configured in named mode. When you configure HMAC-SHA-256 authentication, you can choose to use an interface password only or also include a key chain. Using a password is simpler to configure but if the password needs to be changed, the neighbor adjacency will drop when the password is changed on one of the routers. Using a key chain allows the passwords to be rotated without dropping the neighbor adjacency.
+
+<h4>Follow these steps to configure EIGRP classic mode authentication:</h4>
+
+<ul>
+  <li>Configure the key chain.</li>
+  <li>Configure the authentication mode for EIGRP.</li>
+  <li>Enable authentication to use the keys in the key chain.</li>
+</ul>
+
+IPv4 EIGRP classic mode MD5 authentication configuration
+
+IPv4 EIGRP classic mode MD5 authentication configuration steps are as follows:
+
+<ul>
+  <li>key chain routerR1chain</li>
+  <li>key 1</li>
+  <li>key-string firstkey</li>
+</ul>
+
+Configure the key chain: The key chain global configuration command is used to define all the keys that are used for EIGRP MD5 authentication. Once you are in the key chain configuration mode, use the key command to identify the key in the key chain. Each key is defined by the number, which defines the key ID. When the key command is used, the configuration enters the key chain key configuration mode, where the <b>key-string authentication-key configuration</b> command must be used to specify the authentication string (or password). The key ID and authentication string must be the same on all neighboring routers.
+
+
+<ul>
+  <li>under the interface</li>
+  <li>ip authenticationmode eigrp AS md5</li>
+  <li>ip authenticationmode keychain eigrp AS routerR1chain</li>
+</ul>
+
+
+Configure the authentication mode for EIGRP: The only authentication type that is available in classic EIGRP configuration is MD5. Named EIGRP configuration mode also supports SHA hashing algorithm. You must use the correct AS number and enable the authentication configuration on all interfaces between the neighbors across the EIGRP domain. AS number 110 is used in this example.
+
+Enable authentication to use the key or keys in the key chain: When an authentication type is selected, and a key chain is configured, authentication of EIGRP packets must be enabled. It must be enabled on all interfaces that are participating in the EIGRP domain as well. Authentication is enabled using the <b>ip authentication key-chain eigrp interface command</b>.
+
+Router is configured to use the routerR1chain key chain, so the neighboring router must use the same key that is defined in the key chain for successful authentication. Generally, the key chain contains the list of all the available keys and must be configured separately to specify all the keys that are required. The name of the key chain is of local significance and can be different on the two neighboring routers.
+
+EIGRP IPv6 authentication is configured the same way as for EIGRP IPv4 authentication.
+
+
+<ul>
+  <li>key chain routerR1chain</li>
+  <li>key 1</li>
+  <li>key-string firstkey</li>
+</ul>
+
+<ul>
+  <li>under the interface</li>
+  <li>ipv6 authenticationmode eigrp AS md5</li>
+  <li>ipv6 authenticationmode keychain eigrp AS routerR1chain</li>
+</ul>
+
+
+<h4>IPv4 EIGRP named mode MD5 authentication configuration</h4>
+
+During configuration of authentication in EIGRP named mode, the same procedure is performed as in EIGRP classic mode authentication configuration. The configuration of the key chain remains the same. Within the named EIGRP router mode, you first need to enter into the desired address family. Within the address family, you can enter into address family interface configuration mode, where you can enable the authentication mode and associate the configured key chain.
+
+
+In addition to MD5, named EIGRP configuration mode also supports the HMAC-SHA-256 hashing algorithm. To configure the SHA hashing algorithm, use the authentication mode hmac-sha-256 password address family interface configuration mode command.
+
+
+<h3>Configure EIGRP Load Balancing and Authentication</h3> 
+
+
+EIGRP Load Balancing, by default, only equal-cost load balancing is enabled. For utilization of unequal-cost links, additional configuration is required.
+
+The feasible distance that is shown in the topology table for the successor route uses 64-bit wide metrics. Recall that this value is divided by the metric rib-scale default value of 128. This will allow the routing table to show a scaled-down metric value of 12740640 for the DIST IPv4 and IPv6 summaries.
+
+EIGRP can balance traffic across multiple routes that have different metrics to a destination:
+
+Successor is always used.
+
+Feasible successors are used if their metric (feasible distance) is less than minimum metric multiplied by the variance.
+
+Variance is only a multiplier:
+
+Default value = 1
+
+Maximum = 128
+
+EIGRP can balance traffic across multiple routes that have different metrics, which are called unequal-metric load balancing. The degree to which EIGRP performs load balancing is controlled by the variance parameter. Setting a variance value enables EIGRP to install multiple loop-free routes with unequal metric in a local routing table. EIGRP will always install a successor into the local routing table. Additional feasible successors are candidates for the local routing table.
+
+Additional entries through EIGRP must meet two criteria to be installed in the local routing table:
+
+The route must be loop-free. This condition is satisfied when the reported distance is less than the feasible distance. In other words, when the route is a feasible successor.
+
+The metric of the route must be lower than the metric of the best route (the successor), multiplied by the variance that is configured on the router.
+
+The default value for the variance command is 1, which indicates equal-cost load balancing; only routes with the same metric as the successor are installed in the local routing table. The variance command does not limit the maximum number of paths. Instead, it is the multiplier that defines the range of metric values that are accepted for load balancing by the EIGRP process. If the variance is set to 2, any EIGRP-learned route with a metric that is less than two times the successor metric will be installed in the local routing table.
+
+The EIGRP routing protocol itself is not responsible for load-sharing traffic between multiple routes; EIGRP is a control plane process that only installs the routes in the local routing table. It is the data plane that is responsible for enabling the actual hardware or software packet forwarding, which would load-share between multiple paths.
+
+
+HQ(config)# router eigrp CISCO 
+HQ(config-router)# address-family ipv4 autonomous-system 10
+HQ(config-router-af)# topology base
+HQ(config-router-af-topology)# variance 2
+HQ(config-router-af-topology)# address-family ipv6 autonomous-system 20
+HQ(config-router-af)# topology base                           
+HQ(config-router-af-topology)# variance 2
+
+Note that when using EIGRP classic mode, the variance command is entered in router configuration mode.
+
+The command outputs show the current variance settings on the router, and the maximum number of paths that can be used for load balancing. The latter can be changed using the <b>maximum-path</b> EIGRP configuration command. By setting this value to 1, you effectively disable EIGRP load balancing.
+
+<h4>Enable MD5 Authentication</h4>
+<b>
+using classic mode
+BR1# configure terminal
+BR1(config)# key chain EIGRP_KEYS
+BR1(config-keychain)# key 1
+BR1(config-keychain-key)# key-string CCNP
+</b>
+These commands will create a key chain named EIGRP_KEYS with the CCNP ke
+
+<b>BR1# show key chain</b>
+These commands will show the key chains
+<b>
+BR1(config)# interface Ethernet0/0
+BR1(config-if)# ip authentication mode eigrp 10 md5 
+BR1(config-if)# ipv6 authentication mode eigrp 20 md5
+BR1(config-if)# ip authentication key-chain eigrp 10 EIGRP_KEYS
+BR1(config-if)# ipv6 authentication key-chain eigrp 20 EIGRP_KEYS
+</b>
+These commands are entered in the interface configuration mode and not in EIGRP router mode. Note that the IPv4 and IPv6 neighbor relationship between BR1 and HQ go down since there is currently an authentication mismatch between the routers.
+
+
+ using named mode,
+
+HQ(config)# router eigrp CISCO
+HQ(config-router)# address-family ipv4 autonomous-system 10
+HQ(config-router-af)# af-interface Ethernet0/1
+HQ(config-router-af-interface)# authentication mode md5
+HQ(config-router-af-interface)# authentication key-chain EIGRP_KEYS 
+
+
+HQ(config-router-af-interface)# address-family ipv6 autonomous-system 20
+HQ(config-router-af)# af-interface Ethernet0/1                       
+HQ(config-router-af-interface)# authentication mode md5  
+HQ(config-router-af-interface)# authentication key-chain EIGRP_KEYS     
+   
+
+EIGRP using named mode supports MD5 and SHA-256 authentication. You must use the same authentication mode.
+
+When an authentication type is selected, and a key chain is configured, authentication of EIGRP packets must be enabled on all interfaces where an EIGRP neighbor relationship needs to be established. For EIGRP classic mode, authentication is enabled using the <b>ip authentication key-chain eigrp as-number key-chain and the the ipv6 authentication key-chain eigrp as-number key-chain interface</b> commands. Without these commands, no authentication is provided for EIGRP packets. The AS number and the name of the key chain are required parameters in these commands, and no additional parameters exist in current Cisco IOS Software releases.
+
+<h4>Enable Time-based MD5 Authentication for EIGRP</h4>
+
+<b>
+R2# configure terminal
+BR2(config)# key chain EIGRP_LIFETIME_KEYS
+BR2(config-keychain)# key 1
+BR2(config-keychain-key)# key-string firstkey
+BR2(config-keychain-key)# accept-lifetime 00:00:00 Jan 1 2019 23:00:00 Apr 8 2019
+BR2(config-keychain-key)# send-lifetime 00:00:00 Jan 1 2019 23:00:00 Apr 8 2019
+BR2(config-keychain-key)# key 2
+BR2(config-keychain-key)# key-string secondkey
+BR2(config-keychain-key)# accept-lifetime 22:45:00 Apr 8 2019 infinite
+BR2(config-keychain-key)# send-lifetime 22:45:00 Apr 8 2019 infinite
+</b>
+These commands create a key chain of “EIGRP_LIFETIME_KEYS”, using specified lifetime periods.
+
+<h4>EIGRP MD5 Time-based Authentication</h4>
+
+The security of routing protocol authentication can be improved by changing the secret keys often. However, routing between neighbors can be interrupted during the key rollover process. For instance, when a router is reconfigured with a new key, it will lose its neighbor adjacency until the other neighbors are configured with the same new key.
+
+When more than one key is configured, the first valid key is used. When using the infinite parameter to configure the lifetime, the key is valid for use on packets from the start-time value and never expires. The default start time, and the earliest acceptable date are January 1, 1993.
+
+If an end time is specified, the key is valid for use on the packets from the start-time value until the end-time value. The syntax is the same as the start-time value. The end-time value must be after the start-time value. The default end time is infinite.
+
+These command <b>show key chain</b> will display the key chain with associated keys and lifetimes
+<b>
+classic mode
+BR2(config)# interface Ethernet 0/0
+BR2(config-if)# ip authentication key-chain eigrp 10 EIGRP_LIFETIME_KEYS
+BR2(config-if)# ip authentication mode eigrp 10 md5
+BR2(config-if)# ipv6 authentication key-chain eigrp 20 EIGRP_LIFETIME_KEYS
+BR2(config-if)# ipv6 authentication mode eigrp 20 md5
+
+name mode
+
+HQ(config)# router eigrp CISCO
+HQ(config-router)# address-family ipv4 autonomous-system 10
+HQ(config-router-af)# af-interface Ethernet0/2
+HQ(config-router-af-interface)# authentication key-chain EIGRP_LIFETIME_KEYS 
+HQ(config-router-af-interface)# authentication mode md5
+HQ(config-router-af-interface)# address-family ipv6 autonomous-system 20
+HQ(config-router-af)# af-interface Ethernet0/2                       
+HQ(config-router-af-interface)# authentication key-chain EIGRP_LIFETIME_KEYS
+HQ(config-router-af-interface)# authentication mode md5
+</b>
+
+<h4>Enable SHA-256 Authentication for EIGRP </h4>
+
+Configure HMAC-SHA-256 EIGRP authentication for IPv4 and IPv6 
+<b>
+DIST(config)# router eigrp CISCO
+DIST(config-router)# address-family ipv4 autonomous-system 10
+DIST(config-router-af)# af-interface Serial0/0
+DIST(config-router-af-interface)# authentication mode hmac-sha-256 SECRET_KEY
+DIST(config-router-af-interface)# af-interface Serial0/1                          
+DIST(config-router-af-interface)# authentication mode hmac-sha-256 SECRET_KEY
+DIST(config-router-af-interface)# address-family ipv6 autonomous-system 20                  
+DIST(config-router-af)# af-interface Serial0/1                          
+DIST(config-router-af-interface)# authentication mode hmac-sha-256 SECRET_KEY
+DIST(config-router-af-interface)# af-interface Serial0/0                          
+DIST(config-router-af-interface)# authentication mode hmac-sha-256 SECRET_KEY
+
+</b>
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo
+<h3></h3> subtema modulo
+<h4></h4> subtema subtema
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<th>x</th>
+<th>x</th>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+
+<br>
+-->
+
+
+
+
+
+
+
+
+.

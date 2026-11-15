@@ -1,0 +1,255 @@
+<h1>Routing manipulation Trouble shooting Redistribution</h1>
+
+When route redistribution is misconfigured, it can lead to issues such as routing loops and suboptimal routing. Suboptimal routing can lead to users experiencing slow connectivity, and routing loops can lead to no connectivity. This section explains how you can recognize these issues and the options you have to fix them.
+
+In this section, you will be able to:
+
+Troubleshoot redistribution issues
+
+Explore redistribution issues related to specific routing protocols
+
+Explore specific issues relating to route feedback, invalid routing tables, routing loops, and summarization
+
+Explain the steps when troubleshooting basic redistribution
+
+Explain the steps when troubleshooting suboptimal routing caused by redistribution
+
+<h3>Troubleshoot Redistribution Issues</h3>
+
+ According to the network specifications, R2 should be redistributing OSPF into EIGRP for IPv4 and IPv6. R1 is not receiving IPv4 or IPv6 external routes.
+
+<b>show running-config | section eigrp</b>
+
+The most common issue you will run into when redistributing into EIGRP for IPv4 and IPv6 is related to the metric. Remember that the seed metric by default is set to infinity (unreachable). Therefore, if you fail to manually set the metric, routes will not be advertised to the other routers in the EIGRP autonomous system.
+
+The missing metric configuration is the root cause of the issue.
+
+With the root cause determined, fix the problem,
+
+
+<b>
+R2(config)# router eigrp CISCO
+R2(config-router)# address-family ipv4 unicast autonomous-system 100
+R2(config-router-af)# topology base
+R2(config-router-af-topology)# redistribute ospf 10 metric 10000 100 255 1 1500         
+R2(config-router-af-topology)# exit
+R2(config-router-af)# exit
+R2(config-router)# address-family ipv6 unicast autonomous-system 100
+R2(config-router-af)# topology base
+R2(config-router-af-topology)# redistribute ospf 10 metric 10000 100 255 1 1500
+
+R1# show ip route eigrp 
+R1# show ipv6 route eigrp 
+</b>
+
+By default, with OSPFv2, the networks that are associated with the local interfaces that are participating in the routing process that is being redistributed will be redistributed as well. However, with OSPFv3, they will not. Therefore, if you want to include the networks that are associated with the interfaces participating in the routing protocol that is being redistributed on the ASBR, you need to use the <b>include-connected</b> keyword.
+
+<b>
+R2(config)# router eigrp CISCO
+R2(config-router)# address-family ipv6 unicast autonomous-system 100
+R2(config-router-af)# topology base
+R2(config-router-af-topology)# redistribute ospf 10 include-connected metric 10000 100 255 1 1500
+</b>
+
+The default parameters for the eigrp stub command are to advertise connected and summary routes only. This is the root cause of the issue since the default routes are neither “connected” or “summary,” but rather they are redistributed static routes.
+
+<b>
+R5(config)# router eigrp CISCO
+R5(config-router)# address-family ipv4 unicast autonomous-system 200
+R5(config-router-af)# eigrp stub connected redistributed 
+R5(config-router-af)# exit
+R5(config-router)# address-family ipv6 unicast autonomous-system 200
+R5(config-router-af)# eigrp stub connected redistributed      
+</b>
+
+
+Recall that when applying a route map to the redistribute command, a permit statement indicates that what is matched will be redistributed. A deny statement indicates that what is matched will not be redistributed.
+If a route does not match any of the match statements in any of the statements, it will fall into the implicit deny sequence at the end of the route map and not be redistributed.
+<b>
+R4(config)# route-map EIGRP_ROUTES permit 20
+</b>
+
+Adding a blank permit statement at the end of the route map allows R4 to redistribute prefixes not matched by line 10. This is the functional equivalent to a “permit any” statement in an access list.
+
+To stop the traceroute command, use the CTRL+SHIFT+6 combination.
+
+Redistribution is enabled for EIGRP AS 100 routes. The default seed metric is 20 with OSPF; therefore, providing a metric is not mandatory. The subnets keyword is missing, though. The subnets keyword is an extremely important option. Without the subnets keyword, only classful networks will be redistributed (for example, a Class A address with a /8 mask, a Class B address with a /16 mask, and a Class C address with a /24 mask).
+
+With the subnets keyword, all classless and classful networks will be redistributed. Therefore, if you have any subnets that you want to redistribute, the subnets keyword is mandatory. 
+
+<b>
+R2(config)# router ospf 10
+R2(config-router)# redistribute eigrp 100 subnets 
+</b>
+
+<h3>Troubleshooting Redistribution</h3>
+
+Misconfigured route redistribution can lead to lost connectivity, suboptimal routing, and even routing loops. The proper behavior of your network can be verified using the traceroute command.
+
+When routers are not redistributing external routes as expected, you should first check if the <b>redistribute</b> command is referencing the correct routing process with the accompanying process number and, furthermore, that routes are not filtered by any misconfigured<b> distribute-list or route-map</b>. Routers can be checked for errors using the show <b>access-list</b> and show <b>route-map</b> commands.
+
+Routes that are redistributed from the injecting protocol must be updated with a metric that is understood by the receiving protocol. Sometimes, this seed metric is not globally predefined. Redistribution will not take place until this metric is in any way set. The default metric can be checked with the show ip protocols command.
+
+When configuring the route redistribution, you should be aware that only routes that actively exist within the routing table will be redistributed. For example, if a router is being configured to redistribute Open Shortest Path First (OSPF) into EIGRP, only these OSPF routes that are actively in the routing table of the redistributing router will be redistributed into Enhanced Interior Gateway Routing Protocol (EIGRP)
+
+This behavior is the same for all dynamic routing protocols. You can check the content of the routing table by using the show ip route command.
+
+
+no IGP can guarantee a loop-free topology and optimal routing. Loops usually occur when routes that originated in a routing domain are reinjected back into this domain.
+
+
+There are two major rules that redistribution policy design should follow:
+
+<ul>
+  <li>The router should always prefer internal prefix information over any external information.</li>
+  <li>Never redistribute a prefix that is injected from domain A into B and back to domain A.</li>
+  <li></li>
+</ul>
+
+
+Distribution lists, route maps, route tags, and the distance command can be used to implement these rules.
+Tagging routes provides a robust mechanism to both identify and filter these routes further along in the routing domain. A route retains its tag as it passes from router to router. Route tags are applied using route maps.
+
+<b>
+Router(config)# router eigrp 100 
+Router(config-router)# redistribute ospf 1 route-map OSPF2EIGRP
+Router(config-router)# default-metric 1500 100 255 1 1500
+Router(config)# route-map OSPF2EIGRP deny 5 
+Router(config-route-map)# match tag 33 
+Router(config)# route-map OSPF2EIGRP permit 15 
+Router(config-route-map)# set tag 44
+</b>
+
+Routes being redistributed into EIGRP are tagged with a value of 44. The tag value of 33 is used to ensure that an EIGRP route that was redistributed into OSPF is not redistributed back into its originating EIGRP routing domain. The deny statement in line 5 prevents route feedback from occurring.
+
+Protocol-specific considerations follow:
+
+Static and Connected
+
+. Administrative distance based on the redistribute or network
+commands.
+
+EIGRP
+
+. The seed metric is not set by default.
+. External routes auto-summarization.
+. Stub areas have redistribution disabled by default.
+
+OSPF
+
+. Classful and classless route redistribution
+. Redistributing static default route
+. Stub areas by default do not redistribute.
+. Type 4 summary LSA
+
+
+EIGRP: 
+EIGRP does not automatically have a default metric for any learned routes. If the default metric or a manual metric is not specified, EIGRP will assume a metric of infinity and will not advertise the redistributed routes.
+
+EIGRP will not auto summarize external routes unless a connected or internal EIGRP route exists in the routing table from the same major network of the external routes.
+
+If the EIGRP stub router needs to redistribute routes, it must be explicitly configured to do so using the <b>eigrp stub redistributed</b> command.
+
+OSPF:
+With OSPF, the keyword "subnets" should always be used when redistributing classless networks into OSPF. When redistributing routes into OSPF, only routes that are not subnetted are redistributed if the subnets keyword is not specified.The situation could also arise when connected or static routes are being redistributed into or out of OSPF. In this case, the same rule applies: The subnets keyword must be entered to redistribute subnetted routes.
+
+
+The redistribute static subnets command is used to redistribute static routes in OSPF. However, the static default route <b>ip route 0.0.0.0 0.0.0.0</b> is not injected into the OSPF topology database. If you want to redistribute a default static route in OSPF, the <b>default-information originate</b> command should be used instead.
+
+OSPF stub areas do not redistribute external routes.
+
+One of the functions of a Type 4 summary Link-State Advertisement (LSA) is to announce the reachability of an ASBR to the other areas. This Type 4 LSA is not required if the ASBR exists in the same area. The ASBR does not generate the Type 4 summary LSA if it is not connected to Area 0. To generate a summary LSA of Type 3 or Type 4, a router must have a connection into Area 0. As a result, the external routes will not be installed in the network.
+
+BGP:
+
+
+When redistributing static and connected routes into BGP, it is more important than ever to carefully filter announcements toward external Autonomous Systems (ASs). If you do not, your transit ISPs, peers, and customers will receive all your internal routes. These routes are of no interest to them, and unnecessary routes use up resources.
+
+
+When BGP is redistributed into an Interior Gateway Protocol (IGP), only EBGP learned routes are redistributed. The Internal Border Gateway Protocol (IBGP) learned routes that are known on the router are not introduced into the IGP to prevent routing loops from being formed. By default, IBGP redistribution into IGP is disabled. Issue the <b>bgp redistribute-internal</b> command to enable redistribution of IBGP routes into IGP. Precautions need to be taken to redistribute specific routes using route maps into IGP.
+
+Router# <b>show ip route [[ip-address [mask] [longer-prefixes ]</b>
+
+. Display routing table information. To check all relevant information (routing source, route type, metric, and tag) about each route that is installed in the routing table, use the <b>show ip route</b> command.
+
+To check the relevant configuration of routing protocols, placement of distribution lists, and route maps, use the <b>show running-config | section router</b> command.
+
+<b>Router# show route-map [map-name ]</b>
+
+. Display route map configuration.  Details and statistics for route maps and distribution lists can be checked with the <b>show route-map </b>and <b>show access-list</b> commands.
+
+<b>Router# show access-list [ [ACL-number] | [ACL-name ] ]</b>
+
+. Display access list configuration.
+
+<b>Router# show ip protocols</b>  
+
+. Display the status of routing protocols. The <b>show ip protocols</b> command displays relevant information about the statuses of routing protocols, redistribution, the default metric, and in the case of OSPF if subnets are included in the redistribution.
+
+
+<h4>Troubleshoot Issues with Redistribution: Route Feedback</h4>
+
+Redistribution between different routing protocols causes a loss of path information preventing routers from having a complete view of the topology between the source and destination networks. This can cause route feedback, which is a redistributed route that is redistributed back into the original routing domain at a different point in the network topology.
+
+
+Changing AD only for routes that are received from specific neighbor and matched by referenced ACL.
+<b>
+R5 (config) # access-list 10 permit 10.1.1.0 0.0.0.255
+R5 (config) # router cigrp 100
+R5 (config-router) # distance 130 10.45.1.4 0.0.0.0 10
+</b>
+
+the <b>distance 130 10.45.1.4 0.0.0.0 10</b> command sets the administrative distance to 130 for the routes that are learned via neighbor R4 (10.45.1.4) and matched by the access-list number 10. The only route that is matched is for the 10.1.1.0/24 prefix. The neighbor is specified with the IP address from where routes are received and a corresponding wildcard mask. 
+
+<h4>Issues with Redistribution: Invalid Routing Tables</h4>
+
+Route feedback from a secondary routing domain can lead to an invalid routing table in a primary routing domain. It is possible for the route feedback to preempt the originating network advertisement so that topology changes are not accurately reflected resulting in an invalid routing table.
+
+To prevent this type of route feedback, use distribute lists with prefix filtering (ACL or prefix list), or route maps with route tagging to ensure that routes are not advertised back into the routing domain from which they originally came. For example, if the 10.1.1.0/24 was tagged as it was redistributed into Domain B, R3 and R5 could drop any OSPF routes that they receive with that tag.
+
+<h4>Issues with Redistribution: Routing Loops</h4>
+
+
+Routing loops are a common problem with redistribution. Due to the loss of path information, a downstream router inadvertently forwards traffic toward an upstream router therefore creating a loop.Increasing the seed metric for redistributed routes makes the primary routing protocol that is preferred over the secondary protocol.
+
+The seed metric provides a reference value to accommodate for a portion of the topology that was lost due to route redistribution. Elevating the seed metric makes a path less preferred when compared to an identical route with a lower metric.
+
+<h4>Issues with Redistribution: Route Summarization</h4>
+
+Redistributing a summary ensures that the primary domain continues to use the more specific route.
+
+Another possible solution to prevent routing loops or suboptimal routing is to use route summarization. Connectivity is still maintained in the secondary routing domain through a less-specific prefix. When the summarized prefix redistributes into the original routing domain, routers will still use the more-specific routes for forwarding traffic.
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+
+<br>
+-->

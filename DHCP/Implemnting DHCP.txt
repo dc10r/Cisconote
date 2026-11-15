@@ -1,0 +1,1127 @@
+<h1>Infrastructure Security and Services</h1>
+
+
+Dynamic Host Configuration Protocol (DHCP) is a network protocol that enables network administrator to manage and automate IP configuration assignment. Without DHCP, administrators must manually assign and configure IP address, subnet masks, default gateways, and so on, which can, in larger environments, become an excessive administrative problem, especially if devices are moved from one internal network to another. In an enterprise environment, a DHCP server is usually a dedicated device, whereas in smaller deployments or some branch offices, it can be configured on a Cisco switch or router.
+
+
+IPv6 defines both a stateful and stateless address autoconfiguration mechanism. The stateless mechanism allows a host to generate its own addresses using a combination of locally available information and devices that are attached by routers.
+
+
+When using IPv6, there are two types of DHCPv6: stateless and stateful. Stateful DHCPv6 is similar to DHCPv4. Stateless DHCPv6 is used to supply additional parameters to clients that already have an IPv6 address. In addition to DHCPv6, IPv6 also has stateless autoconfiguration, a mechanism where a client does not acquire an IPv6 address from a DHCP server, but from a next-hop Layer 3 device instead.
+
+
+Clients in access VLANs need DHCP service.
+
+DHCP service can be provided by:
+
+External servers
+
+Cisco IOS devices
+
+DHCP provides configuration parameters to end hosts. It consists of two components: a protocol for delivering host-specific configuration parameters from a DHCP server to a host, and a mechanism for allocating network addresses to hosts.
+
+It is built on the client/server model where designated DHCP servers allocate network addresses and deliver IP configuration parameters to dynamically configured hosts. By default, Cisco multilayer switches and routers that are running Cisco IOS Software include DHCP server and relay agent software.
+
+Distribution multilayer switches often act as Layer 3 gateways for clients that are connecting to the various VLANs of access switches. Therefore, the DHCP service can be provided directly by the distribution switches. Alternatively, DHCP services can be concentrated in an external, dedicated DHCP server. In that case, distribution switches must redirect the incoming client DHCP requests to the external DHCP server. In a small branch office scenario, a Cisco router can be configured to offer DHCP services to local clients.
+
+
+<h4>Configuring a DHCP Server</h4> 
+
+In the example, a DHCP server is configured on a Cisco IOS router. Branch LAN users need to receive an IP address from the specified address pool along with a default gateway, domain name, and IP address of a DNS server. The IP address assignment should be valid for 12 hours.
+
+
+A configuration scenario follows:
+
+Configure a DHCP server on a Cisco IOS router.
+
+Assign IP addresses from the address pool 10.1.50.0/24 with a lease time of 12 hours.
+
+Do not assign IP addresses from 10.1.50.1 to 10.1.50.50.
+
+Additional parameters are the default gateway, domain name, and DNS server.
+
+
+
+
+A Cisco IOS DHCP server configuration follows:
+
+Enter the DHCP pool configuration mode.
+
+Assign the DHCP parameters to the DHCP pool.
+
+Exclude the IP addresses from the DHCP assignment.
+
+<b>
+Branch(config)# ip dhcp excluded-address 10.1.50.1 10.1.50.50
+Branch(config)# ip dhcp pool Guests
+Branch(dhcp-config)# network 10.1.50.0 /24
+Branch(dhcp-config)# default-router 10.1.50.1
+Branch(dhcp-config)# dns-server 10.1.50.1
+Branch(dhcp-config)# domain-name example.com
+Branch(dhcp-config)# lease 0 12
+Branch(dhcp-config)# exit
+</b>
+
+<table border="1">
+<tr>
+<td>Command</td>
+<td>Description</td>
+</tr>
+<tr>
+<td>ip dhcp pool name</td>
+<td>Defines the pool name and enters the DHCP configuration mode.</td>
+</tr>
+<tr>
+<td>network network-number [mask | prefix-length]</td>
+<td>Defines addresses in the DHCP pool. Optionally, define a subnet mask or prefix length to define the network part.</td>
+</tr>
+<tr>
+<td>default-router address</td>
+<td>Specifies the IP address of the default router for a DHCP client.</td>
+</tr>
+<tr>
+<td>domain-name domain</td>
+<td>Specifies the domain name for the DHCP client.</td>
+</tr>
+<tr>
+<td>lease {days [hours] [minutes] | infinite}</td>
+<td>Specifies the duration of the lease. The default is a one-day lease.</td>
+</tr>
+<tr>
+<td>ip dhcp excluded-address ip-address [last-ip-address]</td>
+<td>Specifies a single, excluded IP address or range of addresses that a DHCP server should not assign to DHCP clients. It is used in global configuration mode.</td>
+</tr>
+
+</table>
+
+
+<h2>DHCP Relay</h2>
+
+Because DHCP clients do not have information about the network to which they are attached, they use UDP broadcasts to send their initial DHCP discover message. Routers do not normally forward UDP broadcasts because they are configured to not forward broadcast traffic. 
+
+A primary goal of router configuration is to control unnecessary proliferation of broadcast packets. It means that a DHCP client may be unable to obtain its IP address or other configuration parameters from a DHCP server if the DHCP server is on a different subnet from the DHCP client.
+
+It is common, and often desirable, for DHCP servers and clients to reside on different subnets. Instead of using a different DHCP server for each subnet, you might want to use a centralized DHCP solution. A centralized DHCP server enables you to manage IP address assignment in one place for an entire organization. This solution is less time-consuming, and it reduces the chance of human error.
+
+To enable the DHCP relay agent on a Cisco device, use the ip helper-address command to configure a helper address on the router interface that is connected to the client. The helper address should specify the IP address of the DHCP server, as the figure shows.
+
+<b>
+interface fa0/0
+ip helper-address 172.23.4.2
+</b>
+
+In this configuration, several elements are involved:
+
+The router must have an IP address on an interface that will receive the client DHCP request.
+
+The <b>ip helper-address</b> command must be configured on the router interface.
+
+When the router receives a DHCP request in the form of a broadcast message from a client, the router forwards this request, as a unicast message, to the IP address that is specified in the ip helper-address command. With this feature, the router relays the dialog between the DHCP client and the DHCP server.
+
+<h3> DHCP Manual Address Binding</h3>
+Not all clients and applications can operate with an IP address that might change over time because of the dynamic nature of DHCP address assignments. If a device requires an IP address that will always be assigned to it, you can configure a manual address binding on the DHCP server.
+
+
+Define a manual binding just as you would a regular DHCP pool. The difference is that the manual binding “pool” consists of one IP address that you configure with the host <b>ip-address subnet-mask</b> command. When a client requests an address, it can be identified by its client identifier (DHCP requests) or its hardware MAC address (BOOTP requests), configured with the <b>client-identifier</b> or <b>hardware-address</b> commands, respectively.
+
+Sometimes it can be difficult to know how to enter the appropriate client information in a manual binding. For example, you should use the client-identifier command for clients that request an address through DHCP. The client identifier is a string of hex digits arranged in groups of four, separated by dots. Typical identifier strings resemble this: 010c.8bfd.752e.c4. Notice how the identifier appears to be a MAC address, but ends with an extra pair of hex digits, “c4.”
+
+Client identifiers commonly consist of the digits 01 followed by the client’s MAC address. The 01 prefix, indicating that the client uses Ethernet, causes the dotted hex notation to appear shifted from the familiar form. Sometimes, the client might send a different identifier string in its DHCP requests. If you find that the client does not pick up the address you are expecting (or none at all), you can use the <b>debug ip dhcp server</b> command to display detailed information about the client’s request.
+
+A Cisco IOS DHCP manual address binding configuration follows:
+
+Enter the DHCP pool configuration mode.
+
+Define a single host address and mask.
+
+Identify the client ID of the device that will receive the reserved IP address.
+
+<b>
+Router(config)# ip dhcp pool PC2Pool
+Router(dhcp-config)# host 10.10.2.41 255.255.255.0
+Router(dhcp-config)# client-identifier 0100.50b6.5bc0.b5
+</b>
+In the example, a manual address binding is configured for the client 0100.50b6.5bc0.b5, so that it always receives IP address 10.10.2.41.
+
+
+For a device to obtain a DHCP IP address it must be configured as a DHCP client. In the example, interface Ethernet 0/0 on PC2 is configured as a DHCP client. Also, a simpler manually configured client ID of PC2ID is assigned. This new ID could now be used when configuring a static binding.
+
+A DHCP client is manually configured with an ID:
+<b>
+PC2(config)# interface Ethernet 0/0
+PC2(config-if)# ip address dhcp
+PC2(config-if)# ip dhcp client client-id ascii PC2ID
+</b>
+
+<h3>Describe DHCP Options</h3>
+
+Advanced configuration parameters and other control information are carried in tagged data items, also known as DHCP options.
+
+Options enable you to extend the basic DHCP configuration command or to add new ones.
+
+Some commonly used options and use examples are:
+
+Option 43: Used to tell a lightweight AP where the WLC is.
+
+Option 69: Used to tell the client which SMTP server to use.
+
+Option 70: Used to tell the client which POP3 server to use.
+
+Option 150: Used to tell an IP phone which TFTP server to download its configuration from.
+
+<b>
+Switch(config)# ip dhcp pool TELEPHONES
+Switch(dhcp-config)# option 150 10.10.1.1
+</b>
+Example of option 150 configuration.
+
+You can use DHCP options to "expand" the basic DHCP commands. For example, the lease command is one of the basic commands that is used to set the duration of lease validity. With DHCP options, you can modify the behavior of leasing out IP addresses. For example, you can change the lease renewal time using the <b>dhcp-renewal-time</b> option.
+
+Using options, you can also provide clients with additional information that cannot be passed down to the clients through basic configuration.
+
+Some common examples include the following:
+
+Option 43: Vendor-encapsulated options, which enable vendors to have their own list of options on the server. For example, you can use it to tell a lightweight AP where the WLC is.
+
+Option 69: SMTP server, if you want to specify available SMTP servers to the client.
+
+Option 70: POP3 server, if you want to specify available POP3 servers to the client.
+
+Option 150: TFTP server, which enables your phones to access a list of TFTP servers.
+
+
+<h3> Cisco Plug-n-Play and DHCP</h3>
+
+Cisco Plug and Play (PnP) helps automate the onboarding of new devices on a network by applying configuration settings without manual intervention. The solution provides a unified approach to provision enterprise networks comprised of Cisco routers, switches, and wireless devices with a near zero touch deployment experience.
+
+It reduces the burden on enterprises by simplifying the process of deploying new devices. An installer at the site can deploy a new device without any CLI knowledge, while a network administrator centrally manages device configuration.
+
+PnP is a software application running on a Cisco IOS or IOS-XE device. When a device is powered on for the first time, the PnP agent discovery process, which is embedded in the device, wakes up in the absence of the startup configuration file and attempts to discover the address of the PnP server. The PnP agent uses methods like DHCP, Domain Name System (DNS), and others to acquire the desired IP address of the PnP server. The PnP server can be hosted on APIC-EM or in Cisco DNA Center.
+
+The diagram shows the DHCP discovery process for PnP on Cisco DNA Center:
+
+Device with no startup configuration in the NVRAM triggers the PnP agent to initiate a DHCP discovery process which acquires the IP configuration from the DHCP server required for the device.
+
+The DHCP server can be configured to insert additional information using vendor-specific option 43 upon receiving option 60 from the device with the string “ciscopnp,” to pass on the IP address or hostname of the PnP server to the requesting device.
+
+When the DHCP response is received by the device, the PnP agent extracts the option 43 from the response to get the IP address or the hostname of the PnP server. The PnP agent then uses this IP address or hostname to communicate with the PnP server. The PnP protocol, that allows the agent and the server to communicate, can use either HTTP or HTTPS (SSL).
+
+Once the device has established a connection to DNA Center, it can then download its full configuration and, optionally, an IOS image.
+
+<h3>IPv6 Stateless Address Autoconfiguration Overview</h3>
+
+IPv6 stateless address autoconfiguration (SLAAC) allows serverless basic configuration of nodes. It requires no manual configuration of hosts, minimal (if any) configuration of routers, and no additional servers. The stateless mechanism allows a host to generate its own addresses using a combination of locally available information, and information that is advertised by routers.
+
+Provides plug and play for network devices.
+
+Host creates a global unicast IPv6 address by combining:
+
+The Extended Unique Identifier (EUI)-64 address of its interface (based on MAC) or random ID
+
+A link prefix that is obtained via router advertisement
+
+SLAAC, uses the information in the router advertisement messages to configure the node. The prefix included in the router advertisement is used as the /64 prefix for the node address. The other 64 bits are obtained by the dynamically created interface identifier, which, in the case of Ethernet, is the modified EUI-64 format. The MAC address is split into two equal parts and "FFFE" is inserted between them to create the EUI-64.
+
+In addition, the seventh bit from the left is flipped (that is, if the bit is 1, then it is turned into 0, and vice versa).
+
+Router advertisements are sent periodically. Instead of waiting for the next router advertisement to get the information to configure its interfaces, a node sends a router solicitation message asking the routers on the network to reply immediately with a router advertisement so that the node can immediately autoconfigure. All the routers respond with a normal router advertisement message with the all-nodes multicast address as the destination address.
+
+On network initialization, a node can obtain the following:
+
+IPv6 prefix(es)
+
+Default router address(es)
+
+Hop limit
+
+MTU
+
+Validity lifetime
+
+The DNS server address will be provided per RFC 6106, but it is not yet widely implemented. To configure a Cisco router to include a list of DNS servers in its Router Advertisement, use the interface command: <b>ipv6 nd ra dns server ipv6-address dns-lifetime</b>. It is important that both the router sending the RA message and the devices using the RA for SLAAC support RFC 6106.
+
+To cover all bases, some implementations send the DNS server address in the RA and also use stateless DHCPv6 to advertise the same DNS address. This provides a transition for operating systems that do not yet support RFC 6106.
+
+The full stateless autoconfiguration procedure is as follows:
+
+The client generates a link-local address.
+
+The client does a Duplicate Address Detection (DAD) on the generated link-local address.
+
+The client joins the all host-multicast group (FF02::01) and sends a router solicitation.
+
+The router sends a router advertisement (RA). This message includes the prefix and prefix length of the link. Also, by default, the A config flag is set to 1, while the O and M config flags are set to 0. The A config flag set to 1 is a suggestion to the receiving devices to use the prefix in the RA message to generate a global unicast address (SLAAC).Because the O and M flags are set to 0, the suggestion to the receiving device is that no other information is available from a DHCPv6 server. When the O and M flags are set to 0, there is no need for the receiving device to use the services of DHCPv6. This means that all the necessary addressing and link information must be contained in the RA message or manually configured on the device itself. As mentioned earlier, the RA message may also contain an option for DNS recursive server addresses used for the DNS name resolution in IPv6 hosts. In the diagram, the RA includes the prefix 2001:db8:cafe:1::/64. 
+
+
+The client creates a global address. IPv6 addresses are usually based on the NIC MAC address. The client creates a global IPv6 address within each advertised /64 IPv6 prefix. There are provisions to prevent multiple hosts on a LAN from configuring the same address.
+
+The client does a DAD on the generated IPv6 address.
+
+The client sets a default router by using the source IPv6 address of the RA This is typically the link-local address of the router.
+
+<h3>DHCPv6 Overview</h3>
+
+DHCPv6 is an updated version of the DHCP protocol for use with IPv6. It supports the addressing model of IPv6.
+
+Supports IPv6 addressing
+
+Allows more control than stateless autoconfiguration
+
+Can be used for automatic domain name registration of hosts using DDNS
+
+DHCP operates the same as in IPv4, with these exceptions:
+The client first detects the presence of routers on the link.
+
+If found, the client examines router advertisements to determine if DHCP can be used.
+
+If no router is found or if DHCP can be used, the client sends a DHCP SOLICIT message.
+
+DHCPv6 is a separate protocol from DHCP. DHCPv6 can only be used to obtain IPv6 addresses, and DHCP can only be used to obtain IPv4 addresses. It is possible to run DHCP and DHCPv6 in parallel.
+
+DHCPv6 gives you more control than stateless autoconfiguration, but you can also use the two methods concurrently.
+
+You can use DHCPv6 for automatic domain registration of hosts using DDNS.
+
+Acquiring data for a client in DHCPv6 is like the process in IPv4 but with a few exceptions. The client can sometimes detect the presence of routers on the link using neighbor discovery messages. If at least one router is found, the client examines the router advertisements to determine if DHCP should be used. If the router advertisements allow the use of DHCP on that link or if no router is found, the client starts a DHCP solicit phase to find a DHCP server.
+
+When the client sends a SOLICIT message, it sends the message to the all-DHCP-agents multicast address with link-local scope. Agents include both servers and relays.
+
+Some servers can be configured to give global addresses using policies (for example, "Do not give to printer").
+
+DHCPv6 is described in RFC 8415.
+
+<h3>DHCPv6 Operation</h3>
+
+
+The operation of DHCPv6 is similar to that of DHCP for IPv4, but DHCPv6 is a completely different protocol.
+
+<ul>
+  <li>Solicit</li>
+  <li>Advertise</li>
+  <li>Request</li>
+  <li>Reply</li>
+  <li></li>
+</ul>
+
+Four-way negotiation, similar to DHCPv4
+
+The client sends a multicast SOLICIT.
+
+The server responds with a unicast ADVERTISE message.
+
+The client chooses an IPv6 address using the REQUEST message.
+
+The server finalizes the exchange with a REPLY message.
+
+DHCPv6 also has a two-way version of negotiation:
+
+Only SOLICIT and REPLY are used.
+
+Both client and server need to be configured for "rapid-commit."
+
+Before the DHCPv6 process can begin, recall that the client sends a Router Solicitation message requesting a Router Advertisement message. The router sends the requested Router Advertisement message with the M flag (Managed Address Configuration flag) set to 1. This suggests to hosts that they use stateful DHCPv6 for addressing and other configuration information. The A flag (Address Autoconfiguration flag) is set to 0, informing hosts that SLAAC is not needed. Upon receiving the RA, the client uses the source IPv6 address of the RA as its default gateway address. Because the A flag is set to 0, the client does not perform SLAAC.
+
+
+The DHCPv6 negotiation process then occurs as follows:
+
+The client sends a SOLICIT message to find a DHCPv6 server. This message is a multicast, not a broadcast as in DHCPv4. A DHCPv6 client builds a list of potential servers by sending a SOLICIT message and collecting ADVERTISE message replies from servers. These messages are ranked based on preference value, and servers may add a preference option to their ADVERTISE messages explicitly stating their preference value. If the client needs to acquire prefixes from servers, only servers that have advertised prefixes are considered.
+
+DHCPv6 servers will respond with an ADVERTISE message. The DHCPv6 server can provide those configuration parameters that do not require the server to maintain any dynamic state for individual clients, such as DNS server addresses and domain search list options.
+
+The client chooses one of the servers and sends a REQUEST message to it, asking to confirm the addresses and other parameters that were advertised in the previous step. All the configuration parameters for clients are independently configured into DHCPv6 configuration pools, which are stored in NVRAM.
+
+The final message is a REPLY, where the server finalizes the process. The server’s reply contains the confirmed addresses, delegated prefixes, and configuration.
+
+Like with DHCPv4, a DHCPv6 client renews its lease after a period by sending a RENEW message.
+
+In addition to the four-way exchange, DHCPv6 can also use a shortened negotiation: a two-way exchange. The DHCPv6 client can obtain configuration parameters from a server either through a rapid two-message exchange (SOLICIT and REPLY) or through a normal four-message exchange (SOLICIT, ADVERTISE, REQUEST, and REPLY). 
+
+By default, the four-message exchange is used. When the rapid-commit option is enabled by both client and server, the two-message exchange is used.
+
+In some environments, such as those in which high mobility occurs and the network attachment point changes frequently, it is beneficial to rapidly configure clients. In these environments, it is possible to more quickly configure clients because the protections offered by the normal (and longer) four-message exchange may not be needed. The four-message exchange allows for redundancy (multiple DHCP servers) without wasting addresses, as addresses are only provisionally assigned to a client until the client chooses and requests one of the provisionally assigned addresses. 
+
+The two-message exchange may therefore be used when only one server is present or when addresses are plentiful and having multiple servers commit addresses for a client is not a problem.
+
+Rapid-commit for DHCPv6 is also defined in RFC 8415.
+
+A binding table entry is automatically created whenever a prefix is delegated to a client from the configuration pool. The binding table entry is updated when the client renews, rebinds, or confirms the prefix delegation. It is deleted when the client releases all the prefixes in the binding voluntarily, the valid lifetimes of all prefixes have expired, or administrators enable the clear ipv6 dhcp binding command.
+
+<h3>Stateless DHCPv6 Overview</h3>
+
+
+DHCPv6 can run in stateless mode. This mode is also known as DHCPv6 Lite.
+
+Also known as DHCPv6 Lite.
+
+Does not provide IPv6 address assignment
+
+Nodes need to acquire addresses through other means.
+
+
+Used to provide additional information, such as the following, to clients that already have an IPv6 address:
+
+NTP server
+
+Domain name
+
+DNS server
+
+In stateless mode, DHCPv6 does not assign addresses to clients. It only provides configuration information, such as NTP servers, domain names, DNS servers, and so on. If stateless DHCPv6 is used, clients must obtain routable IPv6 addresses through some other means, such as SLAAC or stateful DHCPv6.
+
+As was the case for SLAAC, the client sends a Router Solicitation message unless a Router Advertisement message has already been received. The RA message is sent with the default A flag (Address Autoconfiguration flag) set to 1, suggesting to the receiving host that it use SLAAC. The O flag (Other Configuration flag) is configured to 1, suggesting that other configuration information is available from a stateless DHCPv6 server. The M flag (Managed Address Configuration flag) remains at its default of 0, indicating that the services of a stateful DHCPv6 server are not needed. 
+
+Upon receiving the RA, the client uses the source IPv6 address of the RA as its default gateway address. Since the A flag is set to 1, it creates one or more global unicast addresses based on the prefix it received in the RA. The client then performs DAD to ensure that any global unicast addresses created using SLAAC are unique. The RA message had a value of 1 in the O flag. This triggers a DHCPv6 4-message process (Solicit from the client, Advertise from the router, Request from client, Reply from router). The Reply message contains the other configuration information required by the client.
+
+<h3>DHCPv6 Relay Agent</h3>
+
+Like DHCP in an IPv4 environment, you can configure a DHCP relay in IPv6.
+
+<b>
+DHCPv6Relay(config)# interface Ethernet 0/0
+DHCPv6Relay(config-if)# ipv6 dhcp relay destination 2001:DB8:11::1
+</b>
+
+
+A DHCPv6 relay agent is used to relay messages between the client and the server. The DHCPv6 relay agent operation is transparent to the client. A DHCPv6 client locates a DHCPv6 server using a reserved, link-scoped multicast address. For direct communication between the DHCPv6 client and the DHCPv6 server, both of them must be attached to the same link. However, in some situations where ease of management, economy, or scalability is a concern, it is desirable to allow a DHCPv6 client to send a message to a DHCPv6 server that is not connected to the same link.
+
+
+To configure a device to act as a DHCP relay, use the ipv6 dhcp relay destination <b>IPv6_next_hop_address source_interface</b> command. If you use a global IPv6 address as the next-hop address, you do not need to specify the source interface. If you use a link-local address as the next-hop IPv6 address, you will need to specify source interface. This requirement is because all link-local addresses start with the same prefix and, unless you specify the source or exit interface, the device will not know where to send DHCP packets.
+
+
+<h3> Obtain IPv6 Addresses Dynamically</h3>
+
+
+<h4>Configure SLAAC</h4>
+In this task, you will configure PC1 to use SLAAC to automatically obtain an IPv6 address.
+
+<b>
+PC1(config)# interface ethernet 0/0
+PC1(config-if)# ipv6 address autoconfig
+PC1(config-if)# no shutdown
+</b>
+
+For clients to receive an IPv6 address through stateless autoconfiguration, the only configuration that is needed on R2 is a configured IPv6 address. Recall from the previous task that R2 is preconfigured with a subinterface for VLAN 10 and an IPv6 address of 2001:DB8:192:10::1/64.
+
+In the discovery, PC1 is simulated using a router. To configure a router interface to acquire an IPv6 address through stateless autoconfiguration, you need to use the ipv6 address autoconfig command.
+
+For example, Windows PCs have the IPv6 stack enabled by default. This allows them to obtain IPv6 addresses automatically. The client will first try to acquire an address through stateless autoconfiguration. If the client cannot get an IPv6 address through stateless autoconfiguration, it will try to get it through DHCPv6.
+
+Verify that PC1 acquired an IPv6 address through stateless autoconfiguration.
+
+
+<b>
+PC1# show ipv6 interface Ethernet 0/0
+</b>
+
+
+Notice that PC1 has two IPv6 addresses. The link-local IPv6 address, the one that starts with "FE80," is self-generated by the client. The global address is the one that starts with "2001." The global address is combined from a subnet prefix and an EUI-64 interface ID. The client received a client subnet prefix from R2 and self-generated the interface ID. You can see that the interface ID is the same for the link-local and global addresses.
+
+Note that the link-local IPv6 addresses may be different in your outputs. A default route is also automatically installed thanks to SLAAC.
+
+The default lifetime is 2592000 seconds (30 days) with a preferred lifetime of 604800 seconds (7 days). After the valid lifetime expires, the address of the node is invalid. Until the preferred lifetime expires, the node will consider the current router as preferred.
+
+PC1 has installed two IPv6 routes into its routing table. The source of these routes is the IPv6 Neighbor Discovery protocol (ND). The first highlighted entry shows that PC1 has installed in its routing table an IPv6 default route, similar to a default gateway, that points to the link-local address of R2’s Ethernet0/0.10 subinterface. The second highlighted entry shows that PC1 has also learned from ND that the global unicast prefix to use is 2001:DB8:192:10::/64.
+
+On PC1, ping R1’s Ethernet 0/0 interface.
+<b>
+PC1# ping 2001:db8:10:12::1
+</b>
+
+
+<h4>Configure Stateful DHCPv6</h4>
+In this task, you will configure stateful DHCPv6 on R1 and use PC2 to test the service. You will also configure R2 as a DHCPv6 relay agent.
+
+On R1, configure a DHCPv6 pool for VLAN 20.
+<b>
+R1(config)# ipv6 dhcp pool DHCPV6POOL20
+R1(config-dhcpv6)# address prefix 2001:DB8:192:20::/64
+R1(config-dhcpv6)# dns-server 2001:db8:172:10::100
+R1(config-dhcpv6)# domain-name cisco.com
+</b>
+
+Like with IPv4, you can configure a DHCP server to allocate IP addresses to devices. The network command from IPv4 gets replaced with the address prefix command.
+
+On R1, associate the DHCPv6 pool for VLAN 20 with interface Ethernet 0/0.
+
+<b>
+R1(config)# interface Ethernet 0/0
+R1(config-if)# ipv6 dhcp server DHCPV6POOL20
+</b>
+
+Unlike with DHCP in an IPv4 environment, with DHCPv6 you need to associate the client-facing interface with the DHCP pool. It does not get done automatically. In this case, R1’s Ethernet 0/0 interface will receive the DHCP messages from VLAN 20 clients that R2 will relay.
+
+Note that the DHCP pool name is case-sensitive.
+
+Also, there is no excluded-addresses command with DHCPv6 on Cisco IOS devices. However, it is important to understand that the DHCPv6 server does not actually give out IP addresses like in DHCPv4. The server in IPv6 only gives out prefixes. For example, if the server gives out a /64 prefix, the other 64 bits get auto-generated randomly by the client. Once the DHCPv6 address is assigned, the host uses Duplicate Address Detection (DAD) to ensure that its address is unique on the link.
+
+DHCPv6 on Cisco IOS does not have manual binding mechanism like DHCPv4 does.
+
+On R2, configure the DHCPv6 Relay function for VLAN 20.
+
+<b>
+R2(config)# interface Ethernet 0/1.20
+R2(config-subif)# ipv6 dhcp relay destination 2001:DB8:10:12::1
+</b>
+
+The DHCPv6 Relay option enables access to DHCPv6 services on another network. Much like the <b>ip helper</b> command used in DHCPv4, the <b>ipv6 dhcp relay destination</b> command forwards DHCPv6 messages from the client-facing interface toward the DHCPv6 server on another network. In this case, the address specified is R1’s Ethernet 0/0 interface.
+
+Configure PC2 to acquire an IPv6 address from the DHCPv6 server for VLAN 20.
+
+<b>
+PC2(config)# interface Ethernet 0/2
+PC2(config-if)# ipv6 address dhcp
+PC2(config-if)# ipv6 enable
+PC2(config-if)# no shutdown
+</b>
+
+
+PC2 is simulated using a router. To configure a router interface for DHCPv6, use the <b>ipv6 address dhcp</b> command.
+
+You need to add the ipv6 enable command to start the process of EUI-64 interface ID generation.
+
+Note that obtained IPv6 addresses may be different in your output since the EUI-64 portion will depend on the MAC address of the interface.
+
+<h4>Configure Stateless DHCPv6</h4>
+
+
+In this task, you will configure stateless DHCPv6 on R2 for clients in VLAN 30.
+
+On PC3, enable SLAAC on interface Ethernet 0/3.
+<b>
+PC3(config)# interface Ethernet 0/3
+PC3(config-if)# ipv6 address autoconfig 
+PC3(config-if)# no shutdown
+</b>
+To use stateless DHCPv6, the PC3 router must be first configured for SLAAC.
+
+Verify that PC3 has acquired an IPv6 address via stateless autoconfiguration.
+
+<b>
+PC3# show ipv6 interface Ethernet 0/3
+</b>
+
+The idea behind stateless autoconfiguration is that you will not need any configuring on a client PC in order for it to acquire an IP address. In this example, PC3 is manually configured to get an IPv6 address via stateless autoconfiguration since it is a router. Note that PC3 can acquire any IPv6 address from the 2001:DB8:192:30::/64 subnet, so the IP address might be different in your output.
+
+However, stateless autoconfiguration is a very basic IP-assignment mechanism in comparison to DHCP. Using DHCP, you can pass down to the clients much more information than you can with stateless autoconfiguration.
+
+You can use stateless autoconfiguration with DHCPv6. In that case, basic addressing is provided via stateless autoconfiguration. Other options are provided via DHCPv6.
+
+
+Configure a stateless DHCPv6 pool on R2 for VLAN 30.
+
+<b>
+R2(config)# ipv6 dhcp pool DHCPV6POOL30
+R2(config-dhcpv6)# dns-server 2001:db8:172:10::100
+R2(config-dhcpv6)# domain-name cisco.com
+</b>
+
+
+The only difference between a stateful DHCPv6 and a stateless DHCPv6 pool is the <b>address prefix</b> command. With stateless DHCPv6, you do not need to enter that command since basic IPv6 addressing gets handled through SLAAC.
+
+In this example, you are interested in passing additional information to PC3, such as the domain name and DNS server address.
+
+On R2, associate the DHCPv6 pool for VLAN 30 with interface Ethernet 0/1.30.
+
+<b>
+R2(config)# interface Ethernet 0/1.30
+R2(config-if)# ipv6 dhcp server DHCPV6POOL30
+R2(config-if)# ipv6 nd other-config-flag
+</b>
+Like with a regular DHCPv6 pool, you need to associate it with an interface. What is different with stateless DHCP is the ipv6 nd other-config-flag command. This command lets clients know that after they get their IPv6 address via stateless autoconfiguration, additional information is waiting for them on the DHCP server.
+
+Verify that PC3 now has received domain name and DNS server information through DHCP.
+If you do not see the desired results, you should first try disabling and then enable interface Ethernet0/3 on PC3.
+<b>
+PC3# show ipv6 dhcp interface Ethernet 0/3
+</b>
+Notice that while the domain name and DNS server information is there, you do not see a global IPv6 address in the output. This result is because PC3 acquired the IPv6 global address via stateless autoconfiguration and not DHCPv6.
+
+On R1 and R2, verify the configured DHCPv6 pools.
+<b>
+R1# show ipv6 dhcp pool
+</b>
+
+There are two DHCPv6 pools that are configured, one on R1 and one on R2. "DHCPV6POOL20" is a stateful DHCPv6 pool that is configured for VLAN 20. "DHCPV6POOL30" is a stateless DHCP pool that is configured for VLAN 30.
+
+The number of active clients for VLAN30 will not go beyond zero because the "active client" counts only leased-out IPv6 addresses. A device to which only domain name or DNS information was passed is not considered a DHCP client.
+
+Notice that there is no information about IPv6 addresses related to stateless autoconfiguration. R2 does not keep track of IP addresses that were assigned through stateless autoconfiguration.
+
+On R1, verify DHCPv6 client bindings.
+
+<b>
+R1# show ipv6 dhcp binding 
+</b>
+
+
+The only DHCPv6 binding is with PC2. Note that the bound IPv6 address can be any address within 2001:DB8:192:20::/64 subnet. The client address is PC2’s link-local address.
+
+
+<h3>Troubleshoot DHCP</h3> 
+
+This topic describes troubleshooting DHCP.
+
+The possible issues to be considered are listed here:
+
+Server misconfiguration (pool, gateway, DNS, excluded addresses)
+
+Duplicate IP addresses (IPv4 only / IPv6 uses DAD)
+
+Redundant DHCP services not working
+
+DHCP pool runs out of addresses
+
+A router not forwarding addresses (relay issue)
+
+The client is not requesting an IP address
+
+When you are troubleshooting a network issue and you suspect it is DHCP-related, consider the following potential issues:
+
+Server Misconfiguration: Confirm that the following is correctly configured: DHCP pools, default gateways, DNS server addresses, and excluded IP addresses.
+
+Duplicate IP addresses: There might be a client in the network that has an IP statically configured, but the DHCP server gives that same IP address to another client. Duplicate IP addresses can cause connectivity issues for devices with same IP address. DHCPv6 uses Duplicate Address Detection to automatically avoid this issue.
+
+Redundant services not working: You can set up redundant DHCP servers for the sake of reliability. These redundant servers need to communicate between each other in order for the DHCP service to function properly. If inter-server communication fails, the servers can end up handing out overlapping IP addresses.
+
+DHCP pool runs out of addresses: A DHCP pool has a finite number of IP addresses. If this pool gets depleted, requests for new IP addresses will be rejected.
+
+A router not forwarding addresses: If your DHCP client is not in the same subnet as the DHCP server, then the intermediary Layer 3 devices need to be configured as a DHCP relay agent. A router does not by default forward broadcast messages, including DHCPDISCOVER broadcast messages.
+
+The client is not requesting an IP address: The client must be configured to acquire an IP address through DHCP. Also, remember that DHCP is a "pull" system. A client will only acquire an IP after it requests it. The server cannot push the IP to the client.
+
+Investigate DHCP bindings.
+<b>
+Router1# show ip dhcp binding
+</b>
+In the first output example, you can see that the IP address of 192.168.10.2 was assigned to the DHCP client with a client-id of
+
+To clear all active DHCP leases, use the <b>clear ip dhcp binding *</b> command.
+
+<b>
+Router1# show ip dhcp conflict
+</b>
+
+Discover duplicate addresses.
+<b>
+Router1# debug ip dhcp server events
+</b>
+View updates to the DHCP database or DHCP negotiation process.
+
+The second output example indicates that there is a duplicate IP address of 172.16.1.32 on the network. Router1 has discovered the IP conflict via ping. You can resolve this conflict by issuing the <b>clear ip dhcp conflict *</b> command.
+
+
+To display information about the DHCP address pools, use the <b>show ip dhcp pool</b> command in user EXEC or privileged EXEC mode. Use the <b>debug ip dhcp server events</b> command to view the DHCP negotiation process.
+
+<h3>Troubleshoot IPv6 Address Assignment on Clients</h3> 
+
+This topic describes the troubleshooting of the IPv6 address assignment on clients. For communicating with other IPv6 devices, the client must have IPv6 enabled and configured.
+
+There are various options for the host to obtain an IPv6 address:
+
+Manual configuration
+
+Configuration on a client: <b>ipv6 address {IPv6-prefix/prefix-length} eui-64</b>
+
+Stateless autoconfiguration (SLAAC)
+
+Configuration on a client: <b>ipv6 address autoconfig</b>
+
+DHCPv6 (Stateful DHCP)
+
+Configuration on a client: <b>ipv6 address dhcp</b>
+
+DHCPv6 Lite (Stateless DHCP)
+
+The client has no obvious DHCPv6 configuration. The command for stateless autoconfiguration or manual configuration has to be used for the client to obtain the IPv6 address.
+
+SLAAC allows a host to generate its own address using a combination of locally available information and information that is advertised by routers. The host creates a global unicast IPv6 address by combining its interface EUI-64 address that is based on MAC address, or random ID and link prefix, that is obtained via router advertisement.
+
+As with the IPv4 address, DHCP can be used to obtain IPv6 address. The DHCPv6 client can obtain configuration parameters from a server either through a rapid two-message exchange (SOLICIT, REPLY) or through a normal four-message exchange (SOLICIT, ADVERTISE, REQUEST, REPLY).
+
+DHCPv6 can also run in the stateless mode. This mode is also known as DHCPv6 Lite. In this mode, DHCPv6 does not assign addresses to clients. It only provides configuration information such as NTP servers, domain names, DNS server, and so on. If stateless DHCPv6 is used, clients must obtain routable IPv6 addresses through some other means, for example, via stateless autoconfiguration.
+<b>
+PC# show ipv6 interface
+</b>
+Verifies that IPv6 is enabled on the interface and configured via stateless autoconfiguration
+
+Using the <b>show ipv6 interface</b> command, you can verify that the IPv6 address is configured on the device. You can also see if it was configured with stateless autoconfiguration. Another way to check if the client has obtained the IPv6 address, is to use the <b>show ipv6 interface brief</b> command.
+<b>
+PC# show ipv6 dhcp interface
+</b>
+
+Verifies that the IPv6 address has been obtained via DHCPv6
+
+If you have a client that is configured to obtain IPv6 address via DHCPv6, you can verify that the client received the IPv6 address using the show ipv6 dhcp interface command. If you are using DHCPv6 Lite, the output is slightly different. There is only the domain name and the DNS server information, but no IPv6 address.
+
+<h3>Troubleshoot DHCPv4 and DHCPv6 Issues</h3>
+
+
+<h4>Troubleshoot DHCP Issues on PC1</h4> 
+
+
+On SRV1, enable DHCP server packet debugging using the <b>debug ip dhcp server packet</b> command. This will provide visibility into the DHCP process.
+
+<b>
+SRV1# debug ip dhcp server packet 
+DHCP server packet debugging is on.
+</b>
+This debug command will remain enabled throughout the lab to help with troubleshooting the DHCP issues.
+
+
+On PC1, configure the Ethernet 0/0 interface as a DHCP client and activate the interface.
+<b>
+PC1(config)# interface Ethernet 0/0
+PC1(config-if)# ip address dhcp
+PC1(config-if)# no shutdown
+</b>
+
+Wait a few moments before proceeding to Step 3. If DHCP were operational for VLAN 10, PC1 would obtain an IP address.
+From PC1, verify connectivity to 203.0.113.1. This address is associated with the loopback 0 interface of R1.
+
+<b>
+PC1# ping 203.0.113.1
+</b>
+The ping will fail. You need to resolve the connectivity issue.
+
+On PC1, verify the Ethernet0/0 interface IP address.
+
+With the include option, you can use the | symbol for a logical OR between two strings. Enter the following command to PC1:
+<b>
+PC1# show ip interface brief | include Interface|0/0
+</b>
+
+The Ethernet 0/0 method to learn an IP address is DHCP, but there is no IP address that is assigned.
+
+On SRV1, verify if any debugging message is appearing at the console.
+
+
+Notice that since turning on debugging on SRV1, no messages have been logged at the console in relation to DHCP server activity. DHCP requests from PC1 are not being received by SRV1.
+On PC1, enable DHCP client debugging using the debug dhcp detail command.
+
+<b>
+PC1# debug dhcp detail 
+PC1# undebug all
+</b>
+You might have to wait a few moments after enabling debugging on PC1 to see this output. PC1 is broadcasting DHCP Discover messages out of interface Ethernet 0/0 but it is not receiving any replies from the DHCP server. In the previous step, you saw that SRV1 was not receiving the DHCP Discover from PC1. DHCP Discover messages are not being routed out of VLAN 10.
+
+Note
+Disable all debugging after obtaining the output above.
+
+On R2, enable DHCP server packet debugging to verify if it is relaying DHCP Discover messages being broadcast in VLAN 10.
+
+<b>
+R2# debug ip dhcp server packet detail 
+R2# undebug all
+</b>
+It might take a few moments for messages to appear. Disable all debugging after obtaining the output above.
+
+R2 is receiving the DHCP Discover messages from PC1 in VLAN 10 and is forwarding them to 172.16.100.1.
+
+On R2, verify the configuration for the Ethernet 0/1.10 subinterface.
+<b>
+R2# show run interface Ethernet0/1.10
+</b>
+
+You can see the root cause of the issue. R2 is forwarding the DHCP Discover messages to the wrong IP address. According to the topology, SRV1’s IP address is 172.16.100.100.
+
+With the root cause determined, fix the problem and verify that PC1 obtains an IP address in the 192.168.10.0/24 network.
+
+<b>
+R2(config)# interface Ethernet 0/1.10
+R2(config-subif)# no ip helper-address 172.16.100.1
+R2(config-subif)# ip helper-address 172.16.100.100
+</b>
+
+On PC1 and SRV1, verify the console for DHCP messages. From PC1, test connectivity to 203.0.113.1. This test should succeed.
+
+Within a few moments of correcting the DHCP Relay configuration on R2, you should see a console message on PC1 indicating that it has obtained an IP address from DHCP. Your IP address might differ from the one in the output above.
+
+Also, debug messages on SRV1 show that it has received DHCP Discover and Request messages from PC1 and has replied with DHCP Offer and Acknowledgment messages that are being relayed through 192.168.10.1 which is PC1’s default gateway.
+
+PC1 is now able to ping the 203.0.113.1 public address on R1.
+
+<h4>Troubleshoot DHCPv4 Issues on PC2</h4>
+
+
+On PC2, configure the Ethernet 0/0 interface as a DHCP client and activate the interface.
+
+
+<b>
+PC2(config)# interface Ethernet 0/0
+PC2(config-if)# ip address dhcp
+PC2(config-if)# no shutdown
+</b>
+Wait a few moments before proceeding to Step 2. If DHCP were operational for VLAN 20, PC2 would obtain an IP address.
+
+From PC2, verify connectivity to 203.0.113.1. This address is associated with the loopback 0 interface of R1.
+<b>
+PC2# ping 203.0.113.1
+</b>
+The ping will fail. You need to resolve the connectivity issue.
+
+On PC2, verify the Ethernet0/0 interface IP address.
+With the include option, you can use the | symbol for a logical OR between two strings. Enter the following command to PC1:
+<b>
+PC2# show ip interface brief | include Interface|0/0
+</b>
+The Ethernet 0/0 method to learn an IP address is DHCP, but there is no IP address that is assigned.
+
+On SRV1, verify if any debugging message is appearing at the console.
+
+Notice that SRV1 is currently receiving multiple DHCP Discover messages from PC2 and that they are being successfully relayed from R2. SRV1 is not responding to these DHCP Discover messages, though.
+
+On SRV1, verify the configuration of the DHCP pool for VLAN 20.
+<b>
+SRV1# show ip dhcp pool DHCPVLAN20
+SRV1# show running-config | section DHCPVLAN20
+</b>
+
+You can see the root cause of the issue. According to the network topology, VLAN 20 is configured to use the 192.168.20.0/24 network, but the VLAN 20 DHCP pool is configured for 192.168.2.0/24 instead. SRV1 is unable to match a DHCP pool to the DHCP Discover message being received from PC2.
+
+With the root cause determined, fix the problem and verify that PC2 obtains an IP address in the 192.168.20.0/24 network.
+<b>
+SRV1(config)# ip dhcp pool DHCPVLAN20
+</b>
+
+Since a DHPCv4 pool can only have one network command configured, it is not necessary to remove the incorrect network command. Simply typing the new network command replaces the incorrect one.
+
+Notice that a few moments after entering the correct network values for the VLAN 20 DHCP pool, SRV1 responds to the DHCP Discover message from PC2 and assigns it an IP address from the 192.168.20.0/24 pool. This is confirmed by the console message on PC2:
+
+*Sep 16 14:39:41.759: %DHCP-6-ADDRESS_ASSIGN: Interface Ethernet0/0 assigned DHCP address 192.168.20.6, mask 255.255.255.0, hostname PC2
+Your IP address might differ from the one in the output above. Note that it might take a few moments for this message to appear.
+
+
+From PC2, test connectivity to 203.0.113.1. This test should succeed.
+<b>
+PC2# ping 203.0.113.1
+</b>
+PC2 is now able to ping the 203.0.113.1 public address on R1.
+
+<h4>Troubleshoot DHCPv4 Issues on PC3</h4>
+
+On PC3, configure the Ethernet 0/0 interface as a DHCP client and activate the interface.
+<b>
+PC3(config)# interface Ethernet 0/0
+PC3(config-if)# ip address dhcp
+PC3(config-if)# no shutdown
+</b>
+
+Wait a few moments before proceeding to Step 2. If DHCP were operational for VLAN 30, PC3 would obtain an IP address.
+
+From PC3, verify connectivity to 203.0.113.1. This address is associated with the loopback 0 interface of R1.
+<b>
+PC3# ping 203.0.113.1
+</b>
+The ping will fail. You need to resolve the connectivity issue.
+
+On PC3, verify the Ethernet0/0 interface IP address.
+With the include option, you can use the | symbol for a logical OR between two strings. Enter the following command to PC1:
+<b>
+PC3# show ip interface brief | include Interface|0/0
+</b>
+The Ethernet 0/0 method to learn an IP address is DHCP, but there is no IP address that is assigned.
+On SRV1, verify if any debugging message is appearing at the console.
+
+
+SRV1 is receiving DHCP Discover messages from PC3 (though relay 192.168.30.1) and replying with a DHCP Offer that includes the address 192.168.30.6. If PC3 was receiving the DHCP Offer messages from SRV1, it would normally reply with a DHCP Request back to SRV1 but this message is never received by the DHCP server. This is an indication that there might be a connectivity issue between the SRV1 LAN (172.16.100.0/24) and VLAN 30 (192.168.30.0/24).
+
+On SRV1, test connectivity to R2’s Ethernet 0/0.30 interface.
+<b>
+SRV1# ping 192.168.30.1
+</b>
+The connectivity issue is confirmed. EIGRP routing between R1 and R2 needs to be investigated.
+
+On R1, verify the IP routing table for the presence of the 192.168.30.0/24 EIGRP entry.
+<b>
+R1# show ip route 
+</b>
+
+The 192.168.30.0/24 EIGRP entry is missing from R1’s routing table. R1 is unable to route packets received from SRV1 back to VLAN 30.
+
+On R2, verify the EIGRP configuration.
+<b>
+R2# show running-config | section eigrp
+</b>
+
+You can see the root cause of the issue. There is no network statement under the EIGRP IPv4 process for the VLAN 30 192.168.30.0/24 subnet.
+
+With the root cause determined, fix the problem, and verify that PC3 obtains an IP address in the 192.168.30.0/24 network.
+<b>
+R2(config)# router eigrp CISCO
+R2(config-router)# address-family ipv4 unicast  autonomous-system 10
+R2(config-router-af)# network 192.168.30.0
+</b>
+
+R2 will now advertise the 192.168.30.0/24 network to R1. Within a few moments, PC3 should obtain and IP address from SRV1.
+
+On SRV1 and PC3, investigate DHCP console message.
+
+SRV1 debugging messages display all four DHCP steps (Discover, Offer, Request, Ack) and PC3 is successfully assigned the 192.168.30.6 address.
+
+Your IP address might differ from the one in the output above.
+
+From PC3, test connectivity to 203.0.113.1. This test should succeed.
+
+<b>
+PC3# ping 203.0.113.1
+</b>
+
+<h4>Troubleshoot DHCPv4 Issues on PC4</h4> 
+
+On PC4, configure the Ethernet 0/0 interface as a DHCP client and activate the interface.
+
+<b>
+PC4(config)# interface Ethernet 0/0
+PC4(config-if)# ip address dhcp
+PC4(config-if)# no shutdown
+</b>
+Wait a few moments before proceeding to Step 2. You should see that the following message appear at the console:
+
+PC4 has successfully obtained an IP address from SRV1. Your address might be different to the one in the output above.
+
+From PC4, verify connectivity to 203.0.113.1. This address is associated with the loopback 0 interface of R1.
+<b>
+PC4# ping 203.0.113.1
+</b>
+The ping will fail. This time, it appears that DHCP messages are being successfully exchanged between PC4 and SRV1, but there is still a connectivity issue to resolve.
+
+On PC4, verify the DHCP client lease information using the show dhcp lease command.
+<b>
+PC4# show dhcp lease
+</b>
+
+PC4’s IP address and default gateway appear correct, but the default gateway is wrong. According to the network topology, PC4 should use R2’s Ethernet 0/0.40 subinterface address of 192.168.40.1 as its default gateway, not 192.168.40.254.
+On SRV1, verify the DHCPVLAN40 pool configuration
+<b>
+SRV1# show running-config | section DHCPVLAN40
+</b>
+You can see the root cause of the issue. The default-router command has been misconfigured.
+
+With the root cause determined, fix the problem and verify that PC4 obtains an IP address in the 192.168.40.0/24 network.
+
+<b>
+SRV1(config)# ip dhcp pool DHCPVLAN40
+SRV1(dhcp-config)# default-router 192.168.40.1
+</b>
+
+A DHCPv4 pool can only have one default gateway configured, so entering the correct value replaces the incorrect entry.
+
+Since PC4 already has its DHCP lease with the incorrect default gateway, you must release and renew the lease to obtain the correct default gateway.
+
+On PC4, release and renew the DHCP lease on interface Ethernet 0/0. Verify the new DHCP client lease for the correct default gateway address.
+
+<b>
+PC4# release dhcp Ethernet 0/0
+PC4# renew dhcp Ethernet 0/0
+PC4# show dhcp lease 
+</b>
+
+PC4 now has the correct default gateway.
+
+From PC4, test connectivity to 203.0.113.1. This test should succeed.
+
+<b>PC4# ping 203.0.113.1</b>
+
+
+
+<h4>Troubleshoot DHCPv4 Issues on PC5</h4>
+
+On PC5, configure the Ethernet 0/0 interface as a DHCP client and activate the interface.
+
+<b>
+PC5(config)# interface Ethernet 0/0
+PC5(config-if)# ip address dhcp
+PC5(config-if)# no shutdown
+</b>
+Wait a few moments before proceeding to Step 2. If DHCP were operational for VLAN 50, PC5 would obtain an IP address.
+
+
+From PC5, verify connectivity to 203.0.113.1. This address is associated with the loopback 0 interface of R1.
+<b>
+PC5# ping 203.0.113.1
+</b>
+The ping will fail. You need to resolve the connectivity issue.
+
+From PC5, verify connectivity to 203.0.113.1. This address is associated with the loopback 0 interface of R1.
+
+<b>
+PC5# ping 203.0.113.1
+</b>
+
+The ping will fail. You need to resolve the connectivity issue.
+On PC5, verify the Ethernet0/0 interface IP address.
+
+With the include option, you can use the | symbol for a logical OR between two strings. Enter the following command to PC1:
+<b>
+PC5# show ip interface brief | include Interface|0/0
+</b>
+The Ethernet 0/0 method to learn an IP address is DHCP, but there is no IP address that is assigned.
+
+On SRV1, verify if any debugging message is appearing at the console.
+SRV1 is receiving DHCP Discover messages from PC5, but it is failing to allocate the DHCP client an IP address from the 192.168.50.0/24.
+
+
+On SRV1, using the <b>debug ip dhcp server events</b> command investigate this issue further.
+<b>
+On SRV1, using the debug ip dhcp server events command investigate this issue further.
+</b>
+
+SRV1 is attempting to allocate an address to PC5 from the DHCPVLAN50 pool but the pool is exhausted.
+
+On SRV1, investigate the DHCP configuration for the VLAN 50 pool.
+
+<b>
+SRV1# show running-config | section dhcp
+<b>
+You can see the root cause of the issue. The DHCPVLAN50 pool configuration is correct but notice that all the possible host addresses are excluded. The third octet for the end address of the excluded range should be “50.”
+
+
+With the root cause determined, fix the problem and verify that PC5 obtains an IP address in the 192.168.50.0/24 network. First, to avoid a situation where PC5 obtains an incorrect address, disable its Ethernet 0/0 interface while you correct the issue. Activate the interface after correcting the DHCP excluded address range for VLAN 50.
+
+<b>
+PC5(config)# interface Ethernet 0/0
+PC5(config-if)# shutdown
+
+SRV1(config)# no ip dhcp excluded-address 192.168.50.1 192.168.51.5
+SRV1(config)# ip dhcp excluded-address 192.168.50.1 192.168.50.5
+
+PC5(config)# interface Ethernet 0/0
+PC5(config-if)# no shutdown
+</b>
+
+Within a few moments, PC5 should obtain an IP address in the 192.168.50.0/24 subnet.
+From PC5, test connectivity to 203.0.113.1. This test should succeed.
+<b>
+PC5# ping 203.0.113.1
+</b>
+
+<h4>Troubleshoot DHCPv6 Issues on PC6</h4>
+
+On SRV1, enable DHCPv6 debugging using the debug ipv6 dhcp command to provide visibility into the DHCP process. First, disable all debugging on SRV1.
+
+<b>
+SRV1# undebug all
+SRV1# debug ipv6 dhcp
+</b>
+
+
+This DHCPv6 debug command will remain enabled throughout this task to help with troubleshooting the DHCP issues.
+
+
+On PC6, configure the Ethernet 0/0 interface as a DHCPv6 client and activate the interface.
+<b>
+PC6(config)# interface Ethernet 0/0
+PC6(config-if)# ipv6 address dhcp
+PC6(config-if)# ipv6 enable
+PC6(config-if)# no shutdown
+</b>
+Wait a few moments before proceeding to Step 3. If DHCPv6 were operational for PC6 the client would obtain an IP address.
+
+From PC6, verify connectivity to 2001:DB8:203:113::1. This address is associated with the loopback 0 interface of R1.
+<b>
+PC6# ping 2001:db8:203:113::1
+</b>
+
+On PC6, verify the Ethernet0/0 interface DHCPv6 status and IPv6 address information.
+<b>
+PC6# show ipv6 dhcp interface Ethernet 0/0
+PC6# show ipv6 interface Ethernet 0/0
+
+</b>
+
+PC6’s Ethernet 0/0 interface is configured as a DHCPv6 client but it has not received any answers to its Solicit messages. The number 9 in brackets in the first highlighted line is the number of Solicit messages that have been transmitted. Your output might be different. PC6 is not receiving any DHCPv6 Advertise messages from SRV1 and is missing its global unicast prefix.
+
+On SRV1, verify if any debugging message is appearing at the console.
+
+No DHCPv6 messages are being received by SRV1. Enabling DHCPv6 debugging on PC6 might provide a hint as to what the issue might be.
+On PC6, enable DHCP6 debugging using the debug ipv6 dhcp command.
+<b>
+PC6# debug ipv6 dhcp 
+</b>
+After the retransmission timer expires, you should see messages indicating that PC6 is transmitting DHCPv6 Solicit messages but it is not receiving any replies.
+
+According to the network topology, R2 should be relaying DHCPv6 messages to SRV1 but SRV1 is not receiving PC6’s DHCPv6 messages.
+
+
+On R2, investigate the DHCPv6 relay configuration.
+<b>
+R2# show ipv6 dhcp interface 
+R2# show running-config interface Ethernet 0/0
+R2# show running-config interface Ethernet 0/2
+</b>
+You can see the root cause of the issue. It appears that the DHCPv6 relay command is applied to the wrong interface. Instead of Ethernet 0/0, the command should be applied to Ethernet 0/2 since that is the interface that is receiving the DHCP Solicit messages.
+
+With the root cause determined, fix the problem and verify that PC6 obtains a global IPv6 prefix from SRV1.
+
+<b>
+R2(config)# interface Ethernet 0/0
+R2(config-if)# no ipv6 dhcp relay destination 2001:DB8:172:100::100
+R2(config-if)# interface Ethernet 0/2
+R2(config-if)# ipv6 dhcp relay destination 2001:DB8:172:100::100
+</b>
+
+On PC6, verify console messages to see if the client has received an IPv6 prefix from SRV1.
+
+PC6 is still not receiving DHPCv6 replies from SRV1. There is still an issue to troubleshoot.
+
+SRV1# show ipv6 dhcp pool 
+SRV1# show ipv6 dhcp interface
+A DHCPv6 pool named PC6DHCP is configured on SRV1 for prefix 2001:DB8:192:60::64 and domain cisco.com. There are no active clients, and neither are there any interfaces assigned to the pool. This is the root cause of the issue. An important configuration step when enabling DHCPv6 is to assign an interface to the pool. In this case, interface Ethernet 0/1 should be associated with the DHCPv6 pool.
+
+On SRV1, assign the DHCPv6 pool to Ethernet 0/1.
+<b>
+SRV1(config)# interface Ethernet 0/1
+SRV1(config-if)# ipv6 dhcp server PC6DHCP 
+</b>
+
+Within a few moments of applying this command, you should see DHCPv6 debugging messages at the console of both SRV1 and PC6:
+SRV1 processes the relayed DHCPv6 Solicit message from PC6 and creates a binding for that client. PC6 then receives its IPv6 global address.
+
+On PC6, verify the IPv6 and DHCP status of Ethernet 0/0.
+<b>
+PC6#show ipv6 interface Ethernet 0/0
+PC6#show ipv6 dhcp interface Ethernet 0/0
+</b>
+
+PC6 is now configured with a global IPv6 prefix.
+
+On SRV1, verify the DHCPv6 status of its interfaces and investigate the DHCPv6 binding table.
+<b>
+SRV1# show ipv6 dhcp interface
+SRV1#show ipv6 dhcp binding
+</b>
+SRV1 is now correctly configured as a DHCPv6 server and has an IPv6 binding for PC6.
+From PC6, test connectivity to 2001:DB8:203:113::1. This test should succeed.
+<b>
+PC6# ping 2001:db8:203:113::1
+</b>
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

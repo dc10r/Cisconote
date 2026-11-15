@@ -1,0 +1,561 @@
+<h1>BGP</h1>
+<h2>Implementing IBGP</h2>
+
+
+
+Border Gateway Protocol (BGP) is an EGP that is predominantly used by enterprises to connect to Internet Service Provider (ISPs). BGP allows connectivity between autonomous systems by using path vector attributes upon which routing policy decisions at the Autonomous System (AS) level are enforced. BGP can also be used inside autonomous systems. When it is used in this way, it is referred as IBGP
+
+
+A router that is running BGP goes through several neighbor states through which BGP progresses to establish a BGP session, and offers hints for troubleshooting BGP, because the session can be stuck in the SIA or idle state.
+
+
+<h3>BGP Fundamentals</h3>
+
+BGP is a path-vector routing protocol. BGP will announce to its neighbors those IP networks that it can reach itself. The receivers of that information say, "If that AS can reach those networks, then I can reach them via the AS."
+
+why use it?
+
+
+Reliability
+
+- Periodic TCP keepalives
+
+- Incremental, triggered updates
+
+Scalability
+
+- 700K+ Internet routes
+
+Stability
+
+- Batched updates
+
+- Slow convergence
+
+
+GP contains a very sophisticated method of computing the shortest path by using attributes that are attached to the reachable IP subnet. This path information typically consists of a series of autonomous systems through which packets travel to reach their destination. This is why you refer to BGP as a path-vector protocol.
+
+
+
+BGP’s path selection is not solely based on AS hops, however. BGP has various other parameters that it can consider. Interestingly, none of those parameters are based on link speed.
+
+BGP sends routing updates to its neighbors by using a reliable transport. This technique means that the sender of the information always knows that the receiver has actually received the information. As a result, there is no need for periodic updates or routing information refreshes. In BGP, only information that has changed is transmitted.
+
+BGP enables reliable information exchange and is capable of batching the routing updates. These two characteristics allow BGP to scale to large, Internet-sized networks.
+
+The reliable transport mechanism that BGP uses is standard TCP. BGP is an application protocol that uses both the TCP and IP protocols for reliable connections.
+
+BGP takes care of detecting the presence of neighbors by periodically sending small BGP keepalive packets to them. These packets are considered application data by TCP and therefore must be transmitted reliably. According to the BGP specification, the peer router also must reply with a BGP keepalive packet.
+
+The designers of BGP decided that scalability was a more important issue than low convergence time, so BGP was designed to batch updates. 
+
+Any changes that are received within the batch interval time are saved. At the end of the interval, only the remaining result is forwarded in an outgoing update. If a network flaps several times during the batch interval, only the state at the end of the interval is sent in an update. The batching feature avoids an uncontrolled flood of updates all over the Internet because the batching procedure limits the number of updates.
+
+
+BGP allows ISPs to communicate and exchange packets. These ISPs have multiple connections to each other and agreements to exchange updates. BGP is used to implement the agreements between two or more autonomous systems. Improper controlling and filtering of BGP updates can potentially allow an outside AS to affect the traffic flow to your AS. It is important to know how BGP operates and how to configure it correctly to prevent this situation.
+
+
+when BGP should be used:
+
+If an AS is single or dual-multihomed with multiple connections to other autonomous systems.
+
+If an AS is a transit AS, where packets transit the AS to reach other autonomous systems.
+
+If an inter-AS routing policy must be manipulated, where path selection for traffic that is entering and leaving the AS must be influenced.
+
+<h3>BGP Neighbor Relationships</h3>
+
+
+A BGP router forms a direct neighbor relationship with a limited number of other BGP routers. Through these BGP neighbors, a BGP router learns paths that are available through the Internet to reach any advertised network.
+
+Any router that runs BGP is known as a “BGP speaker.” The term “BGP peer” has a specific meaning—it is a BGP speaker that is configured to form a neighbor relationship with another BGP speaker to directly exchange BGP routing information with each other. A BGP speaker has a limited number of BGP neighbors with which it peers and forms a TCP-based relationship.
+
+BGP peers are also known as “BGP neighbors” and can be either internal or external to the Autonomous System (AS). The IBGP peer typically forms the neighbor relationship inside the ISP network. The EBGP peer forms the neighbor relationship between the enterprise network and the ISP. External neighbors, and internal neighbors, require a TCP connection to be established.
+
+The processing of BGP routes and its attributes is typically different, as is the connection type. A network that is assigned to the link between neighbors, and the next-hop IP address, must be reachable for routing purposes.
+
+When BGP is running between routers in different autonomous systems, it is called EBGP.
+
+An EBGP neighbor is a router outside a home AS.  For each such connection between different autonomous systems, there is an EBGP session that is required between EBGP neighboring routers. EBGP neighbors are directly connected and they establish a TCP session before exchanging BGP updates.
+
+When multiple different autonomous systems are connected to each other and an enterprise network is connected to multiple ISPs, BGP runs between the ISPs and the enterprise network
+
+Routers establish neighbor relationships and exchange BGP routing updates with each other.
+
+Requirements for establishing an EBGP neighbor relationship include the following:
+
+Different AS number: EBGP neighbors must reside in different autonomous systems to be able to form an EBGP relationship.
+
+Defined neighbors: A TCP session must be established before starting BGP routing update exchanges.
+
+Reachability: EBGP neighbors must be directly connected, by default and IP addresses on that link must be reachable inside each AS.
+
+
+Interior Gateway Protocol (IGP) is the routing protocol that runs inside an AS. An IGP is not run between EBGP neighbors that reside in different autonomous systems. For two routers to exchange BGP routing updates, the TCP-reliable transport layer on each side must successfully pass the TCP three-way handshake before a BGP session can be established. 
+
+Therefore, the IP address that is used in the BGP neighbor command must be reachable without using an IGP, which can be accomplished by pointing at an address that is reachable through a directly connected network or by using static routes to that IP address.
+
+Generally, the neighbor address that is used is the address on a network that is directly connected.
+
+BGP between routers within the same AS is called Internal Border Gateway Protocol (IBGP). IBGP runs within an AS to exchange BGP information so that all BGP speakers have the same BGP routing information about outside autonomous systems.
+
+When multiple routers in an AS are running BGP, they exchange BGP routing updates with each other.
+
+Requirements for establishing an IBGP neighbor relationship include the following:
+
+Same AS number: IBGP neighbors must reside in the same AS to be able to form an IBGP relationship.
+
+Defined neighbors: A TCP session must be established between neighbors before exchanging BGP routing updates.
+
+Reachability: IBGP neighbors must be reachable. Therefore, IGP typically runs inside an AS.
+
+
+<h3>BGP Path Attributes</h3>
+
+Each BGP update consists of one or more IP subnets and a set of attributes that are attached to them.
+
+All BGP implementations are required to recognize certain attributes. Those attributes are called well-known BGP attributes.
+
+Attributes that are not well-known are called optional. Optional attributes are either specified in a later extension of BGP or even in private vendor extensions that are not documented in a standard document.
+
+Well-known attributes are divided into mandatory and discretionary categories.
+
+
+There is a small set of three specific well-known attributes that are required to be present on every update. These attributes are the next-hop, AS-path, and origin attributes and are referred to as mandatory well-known attributes.
+
+
+mandatory well-known attributes -> next-hop, AS-path, and origin
+
+
+Other well-known attributes may or may not be present, depending on the circumstances under which the updates are sent and the desired routing policy. The well-known attributes that could be present, but are not required, are called discretionary well-known attributes.
+
+
+When a router receives a BGP update, it analyzes the attached attributes and compares them with the attributes that were attached to the same IP subnet when it was received from a different source. The router then makes a decision about which source indicates the best path to the particular IP subnet.The best route is propagated, along with its well-known attributes, to other BGP-speaking neighbors.
+
+<h4>Mandatory Well-Known BGP Attributes</h4>
+
+Origin
+
+Code 0 - IGP (i) Route originated within the AS using the network or
+summarization command (regardless of how the route entered the routing
+table)
+
+Code 1 - EGP (e) Route learned via the obsolete Exterior Gateway
+Protocol (EGP)
+
+Code 2 - INCOMPLETE (?) Route redistributed into BGP; origin is
+unknown to BGP
+
+AS-Path
+
+Sequence of AS numbers
+
+Next-Hop
+
+IP address of next-hop router
+
+The three mandatory well-known attributes are origin, AS-path, and next-hop:
+
+Origin: When a router first originates a route in BGP, it sets the origin attribute. If information about an IP subnet is injected using the network command or via aggregation (route summarization within BGP), the origin attribute is set to "i" for IGP. If information about an IP subnet is injected using redistribution, the origin attribute is set to "?" for unknown or incomplete information (these two words have the same meaning). The origin code "e" was used when the Internet was migrating from EGP to BGP and is now obsolete
+
+AS-path: The egress router modifies the AS-path attribute every time information about a particular IP subnet passes over an AS border. When a router first originates a route in BGP, the AS-path attribute is empty. Each time that the route crosses an AS boundary, the transmitting AS prepends its own AS number to appear first in the AS path. You can track the sequence of autonomous systems through which the route has passed by using the AS-path attribute.
+
+
+Next-hop: The router also modifies the next-hop attribute as the route passes through the network. This attribute indicates the IP address of the next-hop router. The next-hop router is the router to which the receiving router should forward the IP packets to reach the destination that is advertised in the routing update.
+
+<h4>Discretionary Well-Known BGP Attributes</h4>
+
+Local Preference
+Used in route selection
+Carried within AS only
+
+
+Atomic Aggregate
+Informs neighbor AS about summarization
+
+
+All BGP implementations must support discretionary well-known attributes. However, discretionary well-known attributes do not have to be present in all BGP updates. Routers use discretionary well-known attributes only when those functions are required.
+
+Local preference: Local preference is used in the route selection process. This attribute is carried within an AS only. The router prefers a route with a high local preference value to a route with a low value. By default, routes that are received from a peer AS are tagged with the local preference set to a value of 100 before they are entered into the local AS. If this value is changed through BGP configuration, the BGP selection process is influenced. Because all routers within the AS get the attribute along with the route, a consistent routing decision is made throughout the AS.
+
+Atomic aggregate: The atomic aggregate attribute is attached to a route that is created as a result of route summarization (called aggregation in BGP). This attribute signals that information that was present in the original routing updates may have been lost when the updates were summarized into a single entry.
+
+Optional BGP attributes are either transitive or nontransitive.
+
+
+Specified in later implementations Vendor-specific, optional support
+
+Transitive
+Propagated to other neighbors (partial bit)
+
+Nontransitive
+Discarded if not recognized
+
+When a router receives an update that contains an optional attribute, the router checks to see whether its implementation recognizes the particular attribute. If it does, then the router should know how to handle it and whether to propagate it.
+
+If the router does not recognize the attribute, the BGP implementation should look for the transitive bit in the attribute code. Some attributes, although not recognized by the router, might still be helpful to upstream routers and should be propagated. These attributes (called transitive optional attributes) are propagated even when they are not recognized. If a router propagates an unknown transitive optional attribute, it sets an extra bit in the attribute header. This bit is called the partial bit. The partial bit indicates that at least one of the routers in the path did not recognize the meaning of a transitive optional attribute.
+
+
+Other attributes, called nontransitive optional attributes, might be of no value to upstream routers if a router earlier in the path does not recognize them. Routers will drop these attributes if they are not recognized.
+
+Optional BGP attributes include:
+
+Transitive
+
+Aggregator: Carries information about route summarization source
+
+Community: Used for route tagging and filtering
+
+Nontransitive
+
+MED: Informs external neighbors the preferred path into an AS
+
+One of the nontransitive optional attributes is the MED attribute, which also influences the BGP route selection process. Whenever there are several links between two adjacent autonomous systems, one AS can use the MED attribute to tell another AS to prefer one of the links for specific destinations.
+
+
+Transitive optional attributes include the following:
+
+Aggregator: This attribute identifies the AS and the router within that AS that created a route summarization, or aggregate.
+
+Community: This attribute is a numerical value that can be attached to certain routes as they pass a specific point in the network. For filtering or route selection purposes, other routers can examine the community value at different points in the network. BGP configuration may cause routes with a specific community value to be treated differently than others.
+
+<h3>BGP Path Selection</h3>
+
+
+bgp selection criteria
+
+<h3>BGP Transit AS Functionality</h3>
+
+A transit AS is required to carry traffic that originates from or is destined for locations outside of that AS.
+
+
+Transit AS has two basic functions.
+
+Propagate routes between remote autonomous systems
+
+Route packets between remote networks
+-
+
+Routers in a transit AS have to perform two tasks:
+
+Receive routing information updates about reachable networks from neighboring autonomous systems, propagate the information through their own AS, and send it to other neighboring autonomous systems.
+
+Forward IP packets that they have received from a neighboring AS through their own AS to a downstream neighboring AS. The routers in the transit AS perform this task by using the routing information that they have received as part of the first task.
+
+Two autonomous systems usually exchange routing information about reachable networks by using BGP. There is currently no alternative routing protocol that has the scalability and security characteristics of BGP.
+
+BGP routing information updates consist of the network address, subnet mask, and any number of BGP attributes. No other routing protocol provides the same richness of route attributes as BGP. Translating BGP route attribute information into any other protocol would likely cause a loss of information.
+
+EBGP sessions are, in general, established between directly connected neighbors. BGP-speaking routers, therefore, need no additional routing information to establish a session.
+
+The only protocol that can transport all BGP attributes across the backbone is BGP inside an AS, or IBGP.
+
+IBGP sessions are, in general, established between distant routers in the same AS. These routers need extra routing information to establish the session, because there is no requirement that IBGP neighbors be directly connected. This information typically comes from the IGP, which is running within the AS independently of BGP.
+
+Within a transit AS, all routers that are in a theoretical transit path between external destinations should have information about all external routes that are received from any neighboring AS. If a single router on a transit path does not have this information, there is always a possibility that an IP packet that is received from a neighboring AS will not be able to be forwarded by that router through the transit AS. The router lacking routing information about the final destination of the IP packet drops it into what effectively becomes a black hole.
+
+Core router IBGP requirements in a transit AS are:
+
+All core routers must have all external routes.
+
+Core routers must receive BGP routes.
+
+The only feasible way for the router to distribute all external routing information is by using IBGP. It is not viable to redistribute the EBGP routes into an IGP because no IGP can carry the volume of information that BGP currently carries on the Internet.
+
+The risk of losing information during redistribution of EBGP routes into an IGP is not the reason why BGP is used to update intermediate routers in the transit path instead of an IGP. Redistribution into an IGP is not used because of the scalability issues that would arise from doing so.
+
+Default routing or a gateway of last re-sort cannot be used by routers within the transit path when transit services are provided to other autonomous systems. If some routes are filtered out and the default route is used instead, full routing flexibility is lost. In this case, the transit AS is not able to forward packets to all destinations at all times. In fact, routing loops and black holes might be easily introduced.
+
+
+<h3>IBGP Path Processing</h3>
+
+
+All BGP routing updates carry the mandatory well-known attribute AS-path, which lists the autonomous systems that the routing update has already crossed.
+
+When a router originates a BGP prefix (network X in this example), the AS path is empty. Whenever a BGP prefix is announced over an EBGP session, the AS number of the router that is sending the information is prepended to the AS path. In the example, ISP1 inserts "100" in the AS path before forwarding the routing update to R1.
+
+The AS path is not changed when the BGP prefix is propagated across IBGP sessions because the routing update has not crossed an AS boundary.
+
+When a BGP-speaking router with no local policy configured receives NLRI from multiple IBGP sources for the same destination, the router chooses one IBGP path as the best path. The best path is then installed in the IP routing table of the router.
+
+The IBGP multipath load-sharing feature enables the BGP-speaking router to select multiple IBGP paths as the best paths to a destination. The best paths, or multipaths, are then installed in the IP routing table of the router.
+
+
+For multiple paths to the same destination to be considered as multipaths, the following criteria must be met:
+
+All attributes must be Even if the criteria are met and multiple paths are considered multipaths, the BGP-speaking router still designates one of the multipaths as the best path and advertises this best path to its neighbors.
+
+Configuring multiple IBGP best paths enables a router to evenly share the traffic that is destined for a particular site.the same. The attributes include weight, local preference, AS-path (the entire attribute and not just length), origin code, MED, and IGP distance.
+
+The next-hop router for each multipath must be different.
+
+Even if the criteria are met and multiple paths are considered multipaths, the BGP-speaking router still designates one of the multipaths as the best path and advertises this best path to its neighbors.
+
+Configuring multiple IBGP best paths enables a router to evenly share the traffic that is destined for a particular site.
+
+Use the <b>maximum-paths ibgp</b> command in router configuration mode to control the maximum number of parallel internal BGP routes that can be installed in a routing table.
+
+<h3>IBGP Split Horizon</h3>
+
+All routers within an AS must make routing decisions in a consistent way. They must have access to the same routing information with the same attributes to come to the same conclusion about which exit point of the AS to use. In other words, the BGP attributes should not be changed within the AS.
+Full mesh of IBGP sessions is required for proper IBGP update propagation.
+
+The AS-path attribute is not changed over an IBGP session, because the BGP update has not crossed the AS boundary. However, the AS-path attribute is the primary means of detecting routing information loops. A BGP router that encounters its own AS in the AS path of an incoming BGP update silently ignores the information. Because the BGP-speaking routers modify the AS path only during EBGP sessions, this loop-preventing mechanism is only useful between autonomous systems, not within them.
+
+The IBGP split horizon prevents routing information loops within the AS. Routing information that is received through an IBGP session is never forwarded to another IBGP neighbor, only toward EBGP neighbors. Because of the BGP split horizon, no router can relay IBGP information within the AS—all routers must be directly updated from the border router that received the EBGP update.
+
+
+<h3>IBGP Full Mesh</h3>
+Every router on the transit path within the AS must have routing information about all external networks that are received by any of the border routers. 
+
+Full mesh of IBGP sessions has to be established between all BGP-speaking routers in the AS for proper IBGP route propagation.
+
+The IBGP full mesh is a logical mesh of TCP sessions only; a physical full mesh is not required.
+
+This level of communication is not enough, though, because any of the internal routers could also create new BGP routing information (for example, originate a customer network). These updates must also reach all the routers within the AS. The conclusion is that all BGP routers within an AS must have IBGP sessions with every other BGP router in the AS. This requirement results in a full mesh of BGP sessions between BGP-speaking routers in an AS.
+
+it is a good practice to establish a full mesh of IBGP sessions regardless of whether they are needed at the time of network deployment or not.
+
+Having enough router reachability information makes it possible to establish IBGP sessions between routers even though they are not physically connected. The IBGP full mesh is a logical full mesh of TCP sessions and will run on an arbitrary physical topology.
+
+
+<h4> IBGP Full Mesh Example</h4> 
+
+During the network design and implementation phase, the network designers must be careful that those IBGP sessions remain established for as long as the two BGP routers have any usable path between them.
+
+Always run IBGP sessions between loopback interfaces.
+
+IBGP sessions can always be established, even if some physical interfaces are down.
+
+IBGP sessions are stable—a physical interface failure will not tear down IBGP sessions.
+
+There is no BGP recovery after a failure inside the transit AS.
+
+The configured IGP will reestablish the path between loopback interfaces.
+
+IBGP sessions are not affected.
+
+The best choice when you are configuring IBGP sessions is to establish each session between loopback interfaces on each BGP router.
+
+To establish BGP connectivity between the loopback interfaces, the IP addresses of these interfaces have to be reachable by both routers. The IGP must carry information about the subnets that are assigned to each loopback interface so that the interfaces are reachable by all BGP routers in the AS.
+
+The IBGP sessions that are established between loopback interfaces have increased 
+stability. These sessions will not go down if a single physical interface goes down. As 
+long as the IGP can find any path between the two routers, the IBGP session will remain up. 
+BGP will not notice that the IGP has changed the traffic path between the two routers.
+
+Because BGP sessions run over TCP, they can survive even a short loss of connectivity between BGP routers with no impact to BGP. The only requirement that is placed on the IGP is that the network must converge before the BGP keepalive timer expires.
+
+Every BGP update carries the mandatory well-known next-hop attribute. The next-hop attribute specifies the IP address that the router should use as the forwarding next hop for packets that are sent toward the announced destination address. Usually, the next hop is set to the IP address that the sending router is using as its source IP address for EBGP sessions. The receiving BGP router will use the information and route IP packets toward the announced destination via the indicated next hop, which is normally directly connected.
+
+The next-hop attribute is not changed on IBGP updates. So when the border router forwards the BGP update on IBGP sessions, the next-hop address is still set to the IP address of the far end of the EBGP session. Therefore, the receiver of IBGP updates will see the next-hop information indicating a destination that is not directly connected. To resolve this problem, the router will check its routing table and see if and how it can reach the next-hop address. The router can then route IP packets with destination addresses matching the network in the BGP update in the same direction as it would have routed an IP packet with a destination address that is equal to the IP address stated in the next-hop attribute. This process is known as recursive routing.
+
+<h3>Configure IBGP and EBGP</h3>
+
+<h4>Configure Basic BGP</h4> 
+Configure an external BGP session between R1 in AS 65100 and R2 in AS 65000. Use the directly adjacent IP addresses to establish the session.
+<b>
+R1(config)# router bgp 65100
+R1(config-router)# neighbor 209.165.202.130 remote-as 65000
+
+R2(config)# router bgp 65000
+R2(config-router)# neighbor 209.165.202.129 remote-as 65100
+</b>
+
+To enable BGP, you need to start the BGP process using the <b>router bgp as-number</b> command in the global configuration mode. You can configure only a single BGP AS number on a router.
+
+To configure a neighbor relationship, use the <b>neighbor neighbor-ip-address remote-as</b> remote-as-number command in the BGP router configuration mode. An external BGP must span a maximum of one hop, by default. If not specified otherwise, the IP addresses for an external BGP session must be directly connected to each other.
+
+You can examine the BGP sessions by looking at an overall BGP summary or detailed information about all or individual BGP peers. The <b>show ip bgp summary</b> command displays the overall status of all BGP connections. It provides the AS number of the neighbor, message counters, the connection state, and the number of exchanged prefixes. In this example, the state descripción is empty, which means that the session is actually working. The number of exchanged prefixes is empty, because no network prefixes have been advertised yet via the BGP session.
+
+
+examine the external BGP session.
+<b>
+show ip bgp summary 
+R1# show ip bgp neighbors 
+</b>
+
+
+The first section of the show ip bgp summary command output describes the BGP table and its content:
+
+The BGP table version is the version number of the local BGP table. This number is increased every time that the table is changed.
+
+The main routing table version shows the last version of the BGP database that was injected into the main routing table.
+
+The second section of the show ip bgp summary command output is a table in which the current neighbor statuses are shown. There is one line of text for each neighbor that has been configured. The columns are as follows:
+
+IP address of the neighbor, as configured in the local router
+
+BGP version number that is used by the router when communicating with the neighbor
+
+AS number of the remote neighbor
+
+Number of messages and updates that have been received from the neighbor since the session was established
+
+Number of messages and updates that have been sent to the neighbor since the session was established
+
+Version number of the local BGP table that has been included in the most recent update to the neighbor
+
+Number of messages that are waiting to be processed in the incoming queue from this neighbor
+
+Number of messages that are waiting in the outgoing queue for transmission to the neighbor
+
+How long the neighbor has been in the current state and the name of the current state (the state, “Established,” is not displayed, so no state name indicates “Established”)
+
+You can use this information to verify that BGP sessions are up and established. If they are not, you will have to further investigate the BGP configuration to locate the problem. You can also verify the IP address and AS number of the configured BGP neighbor with the show ip bgp summary command.
+
+If the session state is “Established,” the number of messages that have been sent and received, as displayed in the output of the <b>show ip bgp summary</b> command, can indicate BGP stability. Use the command a few times, with a time interval between the printouts, and calculate how many messages have been exchanged during that period.
+
+
+The <b>show ip bgp neighbors</b> command supplies additional information, such as the negotiated capabilities, supported address families, and more.
+
+You can use the show ip bgp neighbor command for two different purposes. The general purpose, as shown in the figure, is to get information about the TCP sessions and the BGP parameters of the sessions. All BGP session parameters are displayed. In addition, TCP timers and counters are also displayed. You can examine the details of a specific session if you provide the neighbor IP address. The other use is not shown in this example. If any of the optional qualifiers referring to routes or paths are given, the BGP routing information that was sent or received on this session is displayed. This feature is useful when you are troubleshooting path selection.
+
+
+An internal BGP session is configured using the <b>neighbor neighbor-ip-address remote-as remote-as-number</b> in the BGP router configuration mode, in the same way as the external sessions. The router will automatically identify an internal session by examining the remote AS number and comparing it with the local AS number. An internal BGP session can span multiple hops. The neighbor IP addresses do not have to be directly connected.
+
+
+advertise in BGP the network prefix that is configured on the Loopback 1 interface (192.168.33.0/24).
+<b>
+R3(config)# router bgp 65000
+R3(config-router)# network 192.168.33.0 mask 255.255.255.0
+</b>
+
+To specify the networks to be advertised by the BGP routing process, use the network router configuration command. The meaning of the network command in BGP is radically different from the meaning of the command in other routing protocols. In all other routing protocols, the network command indicates interfaces over which the routing protocol will be run. In BGP, it indicates which routes should be injected into the BGP table on the local router. Also, BGP never runs over individual interfaces—it is run over TCP sessions with manually configured neighbors.
+
+BGP version 4 (BGP4) is a classless protocol, meaning that its routing updates include the IP address and the subnet mask. The combination of the IP address and the subnet mask is called an IP prefix. An IP prefix can be a subnet, a major network, or a supernet.
+
+To advertise networks into BGP, you can use the network command with the mask keyword and the subnet mask specified. If an exact match is not found in the IP routing table, the network will not be advertised.
+
+The network command with no mask option uses the classful approach to insert a major network into the BGP table. Nevertheless, if you do not also enable automatic summarization, an exact match with the valid route in the routing table is required.
+
+examine the BGP table with the announced network prefix.
+
+<b>
+show ip bgp
+</b>
+Usually, when the show ip bgp command is given without optional qualifiers, the entire BGP table is displayed. An abbreviated list of information about each route is displayed, one line per prefix. The output is sorted in network number order. Therefore, if the BGP table contains more than one route to the same network, the alternative routes are displayed on successive lines. The network number is printed on the first of these lines only. The following lines, which refer to the same network, have the network number field left blank.
+
+Some, but not all, of the BGP attributes that are associated with the route are displayed on the line. Next-hop, multi-exit discriminator (MED) (displayed as “Metric”), local preference, and weight each have their own columns. The AS-path attribute is displayed as the sequence of AS numbers in the Path column. Immediately following the AS path, but not part of the AS-path attribute, the origin attribute is displayed. The lowercase letter “i” means IGP, “e” means EGP, and “?” means incomplete or unknown.
+
+The BGP path selection process selects one of the available routes to each of the networks as the best route. This route is pointed out by the “>” character in the left column.
+
+The next-hop attribute is set to 0.0.0.0 when you view the BGP table on the router that originates the route in BGP.
+
+prefix is marked as an internal route using the "i" identifier, and that its next-hop attribute is set to the originating neighbor IP address. The next-hop attribute is also visible in the routing table for the BGP route. The routers use the next-hop to identify the path toward the destination network.
+
+As long as the route is advertised within a single AS, the next-hop does not change, and points to the router that advertised the route into the given AS.
+
+The next-hop attribute informs the router where to send the traffic toward the given network. By default, the next-hop attribute is changed whenever a BGP update crosses an AS boundary. The next-hop attribute specifies the entry point into the next AS in the path.
+
+On R2, advertise in BGP the network prefix that is configured on the Loopback 1 interface (192.168.22.0/24) and verify its propagation to R1.
+
+<b>
+R2(config)# router bgp 65000
+R2(config-router)# network 192.168.22.0 mask 255.255.255.0
+R1# show ip bgp
+</b>
+
+he next-hop attribute points to R2 and an appropriate IP route is installed in the routing table.
+
+The administrative distance of external BGP routes defaults to 20. This value is lower than the value of all IGPs. If a router receives advertisements about the same network prefix via an external BGP and an IGP, the external BGP route will be preferred due to its better administrative distance. This preference causes the routers to forward the traffic to external domains rather than to deliver it locally within the IGP domain. Such behavior helps to prevent loops.
+
+The administrative distance of internal BGP routes defaults to 200. This value is higher than the value of all IGPs. If a router receives advertisements about the same network prefix via internal BGP and an IGP, the IGP route will be preferred due to its better administrative distance. This preference causes the routers to forward the traffic through the internal domain according to the IGP information. This behavior helps prevent traffic blackholing on routers within the local domain, which do not run BGP.
+<b>
+R2(config)# router bgp 65000
+R2(config-router)# neighbor 172.16.23.3 next-hop-self
+</b>
+
+When you configure the next-hop-self option for the internal neighbor on R2, the next-hop attribute in the external route is changed to the source IP address of the BGP packets, 172.16.23.2. R3 can reach this IP address because it is directly connected. The BGP table displays the external route as the "best" route. The external route is installed in the routing table.
+
+<b>
+R2(config)# router bgp 65000
+R2(config-router)# no neighbor 172.16.23.3
+R2(config-router)# neighbor 192.168.3.3 remote-as 65000
+R2(config-router)# neighbor 192.168.3.3 next-hop-self
+
+R3(config)# router bgp 65000
+R3(config-router)# no neighbor 172.16.23.2
+R3(config-router)# neighbor 192.168.2.2 remote-as 65000
+</b>
+
+ The BGP neighbor statement informs the router of the destination IP address for each update packet.
+
+The router must decide which IP address to use as the source IP address in the BGP routing update. When a router creates a BGP packet for a neighbor, it checks the routing table for the destination network to reach that neighbor. The IP address of the outbound interface, as the routing table indicates, is used as the source IP address of the BGP packet.
+
+On R1 and R2, configure the EBGP peering between the Loopback 0 addresses. Verify the peering.
+
+<b>
+R1(config)# ip route 192.168.2.2 255.255.255.255 209.165.202.130
+R1(config)# router bgp 65100
+R1(config-router)# no neighbor 209.165.202.130
+R1(config-router)# neighbor 192.168.2.2 remote-as 65000
+R1(config-router)# neighbor 192.168.2.2 update-source Loopback 0
+R2(config)# ip route 209.165.201.1 255.255.255.255 209.165.202.129
+R2(config)# router bgp 65000
+R2(config-router)# no neighbor 209.165.202.129
+R2(config-router)# neighbor 209.165.201.1 remote-as 65100
+R2(config-router)# neighbor 209.165.201.1 update-source Loopback 0
+R1# show ip bgp summary
+</b>
+
+
+Establishing the BGP session between the Loopback IP addresses can also help increase the resilience of an external BGP connection. If multiple paths between two EBGP neighbors exist, the session will survive, regardless of which path remains available.
+
+The loopback addresses must be reachable from both sides, respectively. In contrast to internal enterprise networks, where an IGP provides reachability for the loopback addresses used for IBGP peering, you typically need to configure static routes to the respective remote loopback IP address.
+
+In this configuration example, the EBGP connection between the loopback addresses remains idle, despite the routing setup and BGP neighbor configuration that would suffice for similar IBGP peering. The session does not become established because EBGP neighbor addresses must be, by default, directly adjacent.
+
+
+Configure the EBGP multihop between EBGP peers R1 and R2. Verify the peering.
+
+<b>
+R1(config)# router bgp 65100
+R1(config-router)# neighbor 192.168.2.2 ebgp-multihop
+
+R2(config)# router bgp 65000
+R2(config-router)# neighbor 209.165.201.1 ebgp-multihop
+
+R1# show ip bgp summary
+</b>
+
+On R2, enable the BGP update debugging function, perform a soft reset outbound on R1 for R2, and observe the debugging output on R2.
+<b>
+R2# debug ip bgp updates
+BGP updates debugging is on for address family: IPv4 Unicast
+
+R1# clear ip bgp 192.168.2.2 out
+</b>
+
+Cisco IOS routers provide a rich set of monitoring and debugging capabilities for BGP operation. In this example, you enable the debugging of BGP updates. When you trigger a soft reset outbound on R1 towards R2, all prefixes existing in the BGP table that have not been received from R2 are re-sent to R2. You can monitor the receipt of information on R2 using the debug ip bgp updates command. In this case, the received information is a duplicate of the previous information.
+
+Do not forget to disable the debug with the no debug all command.
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+ 
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<th>x</th>
+<th>x</th>
+</tr>
+</table>
+ 
+<ul>
+<li></li>
+<li></li>
+<li></li>
+</ul>
+ 
+ 
+<br>
+-->

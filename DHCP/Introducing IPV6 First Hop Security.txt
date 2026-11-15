@@ -1,0 +1,225 @@
+<h2>Introducing IPV6 First Hop Security</h2>
+
+
+IPv6 features such as Neighbor Discovery (ND), Stateless Address Auto-configuration (SLAAC) using Router Advertisements and Solicitations (RA and RS), and DHCPv6 are instrumental to an organization that hopes to benefit from all that IPv6 has to offer. However, there are vulnerabilities inherent with these features.
+
+ND and SLAAC suffer from the same lack of authentication as Address Resolution Protocol (ARP) and Dynamic Host Configuration Protocol (DHCP) on IPv4 networks. On IPv6 networks, ND spoofing attacks are real. IPv6 networks can be targets of Denial of Service (DoS) attacks, and spoofing IPv6 addresses is as easy as spoofing IPv4 addresses (assuming that IPsec Authentication Header (AH) is not used in either of the protocol families).
+
+
+<h3> Describe IPv6 Snooping</h3>
+
+The IPv6 Snooping feature bundles several Layer 2 IPv6 first-hop security features, including IPv6 address gleaning, IPv6 device tracking, IPv6 binding table recovery, and IPv6 neighbor discovery inspection to provide security and scalability.
+
+IPv6 snooping captures IPv6 traffic by gathering addresses in control messages such as Neighbor Discovery Protocol (NDP) or DHCP packets and uses the information to build a binding table. This binding table is used by various IPv6 security features to validate the data link layer address (LLA), the IPv6 address, and prefix binding of the neighbors to prevent spoofing and redirect attacks. 
+
+Depending on the security level, a switch blocks unwanted messages such as Neighbor Discovery (ND) messages, Router Advertisements (RA), or DHCP replies. IPv6 Snooping is a pre-requisite to several IPv6 First-Hop security features such as IPv6 Source Guard and Destination Guard.
+
+
+<b>IPv6 Address Gleaning</b>
+
+
+IPv6 address gleaning is the foundation for many other IPv6 features that depend on an accurate binding table. It inspects ND and DHCP messages on a link to glean addresses, and then populates the binding table with these addresses. This feature also enforces address ownership and limits the number of addresses any given node is allowed to claim.
+
+<b>IPv6 Device Tracking</b>
+
+
+The IPv6 device tracking feature provides IPv6 host liveness tracking so that a neighbor table can be immediately updated when an IPv6 host disappears. The feature tracks the liveness of the neighbors that are connected through the Layer 2 device on regular basis to revoke network access privileges as they become inactive.
+
+
+<b>IPv6 First-Hop Security Binding Table Recovery</b>
+
+The IPv6 First-Hop Security Binding Table Recovery feature enables the binding table to recover in the event of a device reboot. The recovery mechanism will block any data traffic that has been sent from an unknown source. An unknown source is a source not already specified in the binding table, and previously learned through ND or DHCP gleaning
+
+ This feature recovers the missing binding table entries when the resolution for a destination address fails in the destination guard. When a failure occurs, a binding table entry is recovered by querying the DHCP server or the destination host, depending on the configuration.
+
+
+<b>IPv6 Neighbor Discovery Inspection</b>
+
+IPv6 Neighbor Discovery inspection learns and secures bindings for stateless autoconfiguration addresses in Layer 2 neighbor tables and analyzes ND messages to build a trusted binding table. It is designed to mitigate some of the inherent vulnerabilities for the neighbor discovery mechanism, such as attacks on Duplicate Address Detection (DAD), address resolution, device discovery, and the neighbor cache.
+
+<h3> Describe IPv6 ND Inspection</h3>
+
+
+Pv6 ND Inspection analyzes ND messages, NS (Neighbor Solicitation), and NA (Neighbor Advertisement) messages. An ND message is considered trustworthy if its IPv6-to-MAC mapping is verifiable. IPv6 ND messages that do not have a valid IPv6-to-MAC mapping in the binding table are dropped, and therefore, ND Inspection can be used to help prevent address spoofing.
+
+
+IPv6 ND Inspection only analyzes NS/NA messages; unlike IPv6 Source Guard which works on actual data packets. When the IPv6-LLA combination does not match, it drops the message. This only applies to NS/NA messages, it does not drop any actual data packets that have a spoofed IPv6 or MAC address.
+
+In the diagram, the switch drops the ND messages from H3 because the content of the ND message does not match the information for H2 in the binding table. Since there is already an entry for H2, the switch does not accept the ND message from H3 with the spoofed H2 address.
+
+Every time an ND inspection is configured globally, the policy attributes are stored in the software policy database. The policy is then applied to an interface, and the software policy database entry is updated to include this interface to which the policy is applied
+
+When IPv6 ND inspection is configured on a target, capture instructions are downloaded to the hardware to redirect the ND protocol and DHCP for IPv6 traffic up to the Switch-Integrated Security Features (SISF) infrastructure in the routing device.
+
+ND inspection varies depending on platform target support and may include device ports, switch ports, Layer 2 interfaces, Layer 3 interfaces, and VLANs. For ND traffic, messages such as NS, NA, RS, RA, and REDIRECT are directed to SISF. For DHCP, UDP messages that are sourced from port 546 or 547 are redirected.
+
+IPv6 ND inspection registers its "capture rules" to the classifier, which aggregates all rules from all features on a given target, and installs the corresponding ACL down into the platform-dependent modules. Upon receiving redirected traffic, the classifier calls all entry points from any registered feature (for the target on which the traffic is being received), including the IPv6 ND inspection entry point. This entry point is the last to be called, so any decision (such as drop) made by another feature supersedes the IPv6 ND inspection decision.
+
+
+
+<h3>Describe IPv6 RA Guard</h3>
+
+
+Router Advertisement (RA) messages are used by routers to announce themselves on a link. Hosts configured to use SLAAC use the RA information to dynamically set their default gateway. The IPv6 RA Guard feature provides support for allowing the network administrator to reject unwanted or rogue router advertisement messages that arrive at the network device platform.
+
+In the diagram, IPv6 RA Guard has been configured so that G0/1 has a device role of router, which allows host H1 to receive its IP settings from router R2. Since G0/3 has been configured with a device role of host, the attacker R3 is unable to advertise itself as a gateway.
+
+Every time RA guard is configured globally, the policy attributes are stored in the software policy database. The policy is then applied to an interface, and the software policy database entry is updated to include this interface to which the policy is applied. With an interface configured in host mode, all RA and router redirect messages are disallowed on the port.
+
+Depending on the configuration options, RA guard can validate various parameters such as the IPv6 source address of the packet, flags in the RA, prefixes advertised by the router, hop-count limit advertised, and the default router preference advertised. Therefore, you can create policies where router advertisements are only permitted if they match certain criteria.
+
+The RA guard feature compares configuration information on the Layer 2 device with the information that is found in the received RA frame. Once the Layer 2 device has validated the content of the RA frame and router redirect frame against the configuration, it forwards the RA to its unicast or multicast destination. If the RA frame content is not validated, the RA is dropped.
+
+IPv6 RA Guard is supported:
+
+only in hardware when the ternary content addressable memory (TCAM) is programmed.
+
+only in the ingress direction; it is not supported in the egress direction.
+
+on auxiliary VLANs and private VLANs (PVLANs). In the case of PVLANs, primary VLAN features are inherited and merged with port features.
+
+IPv6 RA Guard is not supported:
+
+where IPv6 traffic is tunneled.
+
+on EtherChannel and EtherChannel port members.
+
+on trunk ports with merge mode.
+
+
+Other Considerations:
+
+Packets that are dropped by the IPv6 RA Guard feature can be spanned.
+
+In the wireless deployment RAs coming on wireless ports are dropped as routers cannot reside on these interfaces.
+
+<h3>Describe DHCPv6 Guard</h3>
+
+DHCPv6 Guard prevents rogue devices that are pretending to be legitimate DHCP servers from assigning improper IP information to clients. It blocks DHCP reply and advertisement messages that originate from unauthorized DHCP servers and relay agents that forward DHCP packets from servers to clients. Client messages or messages that are sent by relay agents from clients to servers are not blocked.
+
+The device role that is assigned to the receiving switch port, trunk, or VLAN determines the filtering decision. The DHCPv6 Guard classifies the information into one of the three DHCP type messages (client message, server message, and relay message), and takes action depending on the device role.
+
+All client messages are switched regardless of the device role, and the DHCP server messages are only processed further if the device role is set to server.
+
+In the diagram, DHCPv6 Guard has been configured so that G0/1 has a device role of server, which allows host H1 to receive its IP settings from DHCP server S2. Since G0/3 has been configured with a device role of client, the attacker DHCP server S3 is unable to respond to host H1’s DHCP request for its IP settings.
+
+In addition, to provide a finer level of filter granularity, messages can be filtered based on the address of the sending server or relay agent, or by the prefixes and address ranges listed in the reply message. This functionality helps to prevent traffic redirection or denial of service (DoS).
+
+<h3>Describe IPv6 Source Guard</h3>
+
+IPv6 Source Guard is a Layer 2 snooping feature that validates the source of IPv6 traffic to prevent IPv6 address spoofing, which may lead to Denial of Service (DoS) attacks.
+
+
+
+The diagram depicting a switch before it is configured with IPv6 Guard shows an attacker host, H3, continually generating packets sourced from bogus addresses in the same subnet as server S2. To respond, server S2 is continually requesting the MAC addresses of the bogus host addresses. Since the hosts with the bogus addresses do not exist, server S2 gets no reply to its address resolution requests. Therefore, its IPv6 neighbor table fills with incomplete entries, and its ability to process legitimate sessions is affected.
+
+IPv6 Source Guard blocks any data traffic from an unknown source, for example, one that is not already populated in the binding table or previously learned through Neighbor Discovery (ND) or DHCP gleaning.
+
+An entry is installed in the binding table when one of the following conditions is satisfied:
+
+An IPv6 binding is learned through DHCP
+
+An IPv6 address or prefix is learned through NDP
+
+A static binding is configured by the user
+
+
+IPv6 Source Guard does not inspect ND or DHCP packets; rather, it works along with IPv6 neighbor discovery (ND) inspection or IPv6 address glean, both of which detect existing addresses on the link and store them into the binding table.
+
+The binding table stores the following information:
+
+IPv6 address
+
+MAC address
+
+VLAN
+
+Interface ID
+
+
+IPv6 Source Guard can deny traffic from unknown sources or unallocated addresses, such as traffic from sources not assigned by a DHCP server. When traffic is denied, the IPv6 address glean feature is notified so that it can try to recover the traffic by querying the DHCP server or by using IPv6 ND. The data-glean function prevents the device and end user from getting deadlocked, whereupon a valid address fails to be stored into the binding table, there is no recovery path, and the end user is unable to connect.
+
+IPv6 Source Guard is an ingress feature and filters incoming data packets alone. If IPv6 Source Guard is enabled, every ingress packet on a switch port or Layer 2 VLAN is checked against entries in the IPv6 binding table. Initially, IPv6 Source Guard blocks all IPv6 traffic on the target except for DHCP or NDP packets that are used for IPv6 Snooping processes.
+
+IPv6 Source Guard is configured by using policies that are configured in the global configuration mode. The policies are applied to switch ports and VLANs. Address validation, which inspects IPv6 addresses, is enabled by default in the IPv6 Source Guard policy.
+
+
+The configuration of IPv6 Snooping on the corresponding IPv6 Source Guard VLAN or Layer 2 access or trunk port is a prerequisite for IPv6 Source Guard.
+
+Note
+NOTE: The IPv6 Source Guard feature is not supported on EtherChannel ports.
+
+<h3>Describe IPv6 Destination Guard</h3>
+
+The IPv6 Destination Guard feature is designed to minimize Denial-of-Service (DoS) attacks on a Layer 3 switch or router. IPv6 Destination Guard will not perform any Layer 2 address resolution for a destination IPv6 address that that is not already populated in the binding table or previously learned through Neighbor Discovery (ND) or DHCP gleaning.
+
+The diagram depicting a Layer 3 switch before it is configured with IPv6 Destination Guard shows an attacker host, H3, continually generating packets destined for bogus addresses in the 2001:db8:123:10::/64 subnet. To deliver the packets to the directly connected subnet, the Layer 3 Switch is continually requesting the MAC addresses of the bogus host addresses. Since the hosts with the bogus addresses do not exist, the Layer 3 switch gets no reply to its address resolution requests. Therefore, its IPv6 neighbor table fills with incomplete entries, and its ability to process legitimate sessions is affected.
+
+An entry is installed in the binding table when one of the following conditions is satisfied:
+
+An IPv6 binding is learned through DHCP
+
+An IPv6 address or prefix is learned through NDP
+
+A static binding is configured by the user
+
+IPv6 Destination Guard does not inspect ND or DHCP packets; rather, it works along with IPv6 Neighbor Discovery (ND) inspection or IPv6 address glean, both of which detect existing addresses on the link and store them into the binding table.
+
+The binding table stores the following information:
+
+IPv6 address
+
+MAC address
+
+VLAN
+
+Interface ID
+
+IPv6 Destination Guard prevents an attacker from exhausting a router’s IPv6 neighbor cache, filling it with incomplete entries by continually sending it packets that are destined for bogus IPv6 addresses that cannot be resolved.
+
+When a packet reaches the device and there is not yet an adjacency for the destination or for the next hop, the NDP consults the device binding table to verify that the destination-on-link or the next-hop has been previously gleaned. If the destination is not found in the binding table, the packet is dropped.
+
+IPv6 Snooping is a prerequisite for IPv6 Destination Guard.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

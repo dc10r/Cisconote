@@ -1,0 +1,187 @@
+eigrp 
+Enhanced interior Gateway Routing Protocol 
+Characteristics
+- is a distance vector routing protocol
+- derivative of Interior Gateway Routing Protocol (IGRP) but includes support for variable length subnet masking (VLSM) and metrics capable of supporting higher-speed interfaces.
+-  overcomes the deficiencies: with features such as unequal-cost load balancing, support for networks 255 hops away, and rapid convergence features.
+-  uses a diffusing update algorithm (DUAL) to identify network paths and provides for fast convergence using precalculated loop-free backup paths.
+- advertise incremental updates only as topology changes occur within a network.
+main concepts 
+
+Successor route: The route with the lowest path metric to reach a destination
+Successor:  The first next-hop router for the successor route.
+Feasible distance (FD):  The metric value for the lowest-metric path to reach a destination. (lo que me cuesta llegar)
+Reported distance: (RD):  Distance reported by a router to reach a prefix (el valor que reporta el next-hop)
+Feasibility condition:  For a route to be considered a backup route, the RD received for that route must be less than the FD calculated locally
+RD <  FD
+Feasible successor:  A route with that satisfies the feasibility condition is maintained as a backup route. The feasibility condition ensures that the backup route is loop free.
+
+Successor route: La mejor ruta, tiene la metrica mas baja para llegar
+Successor: el router que me indica la mejor ruta
+Feasible distance: La metrica final del camino, agregando mis costos    
+Reported distance: La metrica que cada router reporta, no agrego lo que me cuesta llegar a el
+Feasible successor: La ruta que satisface la feasible condition, se vuelve el backup router 
+feasibility condition: la distancia que me reportan debe de ser menor a la distancia que me cuesta llegar usando la mejor ruta RD < FD
+
+#show ip eigrp topology
+- Network prefix
+- EIGRP neighbors that have advertised that prefix
+- Metrics from each neighbor
+- Values used for calculating the metric 
+
+
+<h1>Inter-Router Communication</h1>
+five different packet types
+	Hello -> Used for discovery of EIGRP neighbors and for detecting when a neighbor is no longer available  
+	Request -> Used to get specific information from one or more neighbors
+	Update ->  Used to transmit routing and reachability information with other EIGRP neighbors
+	Query ->  Sent out to search for another path during convergence
+	Reply- >  Sent in response to a query packet
+
+-  uses its own IP protocol number (88) and uses multicast packets where possible; it uses unicast packets when necessary. 
+- Communication between routers is done with multicast using the group address 224.0.0.10 or the MAC address 01:00:5e:00:00:0a 
+-  EIGRP uses multicast packets to reduce bandwidth consumed on a link (one packet to reach multiple devices). 
+- Reliable Transport Protocol (RTP) to ensure that packets are delivered in order and to ensure that routers receive specific packets. A sequence number is included in each EIGRP packet. The sequence value zero does not require a response from the receiving EIGRP router; all other values require an ACK packet that includes the original sequence number.
+
+<h1>Forming EIGRP Neighbors</h1>
+The following parameters must match for the two routers to become neighbors:
+• Metric formula K values
+• Primary subnet matches
+• Autonomous system number (ASN) matches
+• Authentication parameters
+
+Process EIGRP uses for forming neighbor adjacencies
+
+1 Hello / (both)
+2 Update packet (Unicast) with Init Set / (beginner)
+3 ACK / (receiver)
+4 Update packet (Unicast) routes sent / (beginner)
+5 ACK / (receiver)
+6 Update Packet (Unicast) End of Table / (beginner)
+7 ACK (receiver)
+
+<h1>EIGRP Configuration Modes</h1>
+
+ two methods of EIGRP configuration are classic mode and named mode. 
+
+<h2>Classic Configuration Mode</h2>
+
+- Classic EIGRP :most of the configuration takes place in the EIGRP process, but some settings are configured under the interface configuration submode. Some of the settings that are set individually are hello advertisement interval, split-horizon, authentication, and summary route advertisements.
+
+<h1>command</h1>
+<h3>router eigrp as-number</h3>
+<h3>network ip-address [wildcard mask]</h3>
+<h4>named mode configuration </h4>
+Provides the following benefits:
+- All the EIGRP configuration occurs in one location.
+- Supports current EIGRP features and future developments.
+- It supports multiple address families (including Virtual Routing and Forwarding [VRF] instances).
+- Named mode provides a hierarchical configuration and stores settings in three 
+subsections
+	- Address Family:  contains settings that are relevant to the global EIGRP AS operations, such as selection of network interfaces, EIGRP K values, logging settings, and stub settings
+	- Interface:  submode contains settings  such as hello advertisement interval, split-horizon, authentication, and summary route advertisements. Commands can be assigned to a specific interface or to a default interface, in which case those settings are placed on all EIGRP-enabled interfaces. If there is a conflict between the default interface and a specific interface, the specific interface takes priority over the default interface
+
+	- Topology: contains settings regarding the EIGRP topology database and how routes are presented to the router’s RIB. This section also contains route redistribution and administrative distance settings.
+
+<h3>show ip eigrp interfaces [{interface-id [detail] | detail}]</h3>
+
+Interface:  Interfaces running EIGRP.
+Peers:  Number of peers detected on that interface.
+Xmt Queue Un/Reliable:  Number of unreliable/reliable packets remaining in the transmit queue.
+Mean SRTT:  Average time for a packet to be sent to a neighbor and a reply from that neighbor to be received, in milliseconds.
+Multicast Flow Timer:  Maximum time (seconds) that the router sent multicast packets
+Pending Routes:  Number of routes in the transmit queue that need to be sent.
+
+<h3> show ip eigrp neighbors [interface-id]</h3>
+Address: IP address of the EIGRP neighbor
+Interface:  Interface the neighbor was detected on
+Holdtime: Time left to receive a packet from this neighbor to ensure it is still alive
+SRTT: Time for a packet to be sent to a neighbor and reply to be received from that neighbor in milliseconds
+RTO: Timeout for retransmission (waiting for ACK)
+Q cnt:  Number of packets (update/query/reply) in queue for sending
+Seq Num: Sequence number that was last received from the router
+
+<h3> show ip route eigrp.</h3>
+
+- Routes originating within the autonomous system have an administrative distance (AD) of 90 and are indicated in the routing table with a D. 
+- EIGRP routes have an AD of 170 and are indicated in the routing table with D EX.
+- Placing external EIGRP routes into the RIB with a higher AD acts as a loop-prevention mechanism.
+
+<h3> eigrp router-id</h3>
+-  is a 32-bit number that uniquely identifies an EIGRP
+-  The algorithm for dynamically choosing the EIGRP RID uses the highest IPv4 address of any up loopback interfaces. If there are not any up loopback interfaces, the highest IPv4 address of any active up physical interfaces becomes the RID 
+
+
+<h3>passive-interface interface-id</h3>
+- passive-interface interface-id under the EIGRP process for classic configuration. 
+
+- advertise a network segment into EIGRP but need to prevent neighbors from forming adjacencies with other routers on that segment. In this scenario, you need to put the EIGRP interface in a passive state. Passive EIGRP interfaces do not send out or process EIGRP hellos, which prevents EIGRP from forming adjacencies on that interface.
+
+named mode configuration, you place the passive-interface state on af-interface default for all EIGRP interfaces or on a specific interface with the af-interface interface-id section. 
+
+<h3> show ip protocols</h3>
+- displays the EIGRP process identifier, the ASN, K values that are used for path calculation, RID, neighbors, AD settings, and all the passive interfaces.
+
+<h2>Authentication</h2>
+
+EIGRP encrypts the password by using a Message Digest 5 (MD5) authentication, using the keychain function.
+
+Step 1. Create the keychain by using the command key chain key-chain-name. 
+Step 2. Identify the key sequence by using the command key key-number, where key-number can be anything from 0 to 2147483647. 
+Step 3. Specify the preshared password by using the command key-string password.
+
+- key-chain-name.
+- key key-number (0 to 2147483647)
+- key-string password
+
+- classic configuration, authentication must be enabled on the interface under the interface configuration submode. 
+- ip authentication key-chain eigrp as-number key-chain-name
+- ip authentication mode eigrp as-number md5
+
+- named mode configuration places the configurations under the EIGRP interface submode  af-interface default or the af-interface interface-id.
+
+- Named mode configuration supports MD5 or Hashed Message Authentication Code-Secure Hash Algorithm-256 (HMAC-SHA-256) authentication. MD5 authentication 
+involves the following commands:
+• authentication key-chain eigrp key-chain-name
+• authentication mode md5
+The HMAC-SHA-256 authentication involves the command 
+authentication mode hmacsha-256 password
+
+<h3>show key chain</h3>
+<h3>show ip eigrp int detail</h3>
+
+<h1>Path Metric Calculations</h1>
+
+K values to define which factors the formula uses and the impact associated with a factor when calculating the metric. BW represents the slowest link in the path, scaled to a 10 Gbps link (107). Link speed is collected from the configured interface bandwidth on an interface. Delay is the total measure of delay in the path, measured in tens of microseconds
+
+The EIGRP formula is based on the IGRP metric formula, except the output is multiplied by 256 to change the metric from 24 bits to 32 bits
+
+By default, K1 and K3 have a value of 1, and K2, K4, and K5 are set to 0. 
+
+
+The router ID (RID)
+Routing Information Base (RIB)
+Reliable Transport Protocol (RTP)
+Enhanced interior Gateway Routing Protocol (EIGRP) 
+Autonomous system number (ASN)
+
+- diapo 30
+
+<p></p>
+<h1></h1>
+<h2></h2>
+<h3></h3>
+<h4></h4>
+<h5></h5>
+
+
+
+
+
+
+
+
+
+
+
+.

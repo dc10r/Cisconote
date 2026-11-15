@@ -1,0 +1,280 @@
+<h1>Introducing MPLS L3 VPN architecture</h1> 
+
+
+
+A Multiprotocol Label Switching (MPLS) L3 VPN is a VPN that is built on top of an MPLS network. It is usually offered by a service provider to deliver connectivity between enterprise office locations. The terms "MPLS IP VPN," "MPLS L3 VPN" and "MPLS-based VPN" can be used synonymously. Regardless of the term used, the operation of an MPLS based VPN is an important concept to understand when achieving expertise in MPLS fundamentals
+
+In this section, you will be able to:
+
+Describe the MPLS L3 VPN architecture
+
+Describe the PE router architecture
+
+Describe the VRF
+
+Describe the different methods of propagating routing information across the P-network
+
+Describe the features and format of route distinguishers
+
+Describe the route distinguisher operation in an MPLS VPN
+
+Describe the features of route targets
+
+Describe the route target and route distinguisher process flow
+
+<h3> Describe MPLS L3 VPN Architecture</h3>
+
+In the MPLS L3 VPN architecture, the edge routers carry customer routing information, providing optimal routing for traffic belonging to the customer for site-to-site traffic.
+
+An MPLS L3 VPN combines the best features of an overlay VPN and a peer-to-peer VPN:
+
+PE routers participate in customer routing, guaranteeing optimum routing between sites and easy provisioning.
+
+PE routers carry a separate set of routes for each customer (similar to the dedicated PE router approach).
+
+Customers can use overlapping addresses.
+
+Unlike the traditional peer-to-peer model, the MPLS-based L3 VPN model also accommodates customers using overlapping address spaces. In the traditional model, optimal routing of customer traffic required the provider to assign IP addresses to each of its customers to avoid overlapping address spaces. Another option was for the customer to implement NAT.
+
+MPLS L3 VPN is an implementation of the peer-to-peer model. The MPLS L3 VPN backbone and customer sites exchange Layer 3 customer routing information, and data is forwarded between customer sites using the MPLS-enabled service provider IP backbone.
+
+The MPLS L3 VPN domain, like the traditional VPN, consists of the C-network and the P-network. The MPLS L3 VPN model is very similar to the dedicated PE router model in a peer-to-peer VPN implementation. However, instead of deploying a dedicated PE router per customer, customer traffic is isolated on the same PE router that provides connectivity into the service provider network for multiple customers.
+
+
+The main components of MPLS L3 VPN architecture are as follows:
+
+A C-network is usually a customer-controlled domain consisting of devices or routers that span multiple sites belonging to the customer.
+
+CE routers are routers in the C-network that interface with the service provider network.
+
+A P-network is the provider-controlled domain consisting of PE and provider core routers that connect sites belonging to the customer on a shared infrastructure. The P-network controls the traffic routing between sites belonging to a customer, along with customer traffic isolation.
+
+PE routers are routers in the P-network that interface or connect to the Custom Edge (CE) routers in the C-network.
+
+P routers are routers in the core of the P-network that interface with either other provider core routers or PE routers.
+
+In an MPLS L3 VPN implementation, the PE router is the edge LSR.
+
+LSR (Label Switching Router)
+
+<h3>Describe PE Router Architecture</h3>
+
+An MPLS L3 VPN implementation is very similar to a dedicated router peer-to-peer model implementation. From the perspective of a CE router, only IPv4/IPv6 updates, and data, are forwarded to the PE router. 
+
+The CE router does not need any specific configuration to enable it to be a part of an MPLS L3 VPN domain. The only requirement on the CE router is a routing protocol (or a static default route) that enables the router to exchange IPv4/IPv6 routing information with the connected PE router.
+
+
+A PE router in an MPLS L3 VPN uses virtual routing tables to implement the functionality of customer-dedicated PE routers.
+
+In the MPLS L3 VPN implementation, the PE router performs multiple functions.
+
+The PE router must first be capable of isolating customer traffic if more than one customer is connected to the PE router. Each customer, therefore, is assigned an independent routing table (virtual routing table or VRF table) that is similar to a dedicated PE router in the initial peer-to-peer discussion
+
+Routing across the service provider backbone is performed using a routing process in the global routing table.
+
+P routers provide label switching between PE routers and are unaware of VPN routes. 
+
+CE routers in the C-network are not aware of the P routers, and thus the internal topology of the service provider network is transparent to the customer. 
+
+The P routers are responsible only for label switching of packets. They do not carry VPN routes and do not participate in MPLS L3 VPN routing. The PE routers exchange IPv4/IPv6 routes with connected CE routers using individual routing protocol contexts. To allow the network to scale to many customer VPNs, multiprotocol MP-BGP is configured between PE routers to carry customer routes.
+
+<h4>Describe VRF</h4>
+The VRF contains the following elements: 
+
+<ul>
+  <li>(1) an IP routing table that is analogous to the global IP routing table</li>
+  <li> (2) a Cisco Express Forwarding table,</li>
+  <li>(3) a list of interfaces that are part of the VRF</li>
+  <li>(4) a set of rules defining routing protocol exchange with attached CE routers (routing protocol contexts).</li>
+</ul>
+
+In addition, the VRF contains VPN identifiers and VPN membership information
+
+The interface that is part of the VRF must support Cisco Express Forwarding switching. The number of interfaces that can be bound to a VRF is limited only by the number of interfaces on the router. However, a single interface (logical or physical) can be associated with only one VRF.
+
+Cisco IOS Software supports various routing protocols and individual routing processes (OSPF, EIGRP, and so on) per router. However, for some routing protocols, such as RIP and BGP, Cisco IOS Software supports only a single instance of the routing protocol. Therefore, the concept of routing context was developed to implement per-VRF routing using protocols that are completely isolated from other VRFs, which might use the same PE-CE routing protocols.
+
+<h3>Describe Methods of Propagating Routing Information Across the P-Network</h3> 
+
+
+Although virtual routing tables provide isolation between customers, the data from these routing tables still needs to be exchanged between PE routers to enable data transfer between the sites that are attached to different PE routers. Therefore, a routing protocol is needed that will transport all customer routes across the P-network, while maintaining the independence of individual customer address spaces.
+
+<h5>Question: How will PE routers exchange customer routing information?</h5>
+
+
+Option #1: Run a dedicated routing protocol for each customer across the P-network.
+Problem: The solution does not scale, and P routers carry all customer routes.
+
+The separate routing protocol for each customer is very simple to implement and often used by some customers. Unfortunately, this approach is not appropriate in service provider environments because it simply does not scale. The specific problems are:
+
+The PE routers need to run many routing protocols.
+
+The P routers need to carry all customer routes.
+
+Option #2: Run a single routing protocol that will carry all customer routes inside the provider backbone.
+Problem: This solution does not scale and the P routers carry all customer routes.
+
+A better approach to the route propagation problem is to deploy a single routing protocol that can exchange all customer routes across the P-network. Although this approach is better than the preceding approach, the P routers are still involved in customer routing. Therefore, the proposal retains some of the scalability issues of the preceding approach.
+
+
+Option #3: Run a single routing protocol that will carry all customer routes between PE routers. Use MPLS labels to exchange packets between PE routers.
+No more issues: P routers do not carry customer routes; the solution is scalable.
+
+
+The best solution to the customer route propagation issue is to run a single routing protocol between PE routers that will exchange all customer routes without the involvement of the P routers. This solution is scalable. Two of the benefits of this approach are:
+
+The number of routing protocols running between PE routers does not increase with an increasing number of customers.
+
+The P routers do not carry customer routes.
+
+
+<h5>Question: Which protocol can be used to carry customer routes between PE routers?</h5>
+
+Answer: The number of customer routes can be very large. MP-BGP is the only routing protocol that can scale to a very large number of routes.
+Solution: MP-BGP is used to exchange customer routes directly between PE routers.
+
+The next design decision to be made is the choice of the routing protocol running between PE routers. Given that the total number of customer routes is expected to be very large, the only well-known protocol with the required scalability is MP-BGP. In fact, MP-BGP is used in the MPLS VPN architecture to transport customer routes directly between PE routers.
+
+<h5>How will information about the overlapping subnets of two customers be propagated via a single routing protocol?</h5>
+
+Answer: Extend the customer addresses to make them unique.
+
+MPLS L3 VPN architecture differs in an important way from traditional peer-to-peer VPN solutions: MPLS L3 VPNs support overlapping customer address spaces.
+
+With the deployment of a single routing protocol (that is, MP-BGP) exchanging all customer routes between PE routers, an important issue arises. The dilemma is how can BGP propagate several identical prefixes, belonging to different customers, between PE routers?
+
+The only solution to this question is the expansion of customer IP prefixes with a unique prefix that makes them unique even if they had previously overlapped. A 64-bit prefix that is called the RD is used in MPLS L3 VPNs to convert non-unique 32-bit customer IPv4 addresses into 96-bit unique addresses that can be transported between PE routers. The same process is applied to IPv6 routes, producing a 192-bit unique address (64 bits for the RD plus 128 bits for the IPv6 address).
+
+
+<h3>Describe Route Distinguishers(RD)</h3>
+
+
+In the MPLS L3 VPN routing model, the PE router provides isolation between customers using VRFs. However, this information must be carried between PE routers to enable data transfer between customer sites via the MPLS L3 VPN backbone.
+
+The PE router must be capable of implementing processes that allow overlapping address spaces in connected C-networks. The PE router must also learn these routes from attached C-networks and propagate this information using the shared provider backbone. These actions are achieved by the association of an RD per virtual routing table on a PE router.
+
+In an MPLS VPN backbone, the PE router needs to implement processes that enable overlapping address spaces in connected C-networks.
+
+The 64-bit RD is prepended to an IPv4 or IPv6 address to make it globally unique.
+
+The resulting address is a VPNv4 or VPNv6 address.
+
+VPNv4/VPNv6 addresses are exchanged between PE routers via BGP.
+
+An RD is a 64-bit unique identifier that is prepended to the 32-bit or 128-bit customer prefix or a route that is learned from a CE router. The resulting address, which can either be 96 bits or 192 bits in total, is called a VPNv4 or VPNv6 address, respectively. So, a VPNv4 or VPNv6 address is a unique address that can be transported between the PE routers in the MPLS domain. Therefore, a unique RD is configured per VRF on the PE router.
+
+VPNv4/VPNv6 addresses are exchanged only between PE routers; they are never used between CE routers. Between PE routers, BGP must therefore support the exchange of traditional IPv4/IPv6 prefixes and the exchange of VPNv4/VPNv6 prefixes. A BGP session between PE routers is therefore called an MP-BGP session.
+
+VPNv4/VPNv6 addresses are exchanged between PE routers in the P-network in addition to IPv4/IPv6 addresses.
+
+The format of an RD is shown in the figure. An RD can be of two formats. If the provider does not have a BGP AS number, the IP address format can be used, and if the provider does have an AS number, the AS number format can be used.
+
+<table border="1">
+<tr>
+<th>RD Formats</th>
+</tr>
+<tr>
+<td>AS Number</td>
+<td>VPN Identifier</td>
+</tr>
+<tr>
+<td>IP Address</td>
+<td>VPN Identifier</td>
+</tr>
+</table>
+
+<h3>Describe RD Operation in MPLS VPN</h3> 
+
+The protocol that is used for exchanging these VPNv4 routes between PE routers is MP-BGP. MP-BGP is a BGP that is capable of carrying VPNv4 (96-bit) prefixes in addition to other address families, such as VPNv6 (192-bit).
+
+The IGP requirement to implement IBGP still holds in the case of an MPLS L3 VPN implementation. Therefore, the PE router must run an IGP that provides the next-hop attribute for IBGP if both PE routers are in the same AS.
+
+Cisco currently supports both OSPF and IS-IS in the MPLS provider network as the IGP. MP-BGP is also responsible for assignment of a VPN label. Packet forwarding in an MPLS L3 VPN mandates that the router that is specified as the next hop in the incoming BGP update is the same router that assigns the VPN label.
+
+An MP-BGP session between PE routers in a single BGP AS is called an MP-IBGP session and follows the same rules as in the implementation of IBGP regarding BGP attributes. If the VPN extends beyond a single AS, VPNv4/VPNv6 routes will be exchanged between autonomous systems at the AS boundaries using an MP-EBGP session.
+
+Customer route propagation across an MPLS VPN network is performed using this process for IPv4:
+
+The CE router sends an IPv4 routing update to the PE router.
+
+The PE router prepends a 64-bit RD to the IPv4 routing update, resulting in a globally unique 96-bit VPNv4 prefix.
+
+The VPNv4 prefix is propagated via an MP-IBGP session to other PE routers.
+
+
+The receiving PE routers strip the RD from the VPNv4 prefix, resulting in an IPv4 prefix.
+
+The IPv4 prefix is forwarded to other CE routers within an IPv4 routing update.
+
+Note
+The same process would apply to IPv6 prefixes and VPNv6 addresses.
+
+
+<h3>Describe Route Targets (RTs)</h3>
+
+Consider a scenario where some sites have to participate in more than one VPN. In such a scenario, the RDs cannot identify participation in more than one VPN. RTs were introduced into the MPLS L3 VPN architecture to support identifying a site that participates in more than one VPN.
+
+The RD cannot identify participation in more than one VPN.
+
+RTs were introduced in the MPLS L3 VPN architecture to support complex VPN topologies.
+
+RTs are extra attributes that are attached to VPNv4 and VPNv6 MP-BGP routes to indicate VPN membership.
+
+Extended BGP communities are used to encode these attributes.
+
+RTs are extra identifiers that are used in the MPLS L3 VPN. RTs identify the VPN membership of the routes that are learned from that particular site. You can implement RTs by using extended BGP communities in which the higher-order 16 bits of the BGP extended community (64 total bits) are encoded with a value corresponding to the VPN membership of the specific site. When a VPN route that is learned from a CE router is injected into VPNv4 MP-BGP, a list of VPN route target extended community attributes is associated with it.
+
+MPLS L3 VPN RTs are attached to a customer route at the moment that it is converted from an IPv4 route to a VPNv4 route by the PE router. The RTs that are attached to the route are called export RTs and are configured separately for each virtual routing table in a PE router. Export RTs identify a set of VPNs in which sites that are associated with the virtual routing table belong.
+
+When the VPNv4 routes are propagated to other PE routers, those routers need to select the routes to import into their virtual routing tables. This selection is based on import RTs. Each virtual routing table in a PE router can have various configured import RTs that identify the set of VPNs from which the virtual routing table is accepting routes.
+
+When implementing complex VPN topologies, such as extranet VPN, Internet access VPNs, network management VPN, and so on, using MPLS L3 VPN technology, the RT plays a pivotal role. A single prefix can be associated to more than one export route target when propagated across the MPLS VPN network. The RT can, as a result, be associated to sites that might be a member of more than one VPN.
+
+RTs are extra identifiers that are used in the MPLS L3 VPN. RTs identify the VPN membership of the routes that are learned from that particular site. You can implement RTs by using extended BGP communities in which the higher-order 16 bits of the BGP extended community (64 total bits) are encoded with a value corresponding to the VPN membership of the specific site. When a VPN route that is learned from a CE router is injected into VPNv4 MP-BGP, a list of VPN route target extended community attributes is associated with it.
+
+<h3>Describe RT and RD Process Flow</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Route Distinguishers(RD)
+Describe Route Targets (RTs)
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

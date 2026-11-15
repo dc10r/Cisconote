@@ -1,0 +1,372 @@
+<h2>Troubleshooting with DNA Center Assurance</h2>
+
+
+<h3> Need for DNA Assurance</h3>
+
+
+Your organization’s IT resources are being stretched to their limits in transforming your operations to support the new digitally connected world. Finding time for these new IT projects that are key to your core business is the biggest challenge that IT departments are facing today.
+
+Saves time
+
+Reduces work
+
+Speeds troubleshooting
+
+Helps you excel
+
+
+With Cisco DNA Assurance, the days of time-consuming network troubleshooting tasks are over. Whether it is wired or wireless, Cisco DNA Assurance enables every point on the network to become a sensor, sending continuous streaming telemetry on application performance and user connectivity in real time.
+
+
+It then uses Cisco® AI Network Analytics to define the levels of performance required for optimal user experience on your network and to derive insights on optimization options. The clean and simple dashboard shows overall status and flags issues. Guided remediation then automates resolution to keep your network performing at an optimal level with less mundane troubleshooting work.
+
+With Cisco DNA Assurance, your staff can grow your network and still have time to take on the new IT projects that set your company apart from your competitors.
+
+DNA center can provide many benefits for the network administrator, including:
+
+Saves time: Traditional troubleshooting techniques can be hindered by noise and false positives. With DNA center assurance these are reduced, while issues that have the greatest impact on your network are accurately identified.
+
+Reduces work: Finding the root cause of issues in the network can be a very time-consuming process. AI-driven technologies can proactively find the cause of your biggest network issues quickly, greatly reducing the time spent identifying issues.
+
+Speeds troubleshooting: Rather than the administrator piecing together network events and evaluating possible resolutions to issues, machine reasoning algorithms automate remediation options for fast issue resolution.
+
+Helps you excel: By utilizing the tools built into DNA Center assurance your network’s performance is increased, while you spend less time running and troubleshooting it.
+
+Cisco DNA Assurance provides insights from every device, application, service, and client on your network, and uses the latest AI and machine learning technology to make sense of all this data. It adjusts performance thresholds, reduces alarms and false positives, and then automates the process of issue resolution and performance enhancement. No other system, or combination of systems, on the market offers similar levels of intelligence and performance enhancements.
+
+Cisco DNA Assurance collects data from a total of 17 different source types, including NetFlow, traceroute, IP SLA, syslog, Cisco Web Security Appliance (WSA), RADIUS, Dynamic Host Configuration Protocol (DHCP), Active Directory and users, command-line interface and Secure Shell (CLI/SSH), netconfig, pxGrid, DNS, AVC, Simple Network Management Protocol (SNMP), Cisco Connected Mobile Experiences (CMX), Apple iOS, and Samsung One UI.
+
+No other current network analytics and assurance software looks at this many sources for insight. More sources mean more points of view as well as more ways to view an event or issue. It also allows Cisco to offer a much more complete roadmap of future features and functionality.
+
+Cisco AI Network Analytics, a new feature, uses a combination of local and cloud-based AI-driven analytics engines to make sense out of all this data and automate the process of issue resolution and performance enhancement.
+
+This results in an intuitive interface requiring little or no training of your IT team.
+
+
+<h3>Assurance</h3> 
+
+The Assurance capabilities of an intent-based network cover three main aspects, also highlighted in figure below:
+
+Continuously verify the IBN system behavior before, during, and after deployment: Check that the system behavior is aligned to the expressed intent at any point in time. This capability requires ongoing observation of the network element states and events. Intent-based telemetry data specifically measures the performance of the expressed intent and is continuously collected and reported to the IBN Assurance functions. Assurance algorithms, ranging from formal mathematical models to approaches based on telemetry and machine learning, guarantee that the network state and behavior are coherent with the desired intent at both the domain and cross-domain levels.
+
+Derive insights based on analytics (correlation of events and leveraging machine learning and artificial intelligence [ML/AI]) for validation, understanding, and prediction: In addition to verifying the current network state and its alignment with the expressed intent, assurance functions can derive more sophisticated insights and visibility into the behavior of an intent-based network. For example, they may predict any violations of the expressed intent prior to changes being applied, understand or forecast trends, identify anomalies, predict and validate system level network performance.
+
+Leverage a closed-loop cycle to realize corrective action and optimization: Anomalies, violations, and simple out-of-SLA (expressed intent) situations that are detected can be programmatically remediated leveraging the Activation building block to effect systemwide adjustment. An intent-based network thus enables a mechanism to automate the remediation of any intent-based policy violations, or to allow continuous optimizations to be automated to guarantee that the expressed intent is realized by the network at any point in time. Note that depending on the policy, the actions may be automatically executed or may be provided to the operator as recommendations, in which case the operator decides on execution.
+
+Cisco DNA Assurance provides a comprehensive solution to assure better and consistent service levels to meet growing business demands. Assurance addresses not just reactive network monitoring and troubleshooting, but also the proactive and predictive aspects of running the network, ensuring client, application, and service performance.
+
+<h4>Cisco DNA Center Assurance</h4>
+
+Here are some of the key challenges that are addressed by Cisco DNA Center Assurance.
+
+Network complexity continues to increase, leading to higher OpEx cost. As much as 85% of companies report that their systems are reactive. There is a strong desire to transition to proactive and predictive solutions. Cisco DNA Center Assurance solution addresses not just the reactive monitoring and troubleshooting but also the proactive and predictive aspects of running the network, it also ensures client and application experience are meeting the 
+optimal performance levels.
+
+Also, there is too much data and not enough insights which comes from today’s proliferation of tools. Because of that, network administrators do not get a holistic view of network behavior. What they are looking for is to quickly triangulate and isolate the source of contention. Cisco DNA Center Assurance gives network health visibility through proactive issues and trends. These issues consist of basic and advanced correlation of multiple sources of information, thus eliminating white noise and false positives.
+
+When there is a network outage or performance glitch, IT teams need to identify the root before they can mitigate the problem. More analytics tools and more data do not always help IT troubleshoot the problem faster. However, having greater insight into what is happening on the network and having a recommended solution to the problem will reduce IT time and increase network uptime. Cisco DNA Center Assurance provides both system-guided as well as self-guided troubleshooting. For a great number of issues and trends, it provides a system-guided approach where it performs a correlation of multiple KPIs and results from automated sensor to determine the root cause of the problem, in order to provide suggested actions.
+
+The Cisco DNA Center Assurance solution proactively monitors the network, gathers and processes information from devices, applications, and users and presents it in the Cisco DNA Center, which is an easy-to-use single dashboard for managing all analytics tasks.
+
+The Cisco DNA Center Assurance tool will continue to evolve based on changing needs of enterprises unlike the static tools that are available today.
+
+Cisco DNA Assurance with Artificial Intelligence (AI) and machine learning solves these challenges by eliminating manual troubleshooting operations and reducing the time spent resolving service issues. Cisco DNA Assurance turns your network devices into sensors, and then uses AI and machine learning to make sense out of all this data. The clean and simple dashboard shows overall status and flags issues. Guided remediation then automates the process of issue resolution and performance enhancement to keep user experience at its optimal performance with less mundane troubleshooting work. With Cisco DNA Assurance, your staff can grow your network and still have time to take on the new IT projects that set your company apart from your competitors.
+
+Key Focus Areas for DNA Assurance and Analytics
+
+Some of the key focus areas for Cisco DNA Center Assurance and Analytics are described below:
+
+End-to-end visibility: The Cisco DNA Center Assurance tool collects data from multiple network sources to deliver comprehensive visibility into devices, users, and applications for proper context and correlation. With a quick check of the health scores, you can see where there is a performance issue and the most likely cause. The insights that you gather from your network devices can influence your automation configuration and deployment decisions.
+
+Insights to drive proactive operations: Cisco DNA Center Assurance offers advanced correlation and machine learning algorithms to proactively identify outliers that are reported as issues for remediation.
+
+Predict performance: The network sensors proactively generate synthetic application and network traffic to probe network performance. The sensor-based insights predict how the network will perform and help you to get ahead of the problem.
+
+Streaming telemetry: It can collect many KPIs from devices as close as possible to real time. The traditional methods like SNMP use a certain polling interval, which is not real-time and scalable.
+
+Close loop automation: The insights that you gather from your network devices can influence your automation configuration and deployment decisions. Cisco DNA Center provides an integrated automation and assurance workflow, enabling you to quickly take action to remediate the issue. You can think of it as a closed feedback loop.
+
+<h4>DNA Assurance Architecture</h4>
+
+Cisco DNA Assurance resides within Cisco DNA Center, where it collects streaming telemetry from endpoints, devices, users, and applications across every part of your network. It then uses Cisco AI Network Analytics to define what levels of performance are required for optimal user experience on your network and derive insights on optimization options. These insights are compared with your network policies in the Automation section of Cisco DNA Center to help assure that the network operation is aligned with business intent. The results are delivered on uncluttered client and device health dashboards, where you can drill down for more detail on any section: clients, services, applications, wired devices, and wireless devices. Issues that require attention are flagged, and you can click on them for suggested issue remediation.
+
+<h4>DNA Center Data Analytics Architecture</h4>
+
+The following processes in Cisco DNA Assurance manage the baseline for each user experience:
+
+Network telemetry and contextual data: Cisco DNA Assurance collects data from a total of 17 different source types, including NetFlow, traceroute, IP SLA, syslog, Cisco Web Security Appliance (WSA), RADIUS, Dynamic Host Configuration Protocol (DHCP), Active Directory and users, command-line interface and Secure Shell (CLI/SSH), netconfig, pxGrid, DNS, AVC, Simple Network Management Protocol (SNMP), Cisco Connected Mobile Experiences (CMX), Apple iOS, and Samsung One UI. No other current network analytics and assurance software looks at this many sources for insight. More sources mean more points of view as well as more ways to view an event or issue. It also allows Cisco to offer a much more complete roadmap of future features and functionality. Collecting from so many different points allows Cisco DNA Assurance to view issues from many different angles and contexts. You can compare this to having multiple cameras in a football game, offering more detailed information on critical plays. Moreover, offering more than just multiple angles, these 17 sources also provide context for the many different conditions under which any event occurs.
+
+Complex event processing: A series of analytics engines divides the event processing between critical metrics, which need instantaneous action, and noncritical metrics. Distributed on-device analytics located on select Cisco switches, routers, and wireless controllers handle critical decisions in real time and at the source of the incident. Cisco DNA Center’s centralized analytics engine can collect and process the full set of data coming from all areas of the network.
+
+Artificial Intelligence/Machine Learning (AI/ML) insights: Cisco AI Network Analytics is a new feature which uses a combination of local and cloud-based AI-driven analytics engines to analyze the data and automate the process of network issue resolution and performance enhancement. Cisco AI Network Analytics customizes your network baseline for alerts, reducing noise and false positives while enabling IT teams to very accurately identify issues, trends, anomalies, and root causes. It also allows comparative benchmarking between peers or sites to improve network performance consistency across branch offices and can identify network optimization opportunities and allocate IT resources efficiently. Cisco AI Network Analytics uses machine reasoning to automate logical remediation options for appropriate workflows and client issue resolution. It is fast, simple, and intuitive for greater IT efficiency. This results in an intuitive interface requiring little or no training of your IT team.
+
+Automated remediation: Cisco AI Network Analytics uses machine reasoning to automate logical remediation options for appropriate workflows and client issue resolution. It is fast, simple, and intuitive for greater IT efficiency.
+
+
+
+<h3>Cisco AI Network Analytics</h3>
+
+
+When talking about Artificial Intelligence (AI) we are really referring to Machine learning. “Learning” refers to the ability to train a machine learning (ML) (mathematical) model capable of understanding or modeling the behavior of a complex system or given KPI or variable.
+
+Onboarding times vary between 500ms and 4+ seconds!
+
+
+“Why machine learning (ML)” is a fair question. ML algorithms are certainly very powerful, but they also have a reputation of being difficult to design, tune, and adapt to a variety of situations (such an ability is known as robustness) and sometimes have been known to produce results that may be difficult to interpret (a complex topic, and one that is outside the scope of this introductory topic). ML algorithms outperform all existing (traditional) approaches in some areas (for example, image recognition), whereas, in other circumstances, the overall benefits may not be worth the extra cost and complexity.
+
+With Cisco AI Network Analytics, we have created a learning platform that solves issues where ML provides an indisputable and impactful benefit for our customers over existing technologies and approaches. This is possible thanks to decades of experience in building some the world's largest and most advanced networks and deep expertise in ML algorithms that can effectively process networking data.
+
+For example, the ML model(s) may be used to predict what should be the lower-upper bounds for a given KPI (for example, on-boarding times) according to hundreds of variables (sometimes referred to as a regression). KPIs falling outside a prediction as provided by the ML model would be considered “abnormal” for that unique network involved, and thus would be candidates for raising an alarm (that is, an alarm based on a learned bound, not based on a static value).
+
+The figure shows a predicted “band” (shown in green) of normal values for the percentage of failed onboarding sessions. As we can see, at some point the percentage of failed onboarding sessions (blue line) became abnormal (falling outside the green band), considering a number of network variables involved, as analyzed by the ML algorithm in use. This departure from normal to abnormal behavior for this network is denoted by the red section of the time-line in the diagram shown.
+
+Note that ML models may also be used for other tasks, such as classification (a classification algorithm may, for example, try to recognize malware or other undesired network content or use). In yet another example, an ML model may be used to predict a specific event, such as the failure of an item of networking gear.
+
+A second set of machine learning algorithms are then used for root-cause issues that may be observed (note that when attempting root-cause determination, there is very often confusion between correlation and causation, which are different from each other but may often appear to be associated before a deeper analysis of the data is made).
+
+In some cases, an ML algorithm may be able to detect anomalies with associated root causing, whereas in other situations more than one ML algorithm may be used in conjunction with anomaly detection to provide root causing.
+
+Referring to the previous example, the root cause for the abnormal percentage of failed onboarding sessions was, in fact, a DHCP timeout issue, as shown in the following figure. In this case, the root cause was able to be rapidly determined using the Cisco AI Network Analytics platform – a conclusion that may have taken a network manager or operator many hours to come to, after manual correlation of all of the possible variables involved.
+
+
+Last but not least, the Cisco AI Network Analytics platform is capable of relevance learning (RL). Thanks to simple user feedback on the relevancy of anomalies observed and reported to the network manager, the Cisco AI Networks Analytics platform adjusts itself (“auto-adjusts”) to “raise anomalies” (that is, bring to the user’s attention) that are of most interest for the user.
+
+It is worth discussing the critical topic of relevancy. Anomaly detection (AD) refers to the capacity of a system to detect anomalies where an anomaly is an outlier. Said differently, an event may be (rightly, mathematically) considered a real anomaly even though the user may not find this fact relevant from a user or networking standpoint. Consequently, in contrast to problems with ground truth, the notion of the accuracy of the system makes little sense.
+
+Consider the use case where the system tries to predict a networking equipment failure: this is a situation where there is a ground truth (the equipment did fail (or did not)). Thus, the precision or accuracy of the prediction is easy to measure. In contrast, when raising an anomaly in a wireless network, an anomaly may be considered relevant by a given user and irrelevant by another user (there is no ground truth), making the notion of accuracy, in this case, subjective.
+
+For example, in the case of cognitive analytics, determining that an AP is offering significantly less throughput for a given class of device at regular times of day in a complex network (without any explicit and manual configuration) is extremely difficult using classic approaches. Finding a pattern to predict the actual user experience of a video call, taking into account the nature of the application, video codec parameters, the states of the network (data rate, RF, etc.), the current observed load on the network, and the destination being reached – to mention a few parameters – is simply impossible using existing so-called rules-based systems. By way of contrast, ML leveraging intelligent algorithms and leveraging the power of big data can succeed at such tasks.
+
+Yet another example where ML provides high value relates to the detection of “subtle” changes over time, which, after enough time has passed, may become a real anomaly. In this case, algorithms are used to detect that an access point (AP) is providing a throughput level that slowly but surely degrades over time compared to other APs in the network, alerting the network manager so that corrective action may be taken, possibly before any end user actually notices a problem!
+
+
+<h3> DNA Assurance Health Scores</h3>
+
+
+The Overall Health page gives you a quick view into the health of the Clients and Network devices. You can hide or unhide the table view as well as toggle between the table and map views. It is also possible to filter the views on Assurance based on site.
+
+
+Network health score provides an indication of how many healthy network infrastructure devices are on the network. Client health score provides an indication of how many healthy client devices are on the network. If there is a major issue that has occurred on the network, it will be listed here.
+
+
+
+<h4>DNA Assurance Health Scores: Network Health</h4>
+
+
+You are likely not only concerned with the health of clients connecting to their network, but also with the health of the network infrastructure itself. Every network device has KPI details including CPU, memory, temperature, control plane and data plane statistics, monitored. The result of these KPIs is a generated health score in DNA Assurance to help you easily identify issues.
+
+For each device type, you will be able to review the (1) System health which monitors KPIs such as CPU, and memory, and (2) Data Plane Connectivity which monitors RF utilization, Noise and Interference for wireless devices and interface statistics for wired devices.
+
+Let’s dig out a bit more to see how zoom in capabilities will make large network troubleshooting easier. The following snapshots were collected from a live network, and the issues seen in that network at that time.
+
+The colors in the charts represent the health of the network devices:
+
+Red: Critical issues. Health score range is 1 to 3.
+
+Orange: Warnings. Health score range is 4 to 7.
+
+Green: No errors or warning. Health score range is 8 to 10.
+
+Gray: No data available. Health score is 0.
+
+The figure shows a device that has a failure. By clicking on the device or the popup associated with that device we are able to drill down and dig deeper into the issue.
+
+The popup window in the example shows two devices that have “fair” key performance issues. Hovering over the yellow circle will show more information, clicking on that will offer even more information
+
+
+Scroll down and see what exactly made the fair evaluation. The example shows that it is a Reachability issue.
+
+Click on the device to get to device 360 and time table of the status.
+
+You can also switch to interface tab to get more details of the diagnostics on interface state.
+
+<h4>DNA Assurance Health Scores: Client Health</h4>
+
+When hundreds or thousands of clients are present in the network at any time, providing a view to each client is often considered as noise. You need to know the general state of the clients, which includes visibility into the number of clients that are in good health and away to determine which clients’ health has degraded and require attention.
+
+
+The Client Health Summary is divided into Wireless and Wired clients.
+
+Client Onboarding Times monitor how long it takes for a wireless client to go through the Association, AAA, and DHCP process, and for a dot1x enabled wired client to go through AAA and DHCP. If there was a threshold breach or onboarding failure, this allows you to identify which one of these onboarding steps caused it.
+
+Connectivity RSSI displays the RSSI data for wireless clients on the network and highlights clients with poor RF Connectivity Physical Link provides an insight into whether wired clients are on the network without any interface errors.
+
+This information will lead you on the path to troubleshooting specific issues with clients on the network.
+
+<h3>Using Path Trace for Troubleshooting</h3>
+
+The Cisco DNA Center Path Trace application greatly eases and accelerates the task of connection troubleshooting by allowing you to verify the path that a flow takes through the network. With the Path Trace application, Cisco DNA Center reviews and collects network topology and routing data from discovered devices, then it uses this data to determine the path that an application takes between two hosts or Layer 3 interfaces.
+
+With Cisco DNA Center, path visualization is automated and network trouble ticket processing is simplified. You need to enter the 5-tuple information, which includes the source IP address, destination IP address, source port, destination port, and protocol. With this information, Cisco DNA Center can trace the path for an application between the given source and destination IP address within a couple of minutes. You can visualize the packet flow and get the information that is related to routing, access list, interface statistics, and so on.
+
+
+<table border="1">
+<tr>
+<td>Traditional, Manual Service of Tickets</td>
+<td>Cisco APIC-EM Service of Tickets</td>
+</tr>
+<tr>
+<td>First step: Determine which path the user attempted to take in the network.</td>
+<td>First step: Input the information of the application flow into the application.</td>
+</tr>
+<tr>
+<td>Finding the path today takes 1 hour on average per ticket.</td>
+<td>It takes about 1 minute on average before the path is returned.</td>
+</tr>
+<tr>
+<td>Per 100 tickets: 100 hours are required to find the path.</td>
+<td>Per 100 tickets: 100 minutes (1.67 hours) are required.</td>
+</tr>
+</table>
+
+
+The table illustrates that manual troubleshooting is time-consuming. The automated path visualization enables faster time to resolution for network issues by computing the path in few seconds.
+
+The Cisco DNA Center Path Trace application is a read-only application, which minimizes risk for production deployments.
+
+The Path Trace application can also be extended over a monitoring period of up to 24 hours. During this monitoring period, Cisco DNA Center can send light probe traffic along the monitored path and report the path availability and performances. This light traffic is tailored to represent the monitored applications structure, such as ports, addresses, and so on. This monitoring function also saves time by allowing the administrator to be alerted immediately if there is performance degradation. It also increases the efficiency of network operations by displaying network path changes that may occur during the monitoring period.
+
+
+Cisco DNA Center periodically collects device, host, and routing table information from the network elements. The collected information is stored in the Cisco DNA Center Network Information Base (NIB).
+
+
+<h4>DNA Center NIB</h4>
+
+Information collected (frequency is every polling interval):
+
+Device, interface, link state
+
+Cisco Discovery Protocol, LLDP, IP device-tracking database
+
+Wireless association
+
+VLAN, STP
+
+HSRP
+
+OSPF, ISIS, EIGRP, BG, static routes
+
+Information collected using SNMP traps:
+
+Wireless host discovery through SNMP traps
+
+
+<h4>Path Trace Application Workflow</h4>
+
+The Path Trace application uses the data that is collected to calculate a path between two hosts or Layer 3 interfaces. Optionally, you can choose to collect interface, QoS, device, and performance monitor statistics for a path. You can use the information that is gathered through the Path Trace application to monitor and debug traffic paths that are distributed among the various devices throughout your network. You can perform these tasks by running a path trace between two nodes in your network. The two nodes can be a combination of wired or wireless hosts, or Layer 3 interfaces. Also, you can specify either the TCP or UDP protocol for establishing the path trace connection.
+
+You can perform the path trace between two nodes in your network. The two nodes can be a combination of wired or wireless hosts, or Layer 3 interfaces. First use the search function to identify a user in your network. From the right side of the window chose the User 360 hyperlink. From the following window scroll down to the path trace field and select “run new path trace”. A window will slide out from the right of the screen for you to run the path trace.
+
+You need to enter the following information in the application: Source IP address, destination IP address, source port (optional), and destination port (optional). You can also include the protocol, disable a 30 second refresh or Access Control List (ACL) trace, or include device, interface or QOS statistics.
+
+At every node in the path, the controller reports information about the device and path. For example, if a Layer 2 protocol is used to discover a node, the controller reports that the path is a switched path and labels it "switched." If the controller detects load-balancing decisions being made on a discovered device, it reports the path as an Equal-cost-multi-path (ECMP) path and labels it ECMP.
+
+
+
+<h4>Path Trace Application: Assumptions</h4>
+
+All the customer edge and WAN edge routers have been assigned appropriate roles in the Cisco DNA Center NIB. By default, the controller assigns the roles for every network device at the time of network discovery.
+
+To facilitate accurate path trace computation by Cisco DNA Center, the network administrator must configure NetFlow on all customer edge and border routers. Cisco DNA-Center collects the required information by looking at the NetFlow cache on the network device. (NetFlow data export is not required for this path computation.)
+
+How is the device information that is used by the Path Trace application obtained?
+
+Cisco DNA Center periodically collects the device, host, and routing table information from the network elements.
+
+
+<h3>Troubleshooting using DNA Assurance: Use Cases</h3>
+
+<h4>Case Study 1: NTP</h4>
+
+In the Assurance main page, global issues are highlighted to bring network level issues to quick attention. In addition, suggested actions are provided to help you troubleshoot the issue. On certain issues guided remediation is possible directly in the DNA Center interface, without having to log on to any network devices.
+
+
+After selecting the issue that you would like to investigate you will see a detailed description of the issue, as well as a list of suggested actions to remedy the problem. In the example the time between DNA Center and the device “WLC-5520” has drifted apart by 61.8 minutes.
+
+Three possible actions are suggested that may remedy the issue:
+
+If NTP is Enabled ensure that the NTP servers are reachable by the affected devices.
+
+If NTP is not configured on the devices, configure NTP.
+
+IF NTP is not deployed reconfigure time on the devices to the correct time.
+
+<h4>Case Study 2: Wired Client DHCP Issue</h4>
+Client Health: When hundreds or thousands of clients are present in the network at any time, providing a view to each client is often considered as noise. You need to know the general state of the clients, which includes visibility into the number of clients that are in good health and away to determine which clients’ health has degraded and require attention.
+
+Client Onboarding Times monitor how long it takes for a wireless client to go through the Association, AAA, and DHCP process, and for a dot1x enabled wired client to go through AAA and DHCP. If there was a threshold breach or onboarding failure, this allows you to identify which one of these onboarding steps caused it.
+
+Connectivity RSSI displays the RSSI data for wireless clients on the network and highlights clients with poor RF Connectivity Physical Link provides an insight into whether wired clients are on the network without any interface errors.
+
+Let’s look further into the wired client that we are seeing. You can click the view details hyperlink to drill down for more details on the client that we are observing.
+
+
+Click on the issue to see if you can get to an actionable cause.
+
+In the example the client, identified by the MAC Address 38:ED:18:E8:D1:0D, has failed to obtain an IP address from a DHCP Server. In addition, other data that can be used for further troubleshooting is included. The example shows the impacted hosts with any known data and provides drill down capability to find locations that were impacted by the event.
+
+<h4>Case Study 3: Time Travel in DNA Assurance</h4> 
+
+Perhaps the most powerful feature in assurance is time travel. Time travel is the ability to go back in time and see the cause of a network issue, instead of trying to re-create the issue in a lab.
+
+One you identify the target, you can then slide by time to see at any point what happened to the network, devices.
+
+Let’s look at a particular device/client/user and see what has happened to that device/client/user in last 24 hours. From Health dropdown in the Assurance window choose “Client” to browse to the Client health page. Here you can see in the Client Health table you can hover your mouse over any time frame, or noticed anomaly, to view more detailed information about client status at that time.
+
+As the figure illustrates, by sliding the time out the score changes in real time. The first example explores a dip at 5:05 AM. At that time there were no active wireless clients.
+
+The second time of investigation is 4:00 PM. In this example time we can conclude that there were no wireless clients in the network at that time.
+
+The third time of investigation is at 5:00 PM. We can see that wireless user has logged back in.
+
+On a typical network, clients are not always using all the services that the network provides, and are not always in all locations. Sensors can represent clients in times or locations where clients are not present, or test services that clients are not currently using. This allows you to proactively test the network to ensure network is functioning as expected.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

@@ -1,0 +1,1092 @@
+<h2>Securing Cisco Routers</h2>
+
+
+In this section, you will be able to:
+
+Verify IPv4 and IPv6 Access Control List (ACL) functionality
+
+Discover Time-based IPv4 ACLs
+
+Troubleshoot ACLs
+
+Describe Control Plane Security
+
+Describe CoPP
+
+Verify CoPP
+
+Explore uRPF
+
+Configure and verify uRPF
+
+
+<h3>Interpret an IPv4 ACL</h3>
+
+
+Being able to interpret an ACL and understand what it was created for is important for troubleshooting. However, understanding how an ACL function is even more important as you troubleshoot because you need to identify why you are experiencing the issues that are occurring.
+
+Following is a list of steps that IPv4 ACLs use. You want to remember these steps because they will help you identify why an IPv4 ACL is behaving the way it is.
+
+
+Top down processing: ACL entries are processed from the top of the ACL to the bottom of the ACL in order.
+
+Immediate execution upon a match: The very first permit or deny entry that matches the values in the packet that are being compared will be the entry that is used.
+
+Implicit deny any: If there is no matching entry for the packet, the packet is automatically denied based on the invisible implicit deny any entry at the end of an ACL.
+
+
+In newer versions of the IOS, if you attempt to create an ACL entry that is more specific than an entry that exists, the router will prevent the entry from being created and give an error message.
+
+<h4></h4>
+
+<b>
+R1# show access-lists
+Standard IP access list 10
+    10 deny   10.1.1.5
+    20 permit 10.1.1.0, wildcard bits 0.0.0.63 (6 matches)
+    30 deny   10.1.1.64, wildcard bits 0.0.0.63
+    40 permit 10.1.1.0, wildcard bits 0.0.0.255
+</b>
+
+Line 10: Host 10.1.1.5 is denied.
+
+Line 20: Hosts in 10.1.1.0/26 are permitted, except for previously denied 10.1.1.5.
+
+Line 30: Hosts in 10.1.1.64/26 are denied.
+
+Line 40: All other remaining hosts in 10.1.1.0/24 are permitted.
+
+
+Notice how traffic sourced from 10.1.1.5 is denied in sequence 10. Even though the very next sequence of 20 permits 10.1.1.5, 10.1.1.5 will be denied because of top-down processing and then immediate execution upon a match. Likewise, even though sequence 40 permits all addresses from 10.1.1.0 through 10.1.1.255, 10.1.1.5 is denied by sequence 10, and 10.1.1.64 through 10.1.1.127 are denied by sequence 30. What about all other source IP addresses that do not match an entry in the ACL? For example, the IP address 192.168.2.1. They are all denied because of the implicit deny entry (you cannot see it) at the end of the ACL.
+
+Extended ACLs are a little more complicated to read and troubleshoot because they contain more parameters. The previous example was a standard ACL that only allows a source address to be specified. The extended ACL can take source and destination addresses, source and destination port numbers, protocols, and other parameters that give you granular control over what you are trying to match. Also remember that standard and extended IPv4 ACLs can also be named instead of numbered.
+
+
+<h4>Interpret an Extended IPv4 ACL</h4>
+
+<b>
+R1# show access-lists 110
+Extended IP access list 110
+    10 deny tcp host 10.1.1.5 host 192.0.2.1 eq www -> "Block all web (HTTP / Port 80) traffic sent from IP 10.1.1.5 to IP 192.0.2.1."
+    20 permit tcp 10.1.1.0 0.0.0.63 host 192.0.2.1 eq telnet
+    30 deny ip 10.1.1.64 0.0.0.63 host 192.0.2.1
+    40 permit ip 10.1.1.0 0.0.0.255 any
+</b>
+
+
+Line 10: Host 10.1.1.5 is denied HTTP access to 192.0.2.1.
+
+Line 20: Hosts in 10.1.1.0/26 (including 10.1.1.5) are permitted Telnet access to 192.0.2.1.
+
+Line 30: Hosts in 10.1.1.64/26 are denied access to 192.0.2.1.
+
+Line 40: All other remaining hosts in 10.1.1.0/24 are permitted access to all destinations.
+
+
+In this example, the ACL is numbered 110. It has four entries, listed from most specific to least specific. Notice in sequence 10 that 10.1.1.5 is denied from accessing TCP services using port 80 on 192.0.2.1. At the same time, under sequence 20, 10.1.1.5 would be permitted to Telnet to 192.0.2.1, and in sequence 40, it would be permitted to any destination on any port using any protocol. Therefore, you have much more granular control over how the traffic will be matched in an extended ACL.
+
+<h3>Implement an IPv4 ACL for Filtering</h3>
+<b>
+
+R1(config)# interface Ethernet 0/0
+R1(config-if)# ip access-group 110 out
+R1(config-if)# ip access-group 10 in
+</b>
+
+
+IPv4 ACLs applied to Ethernet 0/0
+
+Using an ACL for packet filtering requires you to apply the ACL to an interface. You can accomplish this with the <b>ip access-group {acl_number | name} {in | out}</b> command in interface configuration mode, as shown in the example.
+
+The direction you apply the ACL on an interface is significant. You need to consider this while you are creating the ACL. If you apply it to the wrong interface or in the wrong direction, you will not get the desired result. You can verify the ACLs that are applied to an interface using the <b>show ip interface interface_type interface_number</b> command. The output shows how access list 10 is applied inbound on Ethernet 0/0 and access list 110 is applied outbound on Ethernet 0/0.
+
+
+<h3>Interpret an IPv6 ACL</h3>
+
+
+Being able to read an IPv6 ACL and understand what it was created for is important for troubleshooting. However, understanding how an IPv6 ACL function is even more important as you troubleshoot because you need to identify why you are experiencing the issues that are occurring. Following is a list of steps that IPv6 ACLs use; these are the same as IPv4 ACLs. You want to remember these steps because they will help you identify why an IPv6 ACL is behaving the way it is.
+
+Top down processing: ACL entries are processed from the top of the ACL to the bottom of the ACL in order.
+
+Immediate execution upon a match: The very first permit or deny entry that matches the values in the packet that are being compared will be the entry that is used.
+
+Implicit permit icmp nd: If the packet is a Neighbor Discovery Neighbor Advertisement or Neighbor Solicitation message, permit it.
+
+Implicit deny any: If there is no matching entry for the packet, the packet is automatically denied based on the invisible implicit deny any entry at the end of an ACL.
+
+Notice that there is an added step before the implicit deny any compared to the IPv4 ACL steps. IPv6 relies on various protocols to function correctly; one of those is the Neighbor Discovery (ND) protocol. ND is to IPv6 what ARP is to IPv4, so it is important that ND not be disrupted. For this reason, two additional implicit statements are added before the implicit deny any statement at the end of each IPv6 ACL. For IPv6, there are three implicit rules at the end of each ACL, as follows:
+
+permit icmp any any nd-na
+
+permit icmp any any nd-ns
+
+deny ipv6 any any
+
+
+The first of these rules permit all ND neighbor advertisement (NA) messages. The second permits all ND neighbor solicitation (NS) messages. The last denies all other IPv6 packets. If you want to log all packets that are denied, you may be tempted to do as you would in IPv4 and simply add a deny ipv6 any any log command to your ACL. However, this explicit deny command would override all three implicit rules, not just the last one, and would result in the neighbor discovery traffic being blocked. You would need to instead explicitly configure the two permit nd statements, followed by the explicit deny statement.
+
+Unlike IPv4 ACLs, which only end with a single invisible deny ip any any, IPv6 ACLs include three invisible implicit rules at the very end to prevent essential local network communication (IPv6 Neighbor Discovery Protocol, or NDP) from breaking:
+
+permit icmp any any neighbor-advertisement
+
+permit icmp any any neighbor-solicitation
+
+deny ipv6 any any
+
+When you add a manual deny ipv6 any any log line to the end of your custom ACL, your custom rule gets processed before any invisible implicit rules.
+
+Because deny ipv6 any any log matches all IPv6 traffic, it catches the Neighbor Discovery (NA/NS) messages before they can ever reach the implicit permit statements at the end. As a result, NDP is dropped, breaking ARP-like address resolution and IPv6 connectivity.
+<b>
+R1# show ipv6 access-list
+IPv6 access list MYFILTER
+    permit tcp host 2001:DB8:A:A::20 host 2001:DB8:A:B::7 eq telnet sequence 10
+    deny tcp any host 2001:DB8:A:B::7 eq telnet sequence 20
+    permit tcp host 2001:DB8:A:A::20 host 2001:DB8:D::1 eq www sequence 30
+    deny ipv6 2001:DB8:A:A::/80 any sequence 40
+    permit ipv6 2001:DB8:A:A::/64 any sequence 50
+</b>
+
+10) Host 2001:DB8:A:A::20 is permitted Telnet access to host 2001:DB8:A:B::7
+
+20) All hosts are denied Telnet access to host 2001:DB8:A:B::7
+
+30) Host 2001:DB8:A:A::20 are permitted HTTP access to host 2001:DB8:D::1
+
+40) All hosts in the 2001:DB8:A:A:/80 network is denied access to all destinations
+
+50) All hosts in the 2001:DB8:A:A::/64 network are permitted access to all destinations
+
+The output above provides a sample IPv6 ACL that was created on R1. The IPv6 access list is named MYFILTER, and you read it exactly like you read an IPv4 ACL. For example, sequence 20 states that TCP traffic related to Telnet will be denied from any device going to 2001:DB8:A:B::7/128. Sequence 30 states that TCP traffic related to WWW from 2001:DB8:A:A::20/128 to 2001:DB8:D::1/128 will be permitted.
+
+Notice how there are no wildcard masks with IPv6. Instead, you specify a prefix, as shown in sequence 40 and 50 in the sample output, which accomplishes the same goal as the wildcard mask (defining a range of addresses). For example, a prefix of /128 is like having the all 0s wildcard mask, which would mean this exact address or host (match all bits in the address). A /0 prefix is like having the all 255s wildcard mask (do not match any bits in the address). A /64 prefix would indicate that the first 64 bits must match, and that the last 64 bits do not have to match. As a result, this would include all interface IDs within a /64 network. What if the prefix is /80? This means the first 80 bits must match and the last 48 bits do not have to match. As a result, the prefix is defining which bits of the IPv6 address must match.
+
+Which two implicit permit statements are included in IPv6 ACLs? (Choose two.)
+permit icmp any any nd-ns
+permit icmp any any nd-na
+
+<h3> Implement an IPv6 ACL for Filtering</h3>
+
+Using an IPv6 ACL for packet filtering requires you to apply the IPv6 ACL to an interface. You can accomplish this with the <b>ipv6 traffic-filter acl_name {in|out}</b> command in interface configuration mode, as shown in the output
+
+The direction you apply the IPv6 ACL on an interface is significant. It needs to be considered while you are creating the ACL. If you apply it to the wrong interface or in the wrong direction, you will not get the desired result.
+
+<b>
+R1(config)# interface GigabitEthernet 0/0
+R1(config-if)# ipv6 traffic-filter MYFILTER in
+</b>
+
+You can verify the IPv6 ACLs that are applied to an interface using the <b>show ipv6 interface interface_type interface_number</b> command. The output shows how the IPv6 access-list MYFILTER is applied inbound on interface GigabitEthernet0/0.
+
+<h3>Troubleshoot Access Lists</h3>
+
+When troubleshooting access lists, you should keep in mind the following:
+
+Determine whether access lists are configured on the device.
+
+Determine where the ACLs are applied and in which direction regarding the device using the <b>show ip interface or show ipv6</b> interface commands.
+
+Understand how the list statements affect traffic.
+
+Use the log keyword for specific access list entries.
+
+Use the following commands to verify ACLs:
+<b>
+show access-list
+
+show ip access-list
+
+show ipv6 access-list
+
+Also, ensure that IP address and wildcard masks are correctly entered into the ACL. Recall that access lists are read top to bottom; if a first match is found, it will stop reading. Make sure to put more specific entries before broader ones. A deny statement that is included before a permit statement may block a permit statement. The order of an ACL is important. For extended ACLs, statements must define the type of traffic that they relate to. TCP, UDP, Internet Control Message Protocol (ICMP), and Generic Routing Encapsulation (GRE) are specific traffic types. IPv4 and IPv6 are more general traffic types. If the statement checks for port numbers, TCP or UDP traffic type must be used in the ACL statement. For troubleshooting, use an explicit deny statement to see if the ACL counter increments.
+
+You must include at least one permit statement in your ACL. If no traffic is permitted, all traffic will be denied since there is an implicit deny added to the end of the ACL:
+
+Implicit deny in IPv4 denies all traffic.
+
+Implicit deny in IPv6 but with permits for neighbor discovery messages.
+
+The log keyword instructs the router to log a message to the system log whenever a specific access list entry is matched. The logged event includes details of the packet that matched the access list entry.
+
+To determine whether access lists are configured on the device, use the following:
+
+<b>show access-lis</b>t: Displays all configured access lists, IPv4 and IPv6, and their content, including the hit counter for each statement
+
+<b>show ip access-list</b>: Displays all configured IPv4 access lists and their content, including the hit counter for each statement
+
+<b>show ipv6 access-list</b>: Displays all configured IPv6 access lists and their content, including the hit counter for each statement
+
+To determine where the ACLs are applied and in which direction with reference to the device, use the following:
+
+<b>show running-config | include line | access-class</b>: Displays access lines (vty and console) and the access lists that are configured to control traffic to the line
+
+<b>show running-config | include interface|access-group</b> and <b>show ip interface interface-type interface-number</b>: Display the interface and IPv4 access list that is applied to it
+
+<b>show running-config | include interface | traffic-filter</b> and <b>show ipv6 interface interface-type interface-number</b>: Display the interface and IPv6 access list that is applied to it
+
+<b>show running-config | include [ACL-number | ACL-name |]</b>: Displays other applications of an access list, such as NAT traffic specification
+
+<h4>Troubleshoot IPv4 ACL Issues Affecting PC1</h4>
+
+PC1 should be able to Telnet to R1 but cannot. You need to resolve the issue.
+
+You can use the following commands on R1 and observe the results:
+<b>
+show ip interface ethernet 0/0 | include list
+
+show running-config | section vty
+</b>
+
+Telnet connections are allowed on the VTY lines but an ACL is applied.
+
+These results indicate that Layer 3 connectivity between PC1 and R1 is operational and that Telnet connections are allowed on the VTY lines, but an IPv4 extended access list number 100 is applied inbound on the VTY lines.
+
+On R1, verify ACL 100 to continue the troubleshooting process.
+<b>R1# show ip access-lists 100</b>
+
+You can see the root cause of the issue. ACL number 100 has a permit statement for Telnet but the port matching has been applied as source instead of destination. When PC1 (10.10.1.10) tries to establish a Telnet connection with R1, PC1 is considered the client and R1 the server in the TCP session. In this case, the telnet keyword must be applied as the destination port.
+
+
+With the root cause determined, fix the problem and verify that PC1 can Telnet to R1.
+<b>
+R1(config)# no access-list 100
+R1(config)# access-list 100 permit tcp host 10.10.1.10 any eq telnet
+</b>
+Access list 100 now permits host 10.10.1.10 (PC1) Telnet access to any destination. The access list is still applied inbound in the router’s VTY lines. This ensures that regardless of the destination IP address used to reach R1, only PC1 will be granted Telnet access.
+<b>
+PC1# telnet 10.10.1.1
+</b>
+PC1 is now able to Telnet R1. The issue is resolved.
+
+<h4>Troubleshoot IPv4 ACL Issues Affecting PC2</h4>
+
+PC2 should not have HTTP access to SRV1 but it does. You need to resolve the issue.
+
+
+You can use the following command on PC2 and observe the result:
+
+telnet 172.16.1.100 80
+
+You can use the following command on R1 and observe the results:
+
+show ip interface ethernet 0/1 | include list
+
+show ip access-list 110
+
+
+<b>
+PC2# telnet 172.16.1.100 80
+
+This address is configured on SRV1 – Telnet to port 80 is successful – issue confirmed (type any key followed by the Enter key to close the HTTP session with SRV1.)
+
+R1# show ip interface ethernet 0/1 | include list
+
+ACL number 110 is applied outbound on the interface.
+
+R1# show ip access-lists 110
+
+ACL number 110 has the correct deny statement but there are no matches, whereas line 20 has matches
+
+The deny statement in the ACL is matching HTTP traffic that is sourced from PC2 and destined to SRV1, but the ACL is applied outbound in the Ethernet 0/1 interface. You can see the root cause of the issue in the configuration. For the ACL to accomplish the necessary filtering it needs to be applied inbound instead of outbound.
+<b>
+
+With the root cause determined, fix the problem and verify that PC2 cannot connect to SRV1 using HTTP.
+
+<b>
+R1(config)# interface Ethernet 0/1 
+R1(config-if)# no ip access-group 110 out
+R1(config-if)# ip access-group 110 in
+</b>
+
+Access list 110 is removed in the outbound direction and applied correctly in the inbound direction.
+
+PC2 is now unable to establish an HTTP session with SRV1 but it still has network connectivity beyond R1. Verifying the access list, notice the deny statement now has a match since the HTTP connection from PC1 was blocked.
+
+The issue is resolved.
+
+
+<h4>Troubleshoot IPv4 ACL Issues Affecting PC3</h4> 
+
+PC3 needs to synchronize with the NTP server configured on SRV1 but cannot. You need to resolve the issue. Note that there is no issue with SRV1’s NTP configuration.
+
+You can use the following commands on PC3 and observe the results:
+
+show running-config | section ntp
+
+show ntp status
+
+ping 172.16.1.100
+
+You can use the following commands on R1 and observe the results:
+
+show ip interface ethernet 0/2 | include list
+
+show ip access-lists 120
+
+<b>
+PC3# show running-config | section ntp 
+
+PC3 is correctly configured with SRV1’s IP address for NTP.
+
+PC3# show ntp status  
+
+PC3’s clock is unsynchronized – issue confirmed.
+R1# show ip access-lists 120
+
+</b>
+ACL number 120 is configured to permit ICMP and TCP traffic only.
+
+You can see the root cause of the issue in the configuration. NTP traffic is UDP-based and since there is no explicit permit statement for UDP traffic in ACL 120, it is being dropped by the implicit deny ip any any at the end of the ACL.
+
+With the root cause determined, fix the problem and verify that PC3 can synchronize its clock with SRV1 using NTP.
+<b>
+R1(config)# access-list 120 permit udp any any
+</b>
+
+There are a few possible solutions to this problem, but a simple one is to add a permit statement to ACL 120 that allows all UDP traffic from any source to any destination. A better solution would be to create a more specific statement for PC3 and SRV1 such as access-list 120 permit udp host 10.10.3.30 host 172.16.1.100 eq ntp.
+
+On PC3, use the clock read-calendar command to trigger a refresh of its NTP information. Also, use the show ntp associations and show ntp status commands to confirm a working NTP configuration.
+<b>
+PC3# clock read-calendar
+
+PC3# show ntp associations 
+
+</b>
+
+The clock on PC3 is now synchronized with the NTP server. Verifying ACL 120 on R1 shows that the new ACL statement is getting matched and it is permitting UDP traffic.
+
+<h4>Troubleshoot IPv6 ACL Issues Affecting PC1</h4>
+
+
+PC1 is configured to use SLAAC for its IPv6 address but it is not obtaining the necessary prefix information from R1. You need to resolve the issue.
+
+You can use the following commands on PC1 and observe the results:
+
+show run interface ethernet 0/0
+
+show ipv6 interface ethernet 0/0
+
+You can use the following commands on R1 and observe the results:
+
+show ipv6 interface ethernet 0/0
+
+show ipv6 access-list PC1LAN
+
+<b>
+PC1# show running-config interface ethernet 0/0 
+The interface is configured for SLAAC.
+PC1# show ipv6 interface ethernet 0/0
+
+The interface is up/up and is configured for IPv6 and SLAAC but it is not receiving a global unicast address from R1. Issue confirmed.
+R1# show ipv6 interface ethernet 0/0 | include list
+The interface is configured with an IPv6 ACL named PC1LAN.
+R1# show ipv6 access-list PC1LAN
+</b>
+
+The ACL has an explicit deny ipv6 any any at line 30 which drops all traffic not permitted by the earlier entries.
+
+You can see the root cause of the issue in the configuration. For SLAAC to work, ICMPv6 Neighbor Discovery protocol (ND) Router Solicitation (RS) and Router Advertisement (RA) messages must be permitted to flow between the client (PC1) and the SLAAC server (R1). Recall that IPv6 ACLs include implicit permit statements for ND Neighbor Solicitation (NS) and Neighbor Advertisement (NA) messages but by adding an explicit deny IPv6 any any statement to the ACL, all ND messages are now dropped.
+
+With the root cause determined, fix the problem, and verify that PC1 can obtain an IPv6 SLAAC address from R1.
+<b>
+R1(config)# ipv6 access-list PC1LAN
+R1(config-ipv6-acl)# sequence 25 permit icmp any any
+
+One possible solution is to add a permit statement at line 25 allowing all ICMPv6 messages from any source to any destination. This new permit statement will allow the necessary ND messages to flow between PC1 and R1.
+
+To trigger an immediate SLAAC request using ICMPv6 ND messages, disable and enable the Ethernet 0/0 interface on PC1.
+
+PC1(config)# interface ethernet 0/0
+PC1(config-if)# shutdown
+PC1(config-if)# no shutdown
+
+On PC1, verify the IPv6 status of interface Ethernet 0/0. It should now have a global unicast address using prefix 2001:DB8:10:1::/64
+PC1# show ipv6 interface ethernet 0/0
+Since PC1 is configured for SLAAC using the default keyword, it will install a ND-based default route in its IPv6 routing table.
+
+PC1# show ipv6 route
+
+Verify the ACL hit count on R1. Line 25 should show that some activity confirming ND messages are now flowing between PC1 and R1.
+
+R1# show ipv6 access-list 
+
+Ping SRV1 from PC1 to confirm that it now has full network access.
+
+PC1# ping 2001:DB8:172:1::100        
+
+The issue is resolved
+
+</b>
+
+
+<h4>Troubleshoot IPv6 ACL Issues Affecting PC2</h4> 
+
+PC2 should be able to connect to SRV2 using HTTP or HTTPS over IPv6 but it cannot. You need to resolve the issue.
+
+
+ou can use the following commands on PC2 and observe the results:
+
+telnet 2001:DB8:192:1::100 80
+
+telnet 2001:DB8:192:1::100 443
+
+ping 2001:DB8:192:1::100
+
+You can use the following commands on R1 and observe the results:
+
+show ipv6 interface ethernet 0/1 | include list
+
+show ipv6 interface ethernet 1/1 | include list
+
+You can use the following commands on R3 and observe the results:
+
+show ipv6 interface ethernet 1/1 | include list
+
+show ipv6 interface ethernet 0/0 | include list
+
+show ipv6 access-list
+
+<b>
+PC2# telnet 2001:DB8:192:1::100 80
+A Telnet attempt to port 80 times out. Issue confirmed.
+PC2# telnet 2001:DB8:192:1::100 443
+A Telnet attempt to port 443 also times out. Issue confirmed.
+PC2# ping 2001:DB8:192:1::100
+
+IPv6 pings from PC2 to SRV2 are successful. There is no other underlying network connectivity issue.
+R1# sh ipv6 interface ethernet 0/1 | include list
+R1# sh ipv6 interface ethernet 1/1 | include list
+There is no IPv6 ACL configured on Ethernet 1/1 but an ACL named SRV2 is configured on Ethernet 0/0.
+R3# show ipv6 access-list     
+Lines 10 and 20 permit HTTP and HTTPS traffic but the port matching is applied as a destination port.
+
+You can see the root cause of the issue in the configuration. The ACL is currently configured to permit TCP traffic from SRV1 to any destination if that traffic matches destination ports 80 or 443. When SRV1 is answering requests from PC2, the ports to match need to be configured as source instead of destination, since SRV2 is itself the HTTP and HTTPS server. The established keyword is correct since the server should only be responding to connections initiated by clients like PC2.
+
+</b>
+With the root cause determined, fix the problem, and verify that PC2 can establish HTTP and HTTPS connections with SRV2:
+
+<b>
+R3(config)# ipv6 access-list SRV2
+R3(config-ipv6-acl)# no sequence 10
+R3(config-ipv6-acl)# no sequence 20
+R3(config-ipv6-acl)# sequence 10 permit tcp host 2001:DB8:192:1::100 eq 80 any established
+R3(config-ipv6-acl)# sequence 20 permit tcp host 2001:DB8:192:1::100 eq 443 any established
+From R3, verify the ACL before testing.
+
+R3# show ipv6 access-list 
+
+From PC2, attempt to Telnet to SRV2 using ports 80 and 443. These connection attempts should now succeed.
+
+PC2# telnet 2001:DB8:192:1::100 80 
+PC2# telnet 2001:DB8:192:1::100 443
+From R3, verify the ACL again to confirm matches for lines 10 and 20.
+R3#sh ipv6 access-list 
+PC2 is now able to connect to SRV2 using port 80 and 443 over IPv6. The issue is resolved.
+</b>
+
+<h4>Troubleshoot IPv6 ACL Issues Affecting PC3</h4> 
+
+PC3 should be able to connect to SRV1 using Telnet and SSH over IPv6 but only Telnet connections are successful. You need to resolve the issue. The credentials for authentication are “admin/cisco”.
+
+You can use the following commands on PC3 and observe these results:
+
+telnet 2001:DB8:172:1::100
+
+ssh -l admin 2001:DB8:172:1::100
+
+You can use the following commands on R1 and observe these results:
+
+show ipv6 interface ethernet 0/2 | include list
+
+show ipv6 interface ethernet 1/0 | include list
+
+You can use the following commands on R2 and observe these results:
+
+show ipv6 interface ethernet 1/0 | include list
+
+show ipv6 interface ethernet 0/0 | include list
+
+show ipv6 access-list
+
+
+PC3# telnet 2001:DB8:172:1::100
+
+
+PC3# ssh -l admin 2001:DB8:172:1::100
+
+
+The SSH connection to SRV1 fails. Issue confirmed.
+
+R1# show ipv6 interface ethernet 0/2 | include list
+R1# show ipv6 interface ethernet 1/0 | include list
+
+There are no IPv6 ACLs configured on Ethernet 0/2 or Ethernet 1/0
+
+R2# show ipv6 interface ethernet 1/0 | include list
+R2# show ipv6 interface ethernet 0/0 | include list
+  Outgoing access list SRV1
+
+
+There is no IPv6 ACL configured on Ethernet 1/0 but an ACL named SRV1 is configured on Ethernet 0/0.
+
+R2# show ipv6 access-list 
+</b>
+Line 20 shows matches for Telnet traffic being permitted by the ACL but there are no matches for line 30 that is configured to match port 22.
+
+You can see the root cause of the issue in the configuration. Line 20 is correctly configured, but line 30 is matching UDP port 22 instead of TCP port 22. Since SSH uses TCP, connection attempts from PC3 are dropped by the implicit deny ipv6 any any.
+
+
+With the root cause determined, fix the problem, and verify that PC3 can establish an SSH connection with SRV1.
+
+<b>
+R2(config)# ipv6 access-list SRV1
+R2(config-ipv6-acl)# no sequence 30
+R2(config-ipv6-acl)# sequence 30 permit tcp any host 2001:DB8:172:1::100 eq 22
+From R2, verify the ACL before testing:
+
+R2# show ipv6 access-list 
+
+PC3# ssh -l admin 2001:DB8:172:1::100
+Password: (cisco)
+SRV1> exit
+
+R2# show ipv6 access-list 
+</b>
+PC3 can successfully SSH to SRV1. The issue is resolved.
+
+<h3>Describe Control Plane Security</h3>
+
+Control Plane Functions
+
+The control plane runs routing processes:
+
+Builds the routing and forwarding tables for the data plane
+
+Runs on the process level
+
+Shares the main CPU with the slow data path processes and management processes
+
+By default, also shares the path (queue) to the main CPU
+
+The routed control plane is a collection of processes that runs at the process level on the CPU of a network device and provides the baseline routing functions in a device. These functions primarily include building the routing and forwarding tables by using either static configuration (static routes) or with the help of dynamic routing protocols.
+
+The routed control plane functions (shown as the routing protocols box in the figure) share the CPU of the main router with two other groups of processes:
+
+The management processes, which provide device management functions.
+
+The slow data path processes (process switching or the Cisco Express Forwarding process path), which manage traffic that cannot be managed by the fast data path. (The fast path consists of interrupt switching functions of Cisco Express Forwarding, or hardware-assisted forwarding.)
+
+By default, these three aspects also share the path (queue) from the data plane, where packets received by the device are passed to the main CPU for detailed processing.
+
+
+<table border="1">
+<tr>
+<th>Overview of Control Plane Countermeasures</th>
+</tr>
+<tr>
+<td>Threat</td>
+<td>Control Plane Countermeasure</td>
+</tr>
+<tr>
+<td>Slow path denial-of-service attacks</td>
+<td>Fast-path data plane ACLs (for device firewalling or as infrastructure ACLs) Control Plane Policing Control Plane Protection</td>
+</tr>
+<tr>
+<td>Routing protocol spoofing</td>
+<td>Fast-path data plane ACLs Control Plane Policing Control Plane Protection Routing Protocol Authentication Routing Protocol Filtering</td>
+</tr>
+
+</table>
+
+
+Because the CPU is shared among the three functions (control plane, management plane, slow data path), excessive traffic to one of these three functions can, by default, overwhelm the entire CPU and influence the behavior of the other two functions. This can lead to flooding attacks, in which the attacker can disable these three functions by sending a high rate of packets to the CPU. There are multiple possible countermeasures that guard against this threat:
+
+The use of device fast-path data plane ACLs (usually these are interface ACLs of routers and switches) to deny most traffic before it is dispatched into the slow path to the CPU of the router. Because these ACLs are very efficient and are often implemented in hardware in OSI Layer 3 switches and high-end routers, they can drop most malicious traffic without any impact to the CPU. Instead of implementing such ACLs on every device, you can deploy these ACLs at the edge of your network (that is, infrastructure ACLs) to prevent endpoints from injecting traffic that would be forwarded to device CPUs. Note however, that ACLs must be configured with appropriate destination addresses, which may not be scalable if devices use many IP addresses (interfaces). If these addresses are not contiguous, they can make ACLs difficult to manage.
+
+
+The use of specific, on-device protection methods that can filter or rate-limit traffic to the CPU, while leaving fast-path transit traffic untouched. CoPP and Control Plane Protection are two such features.
+
+Another significant threat to routed control planes is the injection of malicious routing information. Attackers can use malicious routing information to redirect or black-hole sensitive traffic and therefore violate its confidentiality, integrity, or ability to perform a denial-of-service attack. These risks can be mitigated by the following:
+
+Use fast-path data plane ACLs to limit who can send routing protocol information to network devices. Again, this may not be scalable because of many interfaces and discontiguous IP addressing of network links.
+
+Use the CoPP and Control Plane Protection features to locally limit the authorized routing protocol peers by their IP address.
+
+Use routing protocol authentication, in which a cryptographic integrity and authenticity proof is embedded within each routing protocol message that prevents routing adjacency and routing update spoofing.
+
+Use routing protocol filtering, which prevents injection of malicious routing information from known, authenticated peers.
+
+<h3> CoPP Implementation Steps</h3>
+
+
+This topic describes the implementation and verification steps for CoPP.
+
+To implement and verify CoPP, follow these steps:
+
+	- Constructing the CoPP Policy
+
+	- Use ACLs to identify the traffic flows seen by the control plane
+
+	- Match the ACLs to class maps
+
+	- Define a policy map to police traffic classes
+
+Deploying the CoPP Policy
+
+	- Apply the policy map to the control plane as a service policy
+
+Verifying the CoPP Policy
+
+	- show running-configuration
+
+	- show access-list
+
+	- show class-map
+
+	- show policy-map
+
+	- show policy-map control-plane
+
+First, traffic classes are created that describe valid control plane traffic. You can configure as many traffic classes as you need, depending on the required granularity of your policy. ACLs are used to identify traffic for each class. You then create a traffic policy that will permit, deny, or rate-limit the configured traffic classes and therefore conserve process layer resources, or even act as a device firewall by hiding most device resources from the network. Finally, apply the configured traffic policy to the control plane.
+
+In the configuration example, a router has been configured with an entire CoPP policy. In the first step, ACLs are defined for ICMP, IPsec, management, and routing traffic destined to the router’s control plane. The ACL permit statements allow CoPP to police these types of traffic. All other traffic not explicitly identified will be policed by the default class map.
+
+<h4></h4>
+
+ CoPP Configuration Example: ACLs
+</b>
+ip access-list extended ICMP-CoPP
+permit icmp any any echo-reply
+permit icmp any any echo
+
+ip access-list extended IPsec-CoPP
+permit udp any eq isakmp any eq isakmp
+permit esp any any
+permit gre any any
+
+
+ip access-list extended Mgmt-CoPP
+permit tcp any any eq www
+permit tdp any any eq 443
+permit udp any any eq snmp
+permit tcp any any eq telnet
+permit tcp any any eq 22
+
+ip access-list extended Routing-CoPP
+permit tcp any eq bgp any established
+permit eigrp any host 224.0.0.10
+permit ospf any host 224.0.0.5
+permit ospf any host 224.0.0.6
+</b>
+In the second step, traffic classes are defined to describe the valid control plane traffic that was identified by the ACLs. In this example, each ACL is assigned its own class map.
+
+
+<h4>CoPP Configuration Example: Class Maps</h4>
+<b>
+class-map match-all Mgmt-CoPP-MAP
+match access-group name Mgmt-CoPP
+
+class-map match-all ICMP-CoPP-MAP
+match access-group name ICMP-CoPP
+
+class-map match-all IPsec-CoPP-MAP
+match access-group name IPsec-CoPP
+!
+class-map match-all Routing-CoPP-MAP
+match access-group name Routing-CoPP
+</b>
+
+In the third step, you must create a traffic policy to describe the actions that are taken for each traffic class that is encountered in the control plane policer. In this example, the CoPP-POLICY lists the configured traffic classes and imposes various bits per seconds for each class. Traffic conforming to this rate is permitted to the process level, and traffic exceeding it is dropped by the policer. The traffic policy also lists the class-default traffic class and imposes a limit of 8000 bps for this class, to rate limit all other traffic to the control plane. In the last step, you have to apply the traffic policy to the control plane.
+
+
+<h4> CoPP Configuration Example: Policy Map and Service Policy</h4>
+<b>
+policy-map CoPP-POLICY
+class ICMP-COPP-MAP
+police 8000 conform-action transmit exceed-action drop
+class IPsec-CoPP-MAP
+police 64000 conform-action transmit exceed-action drop
+class Mgmt-CoPP-MAP
+police 64000 conform-action transmit exceed-action drop
+class Routing-CoPP-MAP
+police 128000 conform-action transmit exceed-action drop
+class class-default
+police 8000 conform-action transmit exceed-action drop
+
+control-plane
+service-policy input CoPP-POLICY
+</b>
+
+To verify the CoPP configuration and operation, use the following commands:
+
+<b>show running-config</b>: The show running-config command displays the entire router running configuration, including all CoPP elements.
+
+<b>show access-lists</b>: The show access-lists command displays all the configured ACLs on the router and any hit-counters associated with any ACL entries that have seen packet matches.
+
+<b>show class-map</b>: The show class-map command displays all the configured class maps on the router.
+
+<b>show policy-map<b>: The show policy-map command displays all the configured policy maps on the router.
+
+<b>show policy-map control-plane</b>: The show policy-map control-plane command displays the dynamic information about the actual policy applied including rate information and the number of bytes (and packets) that conformed to or exceeded the configured policies. The example below shows only a partial output of the entire CoPP service policy. In this case, the ICMP class map has seen 508 packets conform to the policing rate, while 39 have been dropped.
+
+<h4>CoPP Verification</h4> 
+
+<b>
+R1# show policy-map control-plane 
+</b>
+
+<h3>Describe uRPF</h3>
+
+This topic describes uRPF.
+Automatically checks source IP addresses of packets against the Forwarding Information Base (FIB):
+
+As trusted as the FIB
+
+Should not rely on untrusted routing
+
+Strict uRPF:
+
+Prevents IP spoofing of known (valid) addresses, based on known network location
+
+A scalable alternative to egress and ingress antispoofing ACLs
+
+Loose uRPF:
+
+Prevents IP spoofing from "bogon" (that is, invalid) networks
+Ingress and egress ACLs require you to manually configure address-based filters on many chokepoints in the network. The uRPF feature attempts to automate this process, therefore making it more scalable and manageable.
+
+It is labor-intensive to specify ACLs for each interface to protect against spoofed packets. The router knows which networks are reachable and valid through which interface. The router has a routing table and a forwarding table—RIB and FIB—that point via an interface to reach an IP network. Therefore, the routing table can also be used to validate the source addresses of the incoming packet by checking each source address against the RIB or FIB. The technique is called uRPF.
+
+However, the uRPF mechanisms are only as reliable as the routing and forwarding tables to which they refer. That is, if routing is not appropriately secured (using routing protocol authentication and filtering), these mechanisms are not reliable.
+
+The uRPF mechanism should be used as the first line of defense in a network, and it can be deployed on network devices such as Cisco IOS routers, Cisco IOS Layer 3 switches, and Cisco Adaptive Security Appliance firewalls.
+
+There are two types of uRPF available on the Cisco IOS routers:
+
+Strict uRPF verifies that the packet is coming through the expected interface and therefore provides a scalable alternative to ingress and egress ACLs. Packets that are coming from unexpected interfaces (as per the RIB and FIB) are dropped.
+
+Loose uRPF only validates the existence of the source network of the packet in the routing table and provides a method to drop packets from unknown and therefore invalid networks.
+
+<table border="1">
+<tr>
+<td>Strict uRPF:</td>
+<td>1. The packet arrives on a routed interface.
+
+2. uRPF extracts the IP source address and uses it to search the FIB table to find
+the location of its network.
+
+3. If the found location (interface) does not match the input interface, the packet
+is dropped.
+
+4. Otherwise, the destination address of the packet is forwarded according to
+the FIB table.</td>
+</tr>
+<tr>
+<td>Loose uRPF:</td>
+<td>1. The packet arrives on a routed interface.
+
+2. uRPF extracts the IP source address and uses it to search the FIB table to see if this network is known to the router.
+
+3. If the FIB does not contain this network, the packet is dropped.
+
+4. Otherwise, the destination address of the packet is forwarded according to the FIB table.</td>
+</tr>
+</table>
+
+When a packet is received at the Cisco IOS router interface where Strict uRPF has been configured, these actions occur:
+
+The router accepts the packet on an input interface.
+
+If it is permitted by the input ACL, uRPF extracts the source IP address from the packet. uRPF performs a lookup in the FIB to determine which outgoing interface is used to reach the network the source IP address belongs to.
+
+If the interface that is determined by the FIB lookup is not the same as the input interface, the packet is dropped.
+
+Otherwise, the router extracts the destination IP address from the packet. It then performs a lookup in the FIB to determine the next hop to which the packet should be forwarded.
+
+When a packet is received at the Cisco IOS router interface where Loose uRPF has been configured, these actions occur:
+
+The router accepts the packet on an input interface.
+
+If it is permitted by the input ACL, uRPF extracts the source IP address from the packet and performs a lookup in the FIB to determine if the network to which the source IP address belongs exists in the FIB.
+
+If this network does not exist (for example, there is no route matching this network in the RIB), the packet is dropped.
+
+Otherwise, the router extracts the destination IP address from the packet. It then performs a lookup in the FIB to determine the next hop to which the packet should be forwarded.
+
+<h3>uRPF Configuration Example</h3>
+
+
+This topic explains how to configure Unicast Reverse Path Forwarding (uRPF) on Cisco IOS Software.
+
+To configure uRPF on a Cisco IOS Software router or OSI Layer 3 switch, complete the following tasks:
+
+Configure uRPF in Strict or Loose mode on routed interfaces where spoofing is likely.
+
+Optionally, configure uRPF-related Simple Network Management Protocol (SNMP) notifications to provide real-time auditing of uRPF violations.
+
+Note
+Cisco Express Forwarding is required to configure uRPF on the Cisco IOS router.
+
+
+<h4>Configure uRPF on Cisco IOS Software</h4>
+
+This figure shows the configuration scenario that is presented below. Strict uRPF is configured on the FastEthernet0/0 interface of the router to automatically drop all spoofed traffic. Strict uRPF is also configured to allow matching against the default route and allow administrators to ping the router itself. On the same interface, traffic from the 10.255.1.0/24 network is allowed to be asymmetrically routed and therefore bypass Strict uRPF checks. All packets that are denied by the uRPF feature are logged. On the FastEthernet0/1 router interface, Loose uRPF is applied and all packets that are denied by it are also logged.
+
+Also, SNMP-based notifications of uRPF violations are sent to SNMP server. The example assumes that the router is appropriately preconfigured with an SNMP destination to which SNMP traps can be sent.
+
+Configuration Example
+
+<b>
+interface FastEthernet 0/0
+ ip verify unicast source reachable-via rx allow-default allow-self-ping 199
+!
+interface FastEthernet 0/1
+ ip verify unicast source reachable-via any 199
+ snmp trap ip verify drop-rate
+!
+access-list 199 permit ip 10.255.1.0 0.0.0.255 any
+access-list 199 deny ip any any log-input
+</b>
+To configure Strict uRPF on a routed interface, use the ip verify unicast source reachable-via rx command. You can extend this command using the allow-default argument to also consider the default route in source verification. This is required in environments that use a trustworthy default route. You can use the allow-self-ping option to allow the router to ping its own interface. Without this option, ping packets that the router generated fail the RPF verification check, and thus self-pinging is not allowed. Also, you can specify an ACL as an argument. When a router decides to deny a packet based on FIB lookup, it can compare the offending packet to this ACL. You can use this ACL to make a uRPF exception and permit this packet, or simply log all denied packets via the syslog facility, as shown in the second line of the extended ACL 199 in this figure.
+
+To configure Loose uRPF on a routed interface, use the ip verify unicast source reachable-via any command. You should not extend this command using the allow-default argument. Doing so would make the source address of any packet valid because there would be a default network to match any source address in the FIB. Also, you can specify an ACL to log all denied packets, as with Strict uRPF.
+
+One problem with using Strict RPF relates to asymmetrical routing. No rule in IP says that packets in either direction of a conversation must use the same path. It may be quite legitimate in a network to receive packets from a source through one interface, but send packets back to that destination through a different interface. In this case, Strict uRPF would block the incoming packets because they do not correspond to the outbound route in the FIB, even though this may be a completely legitimate data stream.
+
+uRPF accommodates asymmetrical routing in two ways. It allows a user to switch to Loose RPF (therefore losing a large chunk of antispoofing functionality). Or, it configures a special uRPF ACL that specifies which unicast addresses are likely to be asymmetrically routed and which unicast addresses RPF should be ignored. Such an ACL allows the deployment of both uRPF and some asymmetric routing in a controlled fashion.
+
+In the second task, the snmp trap ip verify drop-rate command is used enable the sending of uRPF-related traps to all configured SNMP trap destinations.
+
+To configure uRPF on the Cisco router, use the commands that are described in this table:
+
+<table border="1">
+<tr>
+<td>Commands</td>
+<td>Description</td>
+</tr>
+<tr>
+<td>interface FastEthernet 0/0 ip verify unicast source reachable-via rx allow-default allow- self-ping 199</td>
+<td>Enables Strict uRPF on the interface. The ACL is applied for additional ACL check.</td>
+</tr>
+<tr>
+<td>interface FastEthernet 0/1 ip verify unicast source reachable-via any 199</td>
+<td>Enables Loose uRPF on the interface. The ACL is applied for additional ACL check.</td>
+</tr>
+<tr>
+<td>snmp trap ip verify drop-rate</td>
+<td>Enables uRPF-related SNMP traps.</td>
+</tr>
+</table>
+
+
+<h4>Verify uRPF on Cisco IOS Software</h4> 
+
+
+<table border="1">
+<tr>
+<td>uRPF Verification Commands</td>
+<td>Description</td>
+</tr>
+<tr>
+<td>show ip interface</td>
+<td>Verifies uRPF on a routed interface</td>
+</tr>
+</table>
+
+
+
+On Cisco IOS routers, use the <b>show ip interface</b> command to verify the configuration and operation of uRPF and uRPF-related SNMP notifications on a specific routed interface.
+
+In the example, the show ip interface command shows if uRPF is enabled on a particular interface. At the end of its output, you can see the uRPF configuration parameters in addition to uRPF-related SNMP trap statistics. To troubleshoot uRPF dropping, use the ACL logging of denied packets and observe the syslog messages of the router to analyze individual drops.
+
+
+<h3>Configure and Verify uRPF</h3>
+
+<h4> Verify Initial Network Functionality</h4>
+
+
+In this task, you will verify the current static routing configuration and test connectivity from R1’s loopback 0 interface to R2’s loopback 0 interface.
+
+On R1 and R2, verify the static routes in the IP routing table.
+
+<b>
+R1# show ip route static  
+R2# show ip route static 
+</b>
+R1 has a static route to the 10.2.2.2/32 address via 192.168.12.2. R2 has a static route to the 10.1.1.1/32 address via 192.168.12.1. Both these static routes will send traffic through SW1. The current configuration provides symmetric routing between R1 and R2. Symmetric routing occurs when the same path is taken by packets to and from a destination.
+
+On R1 and R2, trace the path to the neighbor’s Loopback 0 address. Source the trace from the router’s own Loopback 0 address.
+
+<b>
+R1# traceroute 10.2.2.2 source 10.1.1.1
+R2# traceroute 10.1.1.1 source 10.2.2.2
+</b>
+These traceroute commands demonstrate the current symmetric routing that is occurring between R1 and R2 through SW1.
+
+<h4>Enable and Investigate uRPF Strict Mode</h4> 
+
+In this task, you will enable Strict uRPF in the current symmetric routing configuration. You will then migrate to an asymmetric routing configuration and investigate the results.
+
+On R1, enable Strict uRPF on interfaces Ethernet 0/0 and Ethernet 0/1.
+<b>
+R1(config)# interface ethernet 0/0
+R1(config-if)# ip verify unicast source reachable-via rx
+R1(config-if)# interface ethernet 0/1                   
+R1(config-if)# ip verify unicast source reachable-via rx
+</b>
+
+The rx keyword enables Strict uRPF. When you use uRPF in Strict mode, the packets must be received on the interface that the router would use to forward the return packets.
+
+Although uRPF is enabled on both Ethernet interfaces, all investigation and testing will take place on Ethernet 0/1.
+
+On R1, verify that uRPF is enabled correctly using the show cef interface command.
+<b>
+R1# show cef interface ethernet 0/0 | include RPF|CEF
+R1# show cef interface ethernet 0/1 | include RPF|CEF
+</b>
+When uRPF is enabled on an interface of a device, the device examines all packets received as input on that interface to ensure that the source address and source interface information appear in the routing table and matches the interface on which packets are received. This ability to “look backwards” is available only when Cisco Express Forwarding (CEF) is enabled on a device because the lookup relies on the presence of a Forwarding Information Base (FIB). Cisco Express Forwarding generates a FIB as part of its operation.
+
+On R1, use the traceroute command to test connectivity to R2’s loopback 0 interface. Source the traceroute from R1’s Loopback 0 address. This test should be successful.
+
+<b>
+R1# traceroute 10.2.2.2 source 10.1.1.1
+Connectivity is maintained since the network is still configured for symmetric routing. Verify the CEF table for an entry to the 10.2.2.2 address using the show ip cef 10.2.2.2 command.
+R1# show ip cef 10.2.2.2
+CEF is operational for the 10.2.2.2/32 address.
+</b>
+
+On R2, replace the static route so that return traffic takes the path through SW2 instead. This will create asymmetric routing between R1 and R2.
+
+<b>
+R1# debug ip cef drops rpf 
+</b>
+On R1, ping 10.2.2.2 using a source of 10.1.1.1.
+<b>
+R1# ping 10.2.2.2 source 10.1.1.1
+</b>
+uRPF blocks the Echo Reply sent by R2 since they are arriving on different interface to the one that was used to transmit the Echo Requests by R1.
+
+On R1, use the show ip traffic command to investigate the reason for the dropped packets.
+<b>
+R1# show ip traffic | include Drop|RPF
+</b>
+
+The router shows that five unicast packets were dropped because of uRPF.
+
+<h4>Enable and Investigate uRPF Loose Mode</h4>
+In this task, you will enable uRPF Loose mode and investigate the results.
+
+On R1, configure both Ethernet 0/0 and Ethernet 0/1 with uRPF Loose mode.
+<b>
+R1(config)# interface ethernet 0/0
+R1(config-if)# ip verify unicast source reachable-via any
+R1(config-if)# interface ethernet 0/1                                  
+R1(config-if)# ip verify unicast source reachable-via any
+</b>
+
+When you use uRPF in Loose mode, packets are allowed if the source address appears in the routing table. uRPF Loose mode is a scalable option for networks that contain asymmetric routing paths, which are the case for the network here.
+
+On R1, ping R2’s 10.2.2.2 using a source of 10.1.1.1.
+<b>
+R1# ping 10.2.2.2 source 10.1.1.1
+</b>
+
+In this case, uRPF is triggered and identifies the packet as needing to be dropped, but the Drop action is suppressed since Loose mode (via-any) is configured.
+
+<h4>Enable uRPF Strict Mode Using ACLs</h4>
+
+In task, you will re-enable uRPF Strict mode but use an ACL to allow for packets to bypass the uRPF check.
+
+On R1, create an ACL that will permit IP traffic from 10.2.2.2 to 10.1.1.1.
+<b>
+R1(config)# access-list 120 permit ip host 10.2.2.2 host 10.1.1.1
+</b>
+
+The ACL will allow traffic sourced from R2’s 10.2.2.2 and destined to R1’s 10.1.1.1 to bypass the uRPF drop that Strict mode would trigger in the current asymmetric routing configuration.
+
+On R1, re-enable uRPF Strict mode on Ethernet 0/0 and Ethernet 0/1 but add the ACL filtering option.
+
+<b>
+R1(config)# interface ethernet 0/0
+R1(config-if)# ip verify unicast source reachable-via rx 120
+R1(config-if)# interface ethernet 0/1                   
+R1(config-if)# ip verify unicast source reachable-via rx 120
+</b>
+Adding the ACL number at the end of the command allows you to bypass the uRPF Drop function or explicitly deny traffic even if it passes the uRPF check.
+
+On R1, ping R2’s 10.2.2.2 using a source of 10.1.1.1.
+
+R1# ping 10.2.2.2 source 10.1.1.1
+
+<h4>Enable uRPF Strict Mode Using Default Routes</h4>
+
+In this task, you will revert to a symmetric routing configuration but use a default route instead of a static route. You will then investigate how uRPF behaves before with default routing.
+
+On R1, remove the static route to the 10.2.2.2/32 address and replace it with a default route instead.
+<b>
+R1(config)# no ip route 10.2.2.2 255.255.255.255 192.168.12.2 
+R1(config)# ip route 0.0.0.0 0.0.0.0 192.168.21.2
+</b>
+Notice that the default route is pointing to 192.168.21.2 which is the path through SW2. Since R2 is currently configured to use a static route to send traffic through SW2, you have reestablished a symmetric routing configuration.
+
+On R1, re-enable uRPF Strict mode on Ethernet 0/0 and Ethernet 0/1.
+<b>
+R1(config)# interface ethernet 0/0
+R1(config-if)# ip verify unicast source reachable-via rx
+R1(config-if)# interface ethernet 0/1                   
+R1(config-if)# ip verify unicast source reachable-via rx
+</b>
+By default, uRPF will not use a default route to verify the source address of a packet since default routes do not count as valid routes for the FIB.
+
+On R1, ping R2’s 10.2.2.2 using a source of 10.1.1.1.
+<b>
+R1# ping 10.2.2.2 source 10.1.1.1
+</b>
+uRPF is reporting that packets are being dropped because a default route was used to route the packets from R1 to R2. Even though Echo Replies were correctly received on Ethernet 0/1, uRPF still drops the packets. The result would be the same if you used Loose mode instead.
+
+On R1, modify the uRPF configuration on Ethernet 0/0 and Ethernet 0/1 to allow default routes to be used for packet verification.
+
+<b>
+R1(config)# interface ethernet 0/0                                  
+R1(config-if)# ip verify unicast source reachable-via rx allow-default 
+R1(config-if)# interface ethernet 0/1                                                
+R1(config-if)# ip verify unicast source reachable-via rx allow-default 
+</b>
+
+On R1, ping R2’s 10.2.2.2 using a source of 10.1.1.1.
+R1# ping 10.2.2.2 source 10.1.1.1
+Since no packets have been suppressed or dropped, no debug messages appear at the console. All five pings are successful.
+
+
+A final option is available when configuring uRPF. You can add the allow-self-ping keyword to the uRPF command. Doing so allows router pings to itself to bypass uRPF. According to Cisco best practices, the allow-self-ping option should not be used because it could create a denial of service condition or open the router to verification vulnerabilities.
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

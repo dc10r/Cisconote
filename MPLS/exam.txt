@@ -1,0 +1,216 @@
+Which control plane table is built using an LDP?
+- LIB
+
+Which VRF option needs to be enabled to ensure that OSPF are installed into the VRF table when they are redistributed from MP-BGP?
+- Capability vrf-lite
+
+
+Which command can be used with the Cisco IOS VRF migration tool to ensure that all route-target policies are copied to their respective address families?
+- vrf upgrade-cli multi-af-mode common-policies
+
+
+The DMVPN hub acts as which type of NHRP device?
+- Server
+
+Which verification command displays the type of NHRP mapping that a router has established?
+- show ip nhrp
+
+
+What is the MPLS L3 VPN core routers called?
+- P router
+
+Which statement about Cisco IOS DMVPN is not true?
+- Uses a routing protocol to monitor the state of the spoke-to-spoke tunnels
+
+Which routing protocol does the CE router run?
+- any ip routing protocol
+
+Which step in the DMVPN spoke configuration sequence is optional because default settings can be used?
+- configuring a transform set
+
+Which protocol is used to transport VPN labels between PE routers?
+- MP-BGP
+
+Which step in the DMVPN hub configuration sequence is optional?
+- configuring an IKE policy
+
+What is the function of the RT in MPLS VPNs?
+- The RT attaches a set of VPN identifiers to a route that indicate its membership in several VPNs
+
+The architecture of a PE router in an MPLS VPN is similar to which traditional VPN module?
+- the dedicated PE router peer-to-peer model
+
+Which of the following is responsible for the Label Distribution Protocol?
+- control plane
+
+An MPLS LSP is usually derived from what provider process?
+- IGP
+
+Which router in the MPLS L3 VPN network is responsible for applying the RD to and IPv4 prefix?
+- PE router
+
+Which three options are features of GRE? (Choose three.)
+- can be used with IPsec VPNs
+- multicast support
+- Qos capabilities
+
+What is the function of the RD in an MPLS VPN?
+- The RD is used to transform the nonunique IP addresses of the customer into unique VPNv4 addresses.
+
+
+Which protocol would a PE router use to support an existing Internet routing scheme?
+- BGP IPv4
+
+What is the length of the label field in the MPLS header?
+- 20 bits
+
+Which solution supports the use of overlapping addresses on a PE router?
+- VRF
+
+
+What does an FEC use to forward packets across the MPLS network?
+- LSR Next-hop label
+
+Labels that are associated with the next-hop router are inserted into which data plane table?
+- LIFB
+
+LDP hellos use which UDP port and multicast address? (Choose two.)
+- 646
+- 224.0.0.2
+
+
+How has the introduction of complex VPN topologies redefined the meaning of a VPN?
+- A site can be part of more than one VPN.
+
+
+
+VRF-Lite refers to the deployment of VRFs without the use of which technology?
+- MPLS
+
+
+What can happen if two different sites with different access and security requirements are associated with the same virtual routing table?
+- Some of the sites might be able to access destinations that they should not be able to access.
+
+Which BGP function do MPLS L3 VPNs use to transport RTs?
+- extended communities
+
+Why is the VPN label not popped during the PHP process?
+- X All labels, including VPN label, are popped during the PHP process.
+
+
+Which mechanism provides dynamic mutual discovery of spoke devices in DMVPN deployments?
+- NHRP
+
+On which two devices are VRFs usually configured? (Choose two.)
+- PE router
+- CE router
+
+Which are two normal functions of an edge LSR? (Choose two.)
+- Impose labels at the ingress router
+- pop labels at the egress router
+
+
+Which router assigns the VPN label?
+- egress PE
+
+
+For which two reasons does the label stack contain two labels when supporting MPLS VPNs? (Choose two.)
+- The first label indicates the LSP that will be used to reach the egress router.
+- The second label indicates the VPN that the packet belongs to.
+
+
+How can P routers forward VPN packets if they do not have VPN routes?
+- They forward based on the LSP label.
+
+Which protocol is used to transport customer routes directly between PE routers?
+- MPG-BGP
+
+Which of the following is not part of a VPNv4 prefix?
+- Next-hop IP address
+
+Which of the following is not a foundation of traditional IP routing?
+- Routing is performed by assigning a label to an IP destination.
+
+A VRF table leverages which Cisco forwarding technology?
+- CEF
+
+Which plane is best described as "a simple label-based forwarding engine"?
+- data plane
+
+Which type of routers exchange VPNv4 routes?
+- X P router
+
+Which two statements correctly describe LSRs? (Choose two.)
+- An edge LSR is a device that inserts or removes labels on packets and that forwards packets according to labels.
+
+- An LSR is a device that forwards packets, according to labels.
+
+What is the size of an MPLS label?
+- 4 bytes
+
+Which command set would create the type of interface that is required for a spoke router in a spoke-to-spoke DMVPN deployment?
+- interface Tunnel0 and tunnel mode gre multipoint
+
+Which two of the following correctly describe the routing tables and their contents that are implemented on the PE router to support an MPLS L3 VPN? (Choose two.)
+- VRFs-contain CE routes and VPNv4 routes
+- Global IP routing table—contains all core IGP routes and the IPv4 routes
+
+Which of the following statements is incorrect?
+- MPLS works in IP networks only.
+
+How does a PE router know in which VRF table to install received routes for a customer?
+- Customer routes are identified by the RT contained in the extended BGP community.
+
+Which two statements correctly describe MPLS? (Choose two.)
+- Traditional IP routing would force all traffic to use the same path, according to destination.
+- Traffic can be forwarded according to parameters such as QoS and source address.
+
+Which protocol is used to encrypt and authenticate the data that is sent across a DMVPN tunnel?
+- IPsec
+
+Which VPN-aware routing protocol is typically used to carry VPN routes across the MPLS domain?
+- MP-BGP
+
+Which routers are MPLS VPNs aware of?
+- Pe routers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

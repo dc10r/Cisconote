@@ -1,0 +1,1903 @@
+<h2>TroubleShooting Infrastruture Security and Services</h2>
+
+
+<h3>Troubleshoot AAA Issues</h3>
+
+
+A junior administrator reconfigured access restriction on BR. They want to use a username-password combination of "admin/cisco" and use these credentials as the local AAA database for login. However, when trying to use Telnet to connect from CORE to BR, BR is still asking just for the password.
+
+
+On router CORE, verify the problem by using Telnet to connect to router BR.
+
+
+<b>
+CORE# telnet 10.3.0.2
+</b>
+
+To verify if the problem exists, use Telnet to connect to router BR. As you can see from the output, only the password is required to access router BR. You can conclude that the problem exists, and you should start troubleshooting.
+
+You were told by the junior administrator that they had reconfigured access restrictions on router BR. They want the username/password combination to be used for authentication when accessing router BR. But the configuration is not correct because only the password is required.
+
+Using a “top-down” approach to troubleshooting a faulty access policy, first check the VTY line configuration on router BR.
+
+On router BR, check the VTY line configuration.
+
+<b>
+BR# show running-config | section line vty
+line vty 0 4 
+ privilege level 15
+ password cisco
+ login
+ transport input telnet ssh
+</b>
+
+
+First, use the current Telnet connection to router BR from router CORE and check the VTY line configuration on the BR router. As you can see, the basic login command is used for authentication to the router. This configuration means that the router will authenticate the access by checking the password that is configured with the password command under the VTY line.
+
+On router BR, check if AAA is configured.
+
+<b>
+BR# show running-config | section aaa
+no aaa new-model
+</b>
+As you can see, AAA is not configured. You can conclude that this configuration is part of the issue. According to the ticket, AAA needs to be configured on router BR.
+On router BR, verify if any username and password are configured.
+
+<b>
+BR# show running-config | section username
+username admin privilege 15 password 0 cisco
+</b>
+
+When configuring AAA services with the aaa new-model command, local authentication is immediately applied to all lines except the console line. If a new Telnet or SSH session is opened to the router after enabling this command, the user has to be authenticated by using the local database of the router. Therefore, you should check if any user is configured; otherwise, you will not be able to access the router. As you can see, the admin user exists.
+
+
+On router BR, enable AAA and configure local authentication.
+<b>
+BR(config)# aaa new-model 
+BR(config)# aaa authentication login default local
+</b>
+You can enable AAA services and configure the local authentication with the aaa authentication login default local command. With this command, the local database will be used for authentication by default. After AAA services have been configured, you can initiate a new Telnet session to check if the configuration has been correctly assigned.
+
+On router BR, exit the current Telnet session. Once back at the CORE router prompt, initiate a new Telnet session to the BR router. The local database should be used for authentication.
+
+<b>
+BR(config)# exit
+BR# exit
+
+[Connection to 10.3.0.2 closed by foreign host]
+CORE#
+CORE# telnet 10.3.0.2
+Trying 10.3.0.2 ... Open
+
+User Access Verification
+
+Username: admin
+Password: (cisco)
+
+</b>
+
+After enabling AAA services, you should test access to router BR. Use telnet 10.3.0.2 to access router BR from CORE. As you can see from the output, router BR now asks for a username and password. After providing the correct credentials, you are connected to router BR.
+
+Ideally, you would leave the current session to BR open and initiate another one from a different device. This would lessen the risk of locking yourself out of the device in case you misconfigured remote access.
+
+You can conclude that the issue is solved. Exit the Telnet session to return to the CORE router prompt.
+
+
+
+<h4>Troubleshoot Secure Copy Protocol Issues</h4>
+
+A junior administrator is attempting to use SCP to backup the running configuration of the BR router. They wish to store the configuration file on SRV1. However, attempts at using SCP to complete this task are unsuccessful.
+
+
+Note
+Because SRV1 is an IOL device, the only available memory to store BR’s configuration file is in NVRAM. In a production network, you would typically backup configuration files to an external server instead.
+
+Step 7
+On SRV1, verify the problem by using SCP to copy the running configuration file from BR to SRV1. Use the following parameters:
+
+BR IP address: 10.3.0.2
+
+Source username: admin
+
+Source filename: running-config
+
+Destination filename: BR-CONFIG
+
+Password: cisco
+
+
+<b>
+SRV1# copy scp: nvram:                               
+Address or name of remote host []? 10.3.0.2
+Source username [SRV1]? admin 
+Source filename []? running-config
+Destination filename [srv1-confg]? BR-CONFIG
+% Connection refused by remote host
+
+%Error opening scp://*****@10.3.0.2/running-config (Undefined error)
+</b>
+To verify if the problem exists, you should use the SCP command to copy the running configuration file from BR to SRV1. As you can see from the output, the SCP connection is refused by BR. You can conclude that the problem exists, and you should start troubleshooting.
+
+Since the connection didn’t timeout, you know that SRV1 has Layer 3 connectivity with the BR router. Issuing a Ping from SRV1 to BR confirms this:
+
+
+<b>
+SRV1# ping 10.3.0.2
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.3.0.2, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 1/2/5 ms
+</b>
+
+Since SCP uses SSH to establish a secure connection, you should investigate SSH.
+
+On SRV1, initiate an SSH session with the BR router, using the parameters from Step 1.
+
+<b>
+SRV1# ssh -l admin 10.3.0.2
+</b>
+
+The SSH connection is also refused. This is a strong indication that the issue affecting SCP is in fact related to the SSH configuration on the BR router.
+
+Telnet to the BR router and investigate the SSH configuration.
+
+
+On SRV1, Telnet to the BR router using the parameters from Step 1 to continue the troubleshooting process on that router.
+
+<b>
+SRV1# telnet 10.3.0.2
+Trying 10.3.0.2 ... Open
+
+
+User Access Verification
+
+Username: admin
+Password: (cisco)
+</b>
+
+The Telnet attempt should be successful.
+
+Using a top-down troubleshooting process again, start by investigating the VTY lines to ensure that SSH connections are allowed.
+
+
+On router BR, verify the VTY line configuration.
+
+<b>
+BR# show running-config | section line vty
+line vty 0 4
+ privilege level 15
+ password cisco
+ transport input telnet ssh
+</b>
+
+BR’s VTY lines appear to be correctly configured to accept both Telnet and SSH connections, and there is no ACL configured to filter VTY access. Continue troubleshooting by investigating the SSH configuration on the router.
+
+On router BR, use the show ip ssh command to inspect if SSH is correctly configured.
+
+<b>
+BR# show ip ssh
+SSH Disabled - version 1.99
+%Please create RSA keys to enable SSH (and of atleast 768 bits for SSH v2).
+Minimum expected Diffie Hellman key size : 1024 bits
+IOS Keys in SECSH format(ssh-rsa, base64 encoded): NONE
+</b>
+
+SSH is currently disabled. The output is requesting that an RSA key be created to enable SSH. You can conclude that this lack of configuration is responsible for preventing SCP from working. To correct the issue, start by generating an RSA crypto key and enabling SSH version 2.
+
+On router BR, verify that a domain name has been configured, and then generate a 1024-bit RSA crypto key for use with SSH. Enable version 2 of the protocol.
+
+<b>
+BR# show ip domain-name
+cisco.com
+BR# configure terminal
+BR(config)# crypto key generate rsa modulus 1024
+The name for the keys will be: BR.cisco.com
+
+% The key modulus size is 1024 bits
+% Generating 1024 bit RSA keys, keys will be non-exportable...
+[OK] (elapsed time was 2 seconds)
+
+BR(config)# ip ssh version 2
+</b>
+
+Recall that for the router to generate an RSA key it must first be configured with a domain name. The show ip domain-name command confirms that BR is already configured with a domain name. The crypto key generate rsa modulus 1024 command generates the necessary RSA key for SSH. SSH version 2 is enabled since it is more robust than version 1.
+
+Verify once again the SSH configuration on the BR router.
+
+On router BR, use the show ip ssh command to verify the status of its new SSH configuration.
+
+<b>
+BR# show ip ssh
+SSH Enabled - version 2.0
+Authentication timeout: 120 secs; Authentication retries: 3
+</b>
+
+SSHv2 is now correctly configured. Exit the current Telnet session and SSH to the BR router from SRV1 to test its SSH configuration.
+
+On router BR, exit the current Telnet session. Once back on SRV1, initiate an SSH connection to the BR router.
+
+<b>
+BR# exit
+
+[Connection to 10.3.0.2 closed by foreign host]
+SRV1# ssh -l admin 10.3.0.2
+Password: (cisco)
+BR# exit
+[Connection to 10.3.0.2 closed by foreign host]
+</b>
+
+The SSH connection is successful and you should be at the privilege EXEC prompt since the admin user is configured for privilege level 15 access.
+
+Exit the SSH connection to return to the SRV1 prompt and attempt the SCP file transfer once again.
+
+
+On SRV1, use SCP to copy the running configuration file from BR to SRV1.
+
+Use the following parameters:
+
+BR IP address: 10.3.0.2
+
+Source username: admin
+
+Source filename: running-config
+
+Destination filename: BR-CONFIG
+
+Password: cisco
+
+<b>
+SRV1# copy scp: nvram:      
+Address or name of remote host [10.3.0.2]? (Enter)
+Source username [admin]? (Enter)
+Source filename [running-config]? (Enter)
+Destination filename [srv1-confg]? BR-CONFIG
+Password: (cisco)
+
+%Error opening scp://*****@10.3.0.2/running-config (No such file or directory)
+</b>
+
+SCP is still failing but you know it is not because of SSH. Return to the BR router and enable SCP debugging to investigate the issue further.
+
+
+Open a direct console connection to the BR router by clicking its icon in the topology and enable the debug ip scp command. This will allow you to monitor the debug output as you attempt another SCP file transfer.
+
+<b>
+BR# debug ip scp
+Incoming SCP debugging is on
+</b>
+
+With the SCP debugging enabled on the BR router, return to the SRV1 console and attempt the SCP file transfer once again.
+
+On SRV1, use SCP to copy the running configuration file from BR to SRV1.
+
+Use the following parameters:
+
+BR IP address: 10.3.0.2
+
+Source username: admin
+
+Source filename: running-config
+
+Destination filename: BR-CONFIG
+
+Password: cisco
+
+<b>
+SRV1# copy scp: nvram:     
+Address or name of remote host [10.3.0.2]? (enter)
+Source username [admin]? (enter)
+Source filename [running-config]? (enter)
+Destination filename [srv1-confg]? BR-CONFIG
+Password: (cisco)
+
+%Error opening scp://*****@10.3.0.2/running-config (No such file or directory)
+SRV1#
+As expected, the SCP file transfer fails. Return to the BR console and notice the following debug messages that are displayed:
+
+*Oct 22 08:58:24.746: SCP: [22 -> 10.0.20.250:27684] send Administratively disabled.
+*Oct 22 08:58:24.746: SCP: [22 <- 10.0.20.250:27684] recv SCP not enabled.
+</b>
+
+This is a clear indication of the root cause of the issue. The SCP server function is not enabled on the BR router.
+
+To correct the issue, enable SCP server functionality on the BR router.
+
+On the BR router, use the ip scp server enable command to activate SCP functions.
+
+<b>
+BR(config)# ip scp server enable
+</b>
+
+Now that SCP is enabled, return to the SRV1 console prompt and initiate the SCP file transfer
+
+On SRV1, use SCP to copy the running configuration file from BR to SRV1.
+
+Use the following parameters:
+
+BR IP address: 10.3.0.2
+
+Source username: admin
+
+Source filename: running-config
+
+Destination filename: BR-CONFIG
+
+Password: cisco
+
+<b>
+SRV1# copy scp: nvram:     
+Address or name of remote host [10.3.0.2]? (enter)
+Source username [admin]? (enter)
+Source filename [running-config]? (enter)
+Destination filename [srv1-confg]? BR-CONFIG
+Password: (cisco)
+
+%Error opening scp://*****@10.3.0.2/running-config (No such file or directory)
+SRV1#
+The transfer is still failing. Return to the BR console and notice the following debug messages that are displayed:
+
+*Oct 25 08:38:54.201: SCP: [22 <- 10.0.20.250:48398] recv <OK>
+*Oct 25 08:38:54.202: SCP: [22 -> 10.0.20.250:48398] send Privilege denied.
+</b>
+
+The SSH connection is being successfully established, but the SCP copy process is being stopped because of an authorization issue. For SCP to copy the running configuration to SRV1, it requires AAA authorization to be configured. Enable AAA authorization for the user EXEC shell.
+
+
+On router BR, enable AAA authorization for the user EXEC shell using the local database.
+
+<b>
+BR(config)# aaa authorization exec default local
+</b>
+
+With AAA authorization enabled for the user EXEC shell, the SCP copy process should now succeed.
+
+
+On SRV1, use SCP to copy the running configuration file from BR to SRV1.
+
+Use the following parameters:
+
+BR IP address: 10.3.0.2
+
+Source username: admin
+
+Source filename: running-config
+
+Destination filename: BR-CONFIG
+
+Password: cisco
+
+</b>
+RV1# copy scp: nvram:
+Address or name of remote host [10.3.0.2]? (enter)
+Source username [admin]? (enter)
+Source filename [running-config]? (enter)
+Destination filename [srv1-confg]? BR-CONFIG
+Password: (cisco)
+!
+1588 bytes copied in 4.721 secs (336 bytes/sec)
+</b>
+
+The SCP file transfer is successful. Since the debug ip scp command is still active on the BR router, you should see the following output at its console:
+
+If you type the dir nvram: command at the SRV1 console, you should see that the BR-CONFIG file is now present:
+
+<b>
+ 4  -rw-        1588                    <no date>  BR-CONFIG
+</b>
+
+You can conclude that the issue is solved.
+
+<h4>Troubleshoot Cisco IP SLA Issues</h4>
+
+
+You are receiving reports from users in the branch office of poor video quality when they stream content from SRV1. Since the stream is crossing the WAN connection between the headquarters and the branch office, a junior administrator was tasked with configuring a Cisco IP SLA to monitor the quality of the link between BR and SRV1. They were specifically asked to enable a UDP Jitter SLA on BR that would run around the clock. However, they are complaining that the IP SLA test won’t start
+
+
+On router BR, verify the global information about IP SLA using the <b>show ip sla application</b> command.
+
+<b>
+BR# show ip sla application 
+</b>
+
+You can see that there is one IP SLA test that is configured, but it is not listed as active. This status confirms that the SLA test that the junior administrator has configured is currently not running. The reported problem is verified. You can start troubleshooting.
+
+Because you do not have any similar working IP SLA tests to at least use the "spot the difference“ troubleshooting approach, you have to dig into information that is gathered from the configuration and status of the IP SLA.
+
+On router BR, verify the IP SLA configuration using the show ip sla configuration command.
+
+<b>
+BR# show ip sla configuration 
+</b>
+
+The output confirms the following: IP SLA entry 1 is configured as a UDP Jitter test to address 10.0.20.250 (SRV1) on port 16384 using codec g729a. The test is set for every 10 seconds, but the scheduled start time is still pending. Proceed with checking the status of the IP SLA.
+
+On router BR, verify the statistics of the IP SLA
+
+<b>
+BR# show ip sla statistics 
+IPSLAs Latest Operation Statistics
+
+IPSLA operation id: 1
+Number of successes: Unknown
+Number of failures: Unknown
+Operation time to live: 0
+
+BR# show ip sla statistics aggregated 
+IPSLAs aggregated statistics
+
+IPSLA operation id: 1
+Operation has not started
+</b>
+
+You can see that IP SLA 1 has not even started because it has no statistics and an invalid time to live. You conclude that this issue is probably due to a missing schedule configuration. You should verify your hypothesis by checking the running configuration.
+
+On router BR, check for IP SLA entries in the running configuration.
+
+<b>
+BR# show running-config | section sla
+ip sla auto discovery
+ip sla 1
+udp-jitter 10.0.20.250 16384 codec g729a
+timeout 10000
+frequency 10
+</b>
+
+Looking at the running configuration, you notice that the ip sla schedule command is missing in the IP SLA configuration. Add this command to the configuration and again check the IP SLA status.
+
+On router BR, configure the IP SLA 1 scheduler to start immediately and never end.
+
+<b>
+BR(config)# ip sla schedule 1 start-time now life forever
+</b>
+The SLA should now be running. Verify if that is the case.
+
+
+On router BR, gather global information about the SLA using the <b>show ip sla application</b> and </b<show ip sla statistics</b> commands.
+
+<b>
+BR# show ip sla application 
+
+Number of Entries configured  : 1
+Number of active Entries      : 1
+...
+operation: udp-jitter
+        Latest RTT: NoConnection/Busy/Timeout
+Latest operation start time: 12:18:09 UTC Tue Oct 22 2019
+Latest operation return code: No connection
+...
+Number of successes: 0
+Number of failures: 4
+Operation time to live: Forever
+</b>
+
+The first output show that the IP SLA is now active, but the second output is indicating that the SLA is still not working. No statistics about UDP Jitter are being collected, the SLA is reporting a lack of connectivity, and all communication attempts with the destination have failed. There is still an issue to resolve.
+
+Since the SLA is reporting a lack of connectivity, use a Ping between BR and SRV1 to verify Layer 3 reachability.
+
+
+From router BR, ping SRV1 at 10.0.20.250.
+
+<b>
+BR# ping 10.0.20.250
+Success rate is 100 percent
+</b>
+
+
+The ping results show that there is Layer 3 connectivity between BR and SRV1.
+
+Recall that for a UDP Jitter SLA to gather statistics, the target device must be configured as an SLA Responder. To continue troubleshooting, verify the SLA configuration on SRV1.
+
+
+On SRV1, use the <b>show ip sla responder</b> command to verify if the server is configured to respond to UDP Jitter SLA requests.
+
+<b>
+SRV1# show ip sla responder 
+        General IP SLA Responder on Control port 1967
+General IP SLA Responder is: Disabled
+
+        Permanent Port IP SLA Responder
+Permanent Port IP SLA Responder is: Disabled
+</b>
+
+SRV1 has not been configured as an IP SLA responder. This explains the results you are seeing on router BR. To correct the issue, enter the ip sla responder command.
+
+On SRV1, enter the <b>ip sla responder configuration</b> command.
+
+<b>
+SRV1(config)# ip sla responder
+</b>
+
+After entering the IP SLA Responder command, BR should be able to start gathering statistics on the link between SRV1 and itself. It may take a few moments for the IP SLA to establish a connection with SRV1.
+
+
+On router BR, use the <b>show ip sla statistics</b> command to confirm that the SLA is fully operational.
+
+BR# show ip sla statistics 
+...
+Latest operation return code: OK
+RTT Values:
+        Number Of RTT: 1000             RTT Min/Avg/Max: 1/1/28 milliseconds
+...
+   Number of Latency one-way Samples: 783
+        Source to Destination Latency one way Min/Avg/Max: 0/0/21 milliseconds
+        Destination to Source Latency one way Min/Avg/Max: 0/0/23 milliseconds
+...
+  Source to Destination Jitter Min/Avg/Max: 0/1/20 milliseconds
+        Destination to Source Jitter Min/Avg/Max: 0/1/23 milliseconds
+...
+Loss Source to Destination: 0
+…
+ Loss Destination to Source: 0
+…
+ MOS score: 4.06
+Number of successes: 2
+</b>
+The SLA is now gathering statistics and reporting on round trip time, latency, jitter, and packet loss between BR and SRV1. Since a voice codec is configured, the SLA is also calculating a mean opinion score (MOS) as an indication of the quality of the compressed data.
+
+You can conclude that the third and final issue is solved.
+
+<h3>Troubleshoot Network Management Protocol Issues: Lab 2</h3>
+
+<h4>Troubleshoot Cisco IP SLA Tracking Issues</h4> 
+
+After a recent outage on ISP1, a junior administrator was tasked with testing the current IP SLA configuration on EDGE to ensure that when connectivity is lost to the 209.165.200.129 address hosted on ISP1, the secondary link to ISP2 is used for Internet access. After performing the requested testing, they are reporting that EDGE is not failing over to ISP2 as required. You need to troubleshoot and correct this issue
+
+On router EDGE, start by testing the current routing configuration. Ping the ISP1-hosted address used for SLA testing (209.165.200.129) and an Internet-based IP address (209.165.201.129).
+
+
+<b>
+
+EDGE# ping 209.165.200.129
+success
+EDGE# ping 209.165.201.129
+success
+
+</b>
+The EDGE router is successfully routing packets via ISP1. Investigate the default route that is configured on EDGE.
+
+
+On router EDGE, verify the routing table for a default route to ISP1.
+
+
+<b>
+EDGE# show ip route static | include 0.0.0.0
+</b>
+
+EDGE has a default route that points to the next hop 209.165.201.6 which is on ISP1. The junior administrator informed you when connectivity is lost to 209.165.200.129, the secondary link to ISP2 is not operational. To verify the problem, you need to disable the loopback 0 interface on router ISP1 to simulate a failure.
+
+
+On router ISP1, disable the loopback 0 interface to simulate a failure.
+
+<b>
+ISP1(config)# interface Loopback 0
+ISP1(config-if)# shutdown
+</b>
+
+With the ISP1 loopback 0 interface shutdown, the path to ISP2 should become active and access to the Internet should still be available. Ping the Internet-hosted address 209.165.201.129.
+
+
+On router EDGE, ping the Internet-hosted address 209.165.201.129.
+
+
+<b>
+EDGE# ping 209.165.201.129
+unsuccessfull
+</b>
+
+The issue is confirmed. Failover through ISP2 is not occurring and the ping displays U.U.U since the destination is unreachable. You can start troubleshooting.
+
+According to the network requirements, an IP SLA is configured to test the reachability of 209.165.200.129. Start by investigating the IP SLA configuration.
+
+
+On router EDGE, verify the IP SLA configuration.
+
+<b>
+EDGE# show running-config | section ip sla
+
+The IP SLA configuration appears correct. It is sending an ICMP Echo Request every five seconds to address 209.165.200.129. The IP SLA schedule is also correct.
+
+With the ISP1 loopback 0 interface disabled, it is expected that the SLA would be reporting a timeout and lack of connectivity. You can verify this with the <b>show ip sla statistics</b> command:
+
+EDGE# show ip sla statistics    
+</b>
+The failures will continue to increment while the ISP1 loopback 0 interface is disabled.
+
+Since the requirement is for the IP SLA to be used to track reachability of the 209.165.200.129 address, verify if a tracking object has been configured and applied to the default route.
+
+
+On router EDGE, use the show track command and the <b>show running-configuration | include ip route 0.0.0.0</b> command.
+
+<b>
+EDGE# show track
+EDGE#
+EDGE# show running-config | include ip route 0.0.0.0
+</b>
+
+
+The output confirms the following issues:
+
+No tracking object is configured on the router.
+
+The default route to ISP1 is not configured with the tracking option.
+
+There is no default route to ISP2 to be used if there is IP SLA failure.
+
+You need to resolve all these issues to fix the problem reported by the junior administrator.
+
+Start by defining a tracking object that will use the IP SLA.
+
+
+On router EDGE, create a tracking object that will verify the reachability status of the IP SLA. Use the number 10 for the tracking object and track the reachability of IP SLA 1. Configure a tracking delay of 2 seconds when the IP SLA state goes from up to down, and a delay of 5 seconds when the IP SLA state goes from down to up.
+
+<b>
+EDGE(config)# track 10 ip sla 1 reachability
+EDGE(config-track)# delay down 2 up 5
+</b>
+
+Use the track command to create a tracking object that verifies the reachability of IP SLA 1. Configure the delay command to specify a period to wait before communicating state changes of a tracked object.
+
+On router ISP1, enable the loopback 0 interface.
+
+<b>
+ISP1(config)# interface Loopback 0
+ISP1(config-if)# no shutdown
+</b>
+
+With the loopback 0 interface now enabled, return to the EDGE router and investigate the console message that has appeared.
+
+
+On router EDGE, investigate the console message and verify the status of the IP SLA and the tracking object using the <b>show ip sla statistics</b> and the <b>show track</b> commands.
+
+<b>
+EDGE#
+*Oct 23 04:28:30.253: %TRACK-6-STATE: 10 ip sla 1 reachability Down -> Up
+EDGE#
+
+EDGE# show ip sla statistics 
+IPSLAs Latest Operation Statistics
+
+IPSLA operation id: 1
+        Latest RTT: 1 milliseconds
+Latest operation start time: 04:40:35 UTC Wed Oct 23 2019
+Latest operation return code: OK
+Number of successes: 148
+Number of failures: 190
+Operation time to live: Forever
+
+EDGE# show track
+Track 10
+  IP SLA 1 reachability
+  Reachability is Up
+    2 changes, last change 00:12:14
+  Delay up 5 secs, down 2 secs
+  Latest operation return code: OK
+  Latest RTT (millisecs) 1
+</b>
+
+First, a Syslog message appears at the console indicating that the state of the tracking object has gone from down to up, since the IP SLA is now able to reach the 209.165.200.129 address.
+
+Second, the IP SLA is returning an OK operational code to the tracking object since reachability is up.
+
+The next step in fixing the failover issue is by adding the tracking option to the current default route. This will allow the router to remove that route from the routing table if the tracking object goes down.
+
+On router EDGE, remove the original default route and configure an identical one but add the tracking option to the default route using tracking object 10.
+
+<b>
+EDGE(config)# no ip route 0.0.0.0 0.0.0.0 209.165.201.6
+EDGE(config)# ip route 0.0.0.0 0.0.0.0 209.165.201.6 track 10
+</b>
+It is necessary to remove the old default route before adding the new route with the tracking option, or else the router will keep both static routes in its running configuration.
+
+
+The final step in fixing the issue is by configuring a second default route. This one will point to ISP2 but will have a higher administrative distance so that the original default route to ISP1 takes precedence when the IP SLA is able to reach the 209.165.200.129 address. The second default route with a higher administrative distance is often referred to as a floating static route. A floating static route floats or moves into and out of the IP routing table depending on whether the better (lower) administrative distance route happens to exist currently. Basically, the router ignores the static route during times when the better route is available.
+
+
+On router EDGE, configure a second default route that points to 209.165.200.6 (ISP2) but with an administrative distance of 2.
+
+<b>
+EDGE(config)# ip route 0.0.0.0 0.0.0.0 209.165.200.6 2
+</b>
+
+The backup default route to ISP2 will “float” above the original route to ISP1 that has a default administrative distance of 1. If the tracking object goes down, EDGE will remove the route to ISP1 and install the route to ISP2 instead.
+
+
+Before testing the failover process, inspect the status of the routing table on EDGE and the configured default routes in the running configuration.
+
+On router EDGE, use the <b>show ip route 0.0.0.0<b> and the <b>show running-config | include ip route 0.0.0.0</b> commands.
+
+
+<b>
+EDGE# show ip route 0.0.0.0
+EDGE# show running-config | include ip route 0.0.0.0
+</b>
+The EDGE router is currently using the default route to ISP1 with an administrative distance of 1 but notice that both default routes are in the running configuration: one with the tracking option and the other with the higher administrative distance.
+
+
+You are now ready to test the failover between ISP1 and ISP2. You will start by tracing the path to the public Internet-hosted 209.165.201.129 address to confirm that EDGE is currently using the path to ISP1. You will then disable the loopback 0 interface on ISP1. When the tracking object goes down, you will repeat the same trace and inspect the routing table on EDGE.
+
+On router EDGE, use the traceroute command to verify the path taken to reach 209.165.201.129.
+
+
+<b>
+EDGE# traceroute 209.165.201.129
+</b>
+The EDGE router takes the path through ISP1 to reach 209.165.201.129 address since the tracking object is reporting that the IP SLA is able to reach the 209.165.200.129 address on ISP1.
+
+On router ISP1, disable the loopback 0 interface.
+
+<b>
+ISP1(config)# interface Loopback 0
+ISP1(config-if)# shutdown
+</b>
+
+
+Wait a few moments, and then inspect the Syslog message that appears on the EDGE router:
+
+The tracking object is reporting that its state has gone from up to down. This should cause the router to remove the default route to ISP1 and replace it with the default route to ISP2. Verify the routing table on EDGE to confirm that the backup default route is now in use.
+
+On router EDGE, use the <b>show ip route 0.0.0.0</b> command.
+<b>
+EDGE# show ip route 0.0.0.0
+</b>
+
+Repeat the trace to 209.165.201.129 and notice the next hop used.
+
+On router EDGE, use the traceroute command to verify the path taken to reach 209.165.201.129
+
+<b>
+EDGE# traceroute 209.165.201.129
+</b>
+
+
+EDGE is now taking the path through ISP2 to reach the Internet-hosted address of 209.165.201.129.
+
+To ensure that the solution is working correctly, enable once again the loopback 0 interface on ISP1 and inspect the results. After a few seconds, the tracking object should report that it is going from down to up since the IP SLA will be able to reach the 209.165.200.129 address. The original default route will then take precedence over the backup path.
+
+
+On router ISP1, enable the loopback 0 interface. Return to the EDGE router and notice the Syslog message that appears. Inspect the routing table on EDGE.
+
+<b>
+ISP1(config)# interface Loopback 0
+ISP1(config-if)# no shutdown 
+EDGE# show ip route 0.0.0.0
+</b>
+
+Within a few seconds, the state of the tracking object goes from down to up. Immediately, the EDGE router reinstates the original default route to ISP1.
+
+The failover problem that was reported has been fixed. The issue is resolved.
+
+<h4>Troubleshoot Syslog Issues</h4>
+
+A syslog server will soon be deployed within the network and a junior administrator was tasked with configuring syslog parameters on the WAN router in preparation for the new server. They have requested assistance in finalizing the configuration on the router. They also report that syslog messages are no longer appearing at the console.
+
+Click the WAN router icon to open a direct console connection and verify the current logging configuration using the show logging command.
+
+<b>
+WAN# show logging 
+</b>
+
+The output shows that syslog logging disabled globally. The issue is confirmed. Start by correct this problem and then apply the missing syslog configuration.
+
+On the WAN router, start by enabling syslog logging globally with the logging on command.
+
+<b>
+WAN(config)# logging on
+</b>
+
+After enabling logging globally, a syslog message appears indicating that the process has been started.
+
+Use the <b>show logging</b> command to confirm that this initial issue is resolved.
+
+On router WAN, use the <b>show logging</b> command.
+
+<b>
+WAN# show logging
+</b>
+
+Now that logging is successfully enabled globally, apply the following parameters to finalize the syslog configuration on the WAN router that the junior administrator did not complete:
+
+Log message to the syslog server at IP address 10.0.20.251
+
+Limit messages logged to the terminal lines to severity level 4
+
+Limit messages logged to the internal buffer to severity level 2
+
+Limit messages logged to the syslog server to severity level 5
+
+Increase the size of the internal buffer to 8192 bytes
+
+
+On router WAN, apply the complete missing syslog configuration according to the parameters above.
+
+<b>
+WAN(config)# logging host 10.0.20.251 
+WAN(config)# logging monitor warnings
+WAN(config)# logging buffered 8192 critical 
+WAN(config)# logging trap notifications 
+</b>
+
+Notice the highlighted lines that confirm the logging configuration that is now active. WAN will send logging information to address 10.0.20.251. Messages sent to the terminal lines will be limited to severity level 4 (0 to 4, inclusive). Messages sent to the buffer will be limited to severity level 2 (0 to 2, inclusive). Finally, messages sent to the syslog server will be limited to severity level 5 (0 to 5, inclusive).
+
+
+Use the <b>show logging</b> command to verify the final syslog configuration on WAN.
+
+On router WAN, use the show logging command.
+<b>
+WAN# show logging 
+</b>
+
+
+All new logging parameters are displayed in the output: monitor logging, buffer logging and size, trap logging, and syslog server IP address.
+
+
+Test the new logging configuration by using PC1 to Telnet to WAN. You will start by enabling terminal monitoring and you will then enable an unused interface to trigger syslog messages.
+
+On PC1, Telnet to WAN using the 10.2.0.2 address.
+
+<b>
+PC1# telnet 10.2.0.2
+</b>
+
+
+From the WAN Telnet session, enter the terminal monitor command. This will allow you to see syslog messages that are generated by the router. By default, syslog messages won’t appear at the prompt during a Telnet or SSH session unless you enter this command.
+
+From the Telnet session on WAN, enter the terminal monitor command.
+
+<b>
+WAN# terminal monitor
+</b>
+
+Entering this command will allow you to see syslog messages during the active Telnet session.
+
+Enable the Ethernet 0/2 interface and observe the console message that appears.
+
+From the Telnet session on WAN, enable the Ethernet 0/2 interface. Observe the syslog message that appears. Compare this message with those that appear at the WAN console prompt.
+
+<b>
+WAN(config)# interface Ethernet 0/2
+</b>
+
+The first syslog output that is highlighted is taken from the Telnet session. Notice that the only message displayed is a severity level 3 error message. The second syslog output that is highlighted is taken from the direct console connection to the WAN router. Notice there are two messages, the severity level 3 message, but also a severity level 5 notification message. Recall that you configured monitor logging (for VTY connections) for up to severity level 4, while the console logging severity level is still at its default level 7 (debugging). This explains the result above, which is consistent with the configuration.
+
+The problem that was reported has been fixed, and the syslog configuration is now working and ready for the server deployment. Exit the Telnet session to the WAN router.
+
+
+<h4>Troubleshoot SNMP Issues</h4>
+
+A junior administrator was tasked with migrating the SNMPv2c configuration on the CORE router to SNMPv3 but has encountered some difficulties. They have requested your assistance to complete the task. They have not yet removed the SNMPv2c configuration during the transition period to SNMPv3.
+
+
+
+On router CORE, investigate the current SNMPv2c configuration using the <b>show running-config | section snmp-server</b> command.
+
+<b>
+CORE# show running-config | section snmp
+</b>
+
+The output shows that SNMPv2c is configured with a read-only community of “sanjose” and sends informs to 10.0.10.50. Contact and location information is also configured. Traps are enabled for EIGRP, memory, cpu, and configuration notifications. An ACL called SNMP_ACL is applied to limit SNMP access to the CORE router from SNMP managers and traps are sourced from the Ethernet 1/0 interface.
+
+
+The device running the NMS software for SNMPv3 will also be 10.0.10.50. Verifying the ACL, you can see that the correct address is permitted:
+
+
+Enter the command <b>show access-list</b>.
+<b>
+CORE# show access-lists 
+</b>
+
+Notice in the output of the show running-config | section snmp command that the junior administrator has already configured an SNMP view called OPS that includes the mib-2 OID tree, and the Cisco OID tree. You will use this SNMP view to finalize the SNMPv3 configuration in the next steps.
+
+Recall that when you configure SNMPv3, there are a few mandatory steps that you should implement for it to work properly:
+
+Configure access lists for SNMP.
+
+Configure the SNMPv3 view.
+
+Configure the SNMPv3 group.
+
+Configure the SNMPv3 user.
+
+Configure the SNMP trap receiver.
+
+Configure an interface index persistence.
+
+As you saw earlier, the ACL and the SNMP view are already configured. You must create the SNMP group, an SNMP user, the SNMPv3 trap receiver, and interface index numbering persistence..
+
+
+On router CORE, create an SNMPv3 group called OPSGROUP that will use authentication and privacy when reading and writing to the OPS view. Ensure that only the user defined in the SNMP_ACL is allowed access.
+
+<b>
+CORE(config)# snmp-server group OPSGROUP v3 priv read OPS write OPS access SNMP_ACL
+</b>
+
+The SNMPv3 group is configured with the authPriv security level. It has read and write access to the OPS view for devices permitted by the SNMP_ACL access list.
+
+On router CORE, configure an SNMPv3 user called “opsUser” that will use SHA for authentication and AES-256 for privacy. Use a password of “shasecret” for SHA and a password of “aessecret” for AES.
+
+<b>
+CORE(config)# snmp-server user opsUser OPSGROUP v3 auth sha shasecret priv aes 256 aessecret 
+</b>
+In the configuration, the SNMPv3 user “opsUser” is defined within the OPSGROUP group and will use SHA and AES-256 for authentication and privacy.
+
+Notice the syslog message confirming that a new SNMPv3 user has been configured.
+
+
+Now that the SNMPv3 user, group and view are configured, you need to define the trap receiver for version 3.
+
+Note
+It is also possible to apply the ACL to the user configuration.
+
+
+On router CORE, define an SNMPv3 trap receiver at 10.0.10.50 for the same traps that were previously configured for SNMPv2c: config, EIGRP, CPU, and memory.
+
+<b>
+CORE(config)# snmp-server host 10.0.10.50 traps version 3 priv opsUser config eigrp cpu memory
+</b>
+The host device at 10.0.10.50 is configured to receive SNMPv3 traps and the user opsUser is used to authenticate this device.
+
+SNMP does not identify object instances, such as network interfaces, by their names; instead, object instances are identified by their numerical indexes. Whenever several instances change (for instance, when a new loopback interface is configured), index numbers may shuffle. Therefore, the NMS may mismatch data from different interfaces. To prevent an index shuffle, the snmp-server ifindex persist command should be used. This configuration will guarantee index persistence over device reboots and minor software upgrades.
+
+
+On router CORE, enable the <b>snmp-server ifindex persist</b> command.
+<b>
+CORE(config)# snmp-server ifindex persist
+</b>
+
+With this command enabled, index numbers will be consistently maintained when interface information is transmitted to the trap receiver or read by the NMS.
+
+With all configuration steps completed, on router CORE, verify the new SNMPv3 settings using the following commands:
+<b>
+show snmp view
+
+show snmp group
+
+show snmp user
+
+show snmp host
+</b>
+
+<b>
+
+CORE# show snmp view
+OPS mib-2 - included nonvolatile active
+OPS cisco - included nonvolatile active
+<. . . output omitted . . .>
+
+CORE# show snmp group
+<. . . output omitted . . .>
+groupname: OPSGROUP                         security model:v3 priv 
+contextname: <no context specified>         storage-type: nonvolatile
+readview : OPS                              writeview: OPS                             
+notifyview: *tv.00001000.00000000.10001800.0
+row status: active      access-list: SNMP_ACL
+
+CORE# show snmp user
+
+User name: opsUser
+Engine ID: 800000090300AABBCC000400
+storage-type: nonvolatile        active
+Authentication Protocol: SHA
+Privacy Protocol: AES256
+Group-name: OPSGROUP
+
+CORE# show snmp host 
+Notification host: 10.0.10.50   udp-port: 162   type: inform
+user: sanjose   security model: v2c
+
+Notification host: 10.0.10.50   udp-port: 162   type: trap
+user: opsUser   security model: v3 priv
+</b>
+
+
+In the first output, the first two lines confirm the OIDs included in the OPS view.
+
+The second output shows the OPSGROUP configuration, including the security settings.
+
+The third output displays information about the SNMPv3 user, “opsUser.”
+
+Finally, the fourth output details the parameters for the trap receiver at 10.0.10.50.
+
+
+The SNMPv2c configuration is still present in the router’s running configuration. It will remain in place until the new SNMPv3 server is deployed. The junior administrator will then remove the superfluous SNMPv2c commands.
+
+The issue that was reported has been fixed, and the SNMPv3 configuration is now in place and ready for the server deployment.
+
+
+<h3>AAA Overview</h3>
+
+
+Recall that AAA stands for authentication, authorization, and accounting. Authentication is about determining identity. Authorization is about defining what individual or groups of identities can do. Accounting is about keeping track of what individual identities have done. AAA can be associated with network access (for example via VPN) and with administrative access for device management.
+
+Authentication: Who are you?
+
+Authorization: What can you do? What can you access?
+
+Accounting: What did you do? How long did you do it? How often did you do it?
+
+
+Administrative access: Console, Telnet, and auxiliary access
+
+Remote user network access: VPN access
+
+AAA data must be stored somewhere. The simplest implementation is to use the local database on individual network devices. This means AAA authentication and authorization data are stored directly in the device’s configuration. While simple, using the local AAA database does not scale well. In all but the smallest deployments, centralized AAA is preferred over local AAA. 
+
+With centralized AAA, configuration and maintenance of AAA policy is much simpler. User IDs are defined and managed centrally and made available all devices in the network. Centralized servers can provide an authoritative source for AAA policy to all network devices. Generally, the user repository is stored outside of the AAA servers, commonly in Active Directory or Lightweight Directory Access Protocol (LDAP). The AAA servers will consult one of these servers during the authentication process, but authorization and accounting are generally handled by the AAA servers themselves.
+
+Local authentication:
+
+User establishes connection with the router.
+
+Router prompts user for username and password, authenticating the user using a local database.
+
+Server-based authentication:
+
+User establishes connection with the router.
+
+Router prompts user for username and password.
+
+Router passess username and password to AAA server (Cisco ISE).
+
+The server authenticates the user.
+
+
+For centralized AAA, there are two AAA protocols that are commonly implemented in today’s IP-based networks. They are RADIUS and TACACS+. Cisco offers a AAA solution for the enterprise market that now supports both protocols: Cisco ISE v2.0 (Identity Services Engine). Cisco ISE is a next-generation identity management system that adds features such as profiling, posture assessment, and centralized web authentication.
+
+<h3>Configuration Using Local Database</h3>
+
+
+The following configuration enables AAA and specifies that the local database will be used for user authentication and EXEC access authorization decisions, and adds one username to the local database:
+
+<b>
+Router(config)# aaa new-model
+Router(config)# aaa authentication login default local
+Router(config)# aaa authorization exec default local
+Router(config)# username adminsr privilege 15 secret srPass
+Router(config)# enable secret secretPass
+</b>
+The aaa new-model command enables AAA features, and the aaa authentication, aaa authorization, and aaa accounting commands define those features. Consider the following command:
+<b>
+aaa authentication login {default | list-name} method1 [method2 ...]
+</b>
+
+
+This command specifies a list of authentication methods. The simplest configuration will use the keyword default and specify local as the single method. The default method list is used on all lines (VTY, CON, and AUX), unless a specific named method list is explicitly defined for a line. Also consider the next command:
+
+<b>
+aaa authorization exec {default | list-name} method1 [method2 ...]
+</b>
+
+This command specifies how to determine whether an authenticated user is authorized to connect to the device’s EXEC process (the command shell). Again, the simplest configuration will use the keyword default and specify local as the single method.
+
+Entries in the local database are configured with the username command.
+
+<b>
+username name [privilege level] [secret {0| 5| password}]
+</b>
+
+There are several other options available with the username command, but in general it is used to define a user ID, the privilege level of that user, and the password that is assigned to the user ID. Both the keyword password and the keyword secret are available. The secret will be stored in the configuration in a more secure fashion than the password. Passwords can be encrypted with a weak encryption algorithm using the service password-encryption command, whereas secrets are stored as much stronger salted MD5 transforms.
+
+In the configuration example, the first command enables AAA. Until the aaa new-model command is entered, the AAA authentication, authorization, and accounting commands are not available. After aaa new-model, the next two commands state that, by default, the VTY lines will use the local database for user authentication and EXEC access authorization decisions. The command defines a username with a privilege level and a password. (The password that is used in the example is not considered strong. In a production environment, care should be taken to ensure that passwords are much more difficult to crack than the password in the example.) If user admins connects to a VTY line via SSH and successfully authenticates, user admins will automatically be assigned privilege level 15.
+
+Line CON 0 is treated differently than the VTY lines. If authorization is misconfigured, it is possible for administrators to lose configuration privileges and hence the ability to correct the misconfiguration. To prevent this situation, authorization is not implemented on line CON 0 by default, so it can be used as a fallback method to fix the configuration. The last line of the configuration above is needed for this fallback method to work. An administrator can use the enable secret to reach privilege level 15 on line CON 0 when necessary. A riskier option would be to use the command aaa authorization console, which would then enforce AAA authorization on line CON 0.
+
+<h3>AA Configuration Using a AAA Server</h3>
+
+
+Using the local database with privilege levels can be effective in smaller environments, but neither technique scales well. If there are hundreds or thousands of network devices, it is very difficult to configure and maintain user IDs and authorization definitions across all the devices. Using centralized AAA servers is much more scalable.
+
+This topic will focus on configuring IOS devices to utilize a TACACS+ server for authentication, authorization, and accounting.
+
+The first thing to do when configuring TACACS+ on an IOS device is to define the TACACS+ servers. At a minimum, the device needs to know the IP address of the server and the pre-shared key that is used to protect traffic between the device and the server. This configuration is done by using the tacacs server command and specifying the address and key in the TACACS+ server configuration mode.
+
+<h4>AAA Configuration Using TACACS+ Server</h4>
+
+The following configuration enables AAA and specifies that the TACACS+ server at 172.16.10.10 will be used for user authentication and EXEC access authorization decisions, and adds one username to the local database for fallback:
+
+<b>
+Router(config)# aaa new-model
+Router(config)# tacacs server server1
+Router(config-server-tacacs)# address ipv4 172.16.10.10
+Router(config-server-tacacs)# key SecretKeyString
+Router(config-server-tacacs)# exit
+Router(config)#
+Router(config)# aaa authentication login default group tacacs+ local
+Router(config)# aaa authorization exec default group tacacs+ local
+Router(config)# username adminsr privilege 15 secret srPass
+</b>
+
+Once the servers are defined, configuration of authentication and authorization using TACACS+ is very similar to configuration of the local database. You will still utilize the commands aaa new-model, aaa authentication login, and aaa authorization exec. The difference is the method list will now include group tacacs+. Because connectivity to the TACACS+ server may fail, it also makes sense to define two methods in the list: group tacacs+ and local. If the TACACS+ server request fails, the local database can be used as a fallback.
+
+
+
+Once the servers are defined, configuration of authentication and authorization using TACACS+ is very similar to configuration of the local database. You will still utilize the commands aaa new-model, aaa authentication login, and aaa authorization exec. The difference is the method list will now include group tacacs+. Because connectivity to the TACACS+ server may fail, it also makes sense to define two methods in the list: group tacacs+ and local. If the TACACS+ server request fails, the local database can be used as a fallback.
+
+
+To enable per-command authorization using TACACS+, the following two commands can be added to the configuration:
+
+<b>
+Router(config)# aaa authorization commands 15 default group tacacs+ local
+Router(config)# aaa authorization config-commands
+</b>
+
+To enable per-command accounting using TACACS+, the following two commands can be added to the configuration:
+<b>
+Router(config)# aaa accounting exec default start-stop group tacacs+
+Router(config)# aaa accounting commands 15 default stop-only group tacacs+
+</b>
+
+For authorization, this will require that the device consults the TACACS+ server when the administrator enters any privilege level 15 EXEC commands or any configuration commands. If the administrator is authorized for the command, the command will be executed normally. If the administrator lacks authorization, the command has no effect and an error message is displayed.
+
+A TACACS+ server is also capable of keeping accounting records of administrative access sessions and of individual commands. This command will cause an accounting record to be sent at the start of an administrative access session to the device’s EXEC process, and another accounting record to be sent at the end of the session.
+
+The accounting commands in the example will cause an accounting record to be sent for every privilege level 15 command and every configuration mode command that is entered by the user.
+
+The accounting records are very detailed and include data such as the device identity, the user identity, the IP address from which the user is connected, and the date and time stamps that are associated with the activity.
+
+Note
+The configuration for RADIUS is identical to what is described for TACACS+ except that the radius server command is used to define the parameters for the RADIUS server. Also, the radius keyword is used for all subsequent AAA commands.
+
+
+<h3>Troubleshoot AAA</h3>
+
+
+AAA services are used to control access to the management plane of the router or switch. You can use the local user database or a database on a remote server with the protocols such as TACACS+ or RADIUS. TACACS+ is a Cisco proprietary protocol that works over TCP port 49, while RADIUS is the Internet Engineering Task Force (IETF) standard that uses UDP port 1812 (or 1645) for authentication and UDP port 1813 (or 1646) for accounting.
+
+It is the best practice to use a centralized AAA server with a local method as a backup in cases when the AAA server is not accessible.
+
+After AAA is enabled, you can configure authentication, authorization, and accounting methods. AAA services use the concept of a named list, which could be used under a different location to where AAA services are used. You can also use the default list, which means that this list is used when no other list is specified.
+
+
+Some common TACACS+ failures can include the following:
+
+The TACACS+ server is not accessible.
+
+A mismatch between shared keys occurs.
+
+The user credentials are rejected by the server.
+
+Common RADIUS problems are similar to TACACS+ problems:
+
+A RADIUS server failure or loss of network connectivity happens.
+
+A mismatch of the shared key between the RADIUS server and client happens.
+
+The user credentials are wrong.
+
+A mismatch between the RADIUS ports on the RADIUS server occurs.
+
+Some of the common problems of TACACS+ and RADIUS servers are similar:
+
+The server fails, or the server is not accessible: To prevent locking yourself out of the device when the AAA server is not accessible, use the local method as a backup for authentication. You can define up to four methods for authentication.
+
+A mismatch between shared keys occurs: Both protocols need a shared key to be used for authenticating a network device. If the keys do not match on the remote server and network device, the network device will not be able to access the user database.
+
+The user credentials are rejected by the server: Usually, you can check in server logs to verify if a user was correctly authenticated or authorized. When users are rejected, you should check these logs to verify if the provided credentials were correct.
+
+In addition to these common problems, there could be RADIUS ports that mismatch. Cisco uses UDP port 1645 and 1646 by default. UDP ports 1812 and 1813 are ports that are specified in the standard. Usually, servers listen on both sets of ports for backward compatibility, but you should always check if the correct ports are used.
+
+<b>
+Router# show running-config | include aaa
+</b>
+
+Check the running-config for AAA configuration.
+
+<b>
+Router# debug aaa authentication
+</b>
+
+Debug authentication on the router.
+
+
+To check AAA services, use the <b>show running-config | include aaa</b> command. To verify that AAA services are enabled, the output should contain the aaa new-model statement.
+
+The <b>debug aaa authentication</b> command can be very useful for troubleshooting. It will display events that are related to authentication when accessing the router. You will be able to see users for authentication, which named list is used, what the user wants to access, and so on. The show aaa-server command is also useful while troubleshooting and monitoring authentication transactions.
+
+To receive more information about the authorization process, use the debug aaa authorization command, which will display services that are required by the user, the method that is used for authorization, the status of the authorization, and so on. Finally, use the debug aaa accounting command to display accountable events as they occur.
+
+To debug AAA server events, use the debug tacacs and debug radius commands, respectively. You will be able to see events that are related to the remote server.
+
+Which port is used by default on Cisco devices for RADIUS authentication?
+UDP1645
+
+
+<h3>SNMP SIMPLE NETWORK MANAGEMENT PROTOCOL</h3>
+
+SNMP has developed a bad reputation from a security perspective. The reputation was deserved with SNMP versions 1 and 2c which are both cleartext protocols and use the concept of community strings for authorization. Note that the original definition of SNMP version 2 introduced a different authorization methodology, but it was unpopular and not widely implemented. SNMP version 2c is SNMP version 2 using the SNMP version 1 concept of community strings.
+
+
+Management Information Bases, or MIBs are a key component of SNMP.
+
+Access is accomplished with get operations and set operations.
+
+Unsolicited notifications via trap and inform operations.
+
+
+All versions of SNMP utilize the concept of the Management Information Base (MIB). Access is accomplished with GET operations and SET operations. GET operations allow the management system to retrieve status and configuration data from the device. Set operations allow the management system to modify the configuration on the device. Both SNMP version 1 and 2c use the concept of community strings to authorize access to data stored in the MIB. A GET request will be honored with either a read-only or a read-write community string. A SET operation requires a read-write community string. Community strings are less secure than passwords because they are contained in every SNMP request. If an attacker can capture just one SNMP packet, they can obtain the cleartext community string.
+
+
+SNMP also supports unsolicited notifications that are sent from devices to SNMP management systems. The original notification mechanism was called a trap. The management system is not expected to acknowledge a trap. SNMP version 2 introduced the inform mechanism. An inform is identical to a trap, but an acknowledgment is expected. Devices will queue and resend unacknowledged informs.
+
+Configuring SNMPv2c is similar to configuring SNMPv1. The only difference is with SNMP trap or inform configuration. You can use the following commands to configure basic SNMPv2c operation:
+
+<b>
+Router(config)# access-list access-list-number permit ip-addr
+Router(config)# snmp-server community string [ro | rw] [access-list-number]
+Router(config)# snmp-server host host-address [traps] [informs] version 2c community- string [trap-type]
+</b>
+
+First, define a standard IP access list that permits only the IP address of your SNMP agent machine. Then apply that access list to the SNMP community string with the snmp-server community command. Use the ro keyword to allow read-only access by the SNMP manager; otherwise, you can use the rw keyword to allow both read and write access
+
+
+Finally, use the snmp-server host command to identify the IP address of the SNMP manager where SNMP traps will be sent. By default, all types of traps are sent. You can use the ? key in place of trap-type to see a list of the available trap types.
+
+In the snmp-server host command, use the version 2c keywords to identify SNMPv2c operation. By default, regular SNMP traps are sent. To use inform requests instead, add the informs keyword.
+
+
+<h4>SNMPv2c Configuration</h4>
+
+
+The following configuration allows SNMP polling from network management stations at 172.17.250.5 only. The community string MyString is used to authenticate the SNMP requests. All possible SNMP informs are sent to 172.17.250.250.
+
+
+<b>
+Router(config)# access-list 5 permit 172.17.250.5
+Router(config)# snmp-server community MyString ro 5
+Router(config)# snmp-server host 172.17.250.250 informs version 2c MyString
+</b>
+
+SNMP version 3 replaces community strings with a user-based security model, and its architecture provides origin authentication, data integrity, and privacy. Authentication and privacy security mechanisms are optional.
+
+
+<h4>SNMPv3</h4>
+
+
+SNMP version 3 replaces community strings with a user-based security model:
+
+Origin authentication
+
+Data Integrity
+
+Privacy
+
+
+SNMP version 3 can be configured in the following three modes:
+
+noAuthNoPriv: No cryptographic hash or encryption
+
+AuthNoPriv: Use of cryptographic hash to secure authentication credentials, but no encryption for data
+
+AuthPriv: Use of cryptographic hash to secure authentication credentials and also encryption for data privacy
+
+
+SNMPv3 uses the concept of engine IDs. Each system in the management domain requires a unique engine ID. The engine ID is composed of 24 hexadecimal characters. The device will append leading zeros to the engine ID if fewer characters are specified. One strategy for assigning engine IDs is to translate the decimal representation of the IP address of a device into a 12-digit string. If informs are to be used, remote engine IDs must be defined, corresponding to the network management station. The syntax for defining SNMPv3 engine IDs is as follows:
+
+<b>
+snmp-server engineID {local engine-id | remote ip-address [udp-port udp-port-number] [vrf vrf-name] engine-id-string}
+</b>
+
+Configuration of the user-based security model in SNMPv3 begins with the configuration of groups. The group will specify the cryptographic policy to be used by the group and optionally authorization for read and write access to the MIB can be specified with read views and write views. By default, a group is allowed read access to the entire MIB, and write access is not allowed.
+
+
+SNMP groups and views are defined with the following commands:
+
+<b>
+snmp-server group [groupname {v1 | v2c | v3 [auth | noauth | priv]}] [read readview] [write writeview] [notify notifyview] [access access-list]
+snmp-server view view-name oid-tree {included | excluded}
+</b>
+
+Once the groups are configured, SNMP users can be defined. The user is assigned to a group. The security services that are specified by the group are more specifically defined at the user. If authentication is configured, the authentication hash algorithm and the authentication shared secret for this user is defined with the user. If privacy is configured, the encryption algorithm and the privacy shared secret is defined with the user.
+
+The syntax for the snmp-server user command is as follows:
+
+<b>
+snmp-server user username group-name [remote host [udp-port port] [vrf vrf-name]] {v1 | v2c | v3 [encrypted] [auth {md5 | sha} auth-password]} [access [ipv6 nacl] [priv {des | 3des | aes {128 | 192 |256} privpassword] {acl-number | acl-name}]
+</b>
+
+<h4> SNMPv3 Configuration</h4>
+An example configuration of SNMPv3 is as follows:
+
+<b>
+Router(config)# access-list 5 permit 10.10.10.0 0.0.0.255
+Router(config)# snmp-server engineID local 010010010099
+Router(config)# snmp-server view nms-view 1.3.6.1.2.1 included
+Router(config)# snmp-server view nms-view 1.3.6.1.4.1.9 included
+Router(config)# snmp-server group nms-group v3 priv write nms-view
+Router(config)# snmp-server user nms-user nms-group v3 auth sha auth-pass priv aes 128 priv-pass 5
+Router(config)# snmp-server enable traps
+Router(config)# snmp-server host 10.10.10.50 traps version 3 priv nms-user
+</b>
+
+In the example, a router is configured for SNMPv3 operation. Access list 5 permits only stations in the 10.10.10.0/24 subnet with SNMP access. SNMPv3 access is defined for a group named nms-group using the priv (authentication and encryption) security level with write rights for a view called nms-view. One SNMPv3 user named nms-user is defined; the network management station will use that username when it polls the switch for information. The username will require SHA packet authentication and AES-128 encryption, using the auth-pass and priv-pass passwords, respectively. The defined view allows visibility into MIB-2 and Cisco MIB data.
+
+Finally, SNMPv3 traps will be used to send alerts to station 10.10.10.50 using the priv security level and username nms-user.
+
+
+<h3>Troubleshoot SNMP</h3> 
+
+
+
+Verifying the administrative and operational state of SNMP is a very important step in the overall process of setting up SNMPv3 in your network.
+
+Verify the basic SNMPv3 configuration.
+
+<b>
+Router# show snmp
+Chassis: FOC1322V1P5
+0 SNMP packets input
+    ..
+    0 Get-request PDUs
+    0 Get-next PDUs
+    0 Set-request PDUs
+    0 Input queue packet drops (Maximum queue size 1000)
+476 SNMP packets output
+    ..
+    0 Response PDUs
+    476 Trap PDUs
+SNMP global trap: enabled
+ 
+SNMP logging: enabled
+    Logging to 10.10.10.50.162, 0/10, 476 sent, 0 dropped.
+SNMP agent enabled
+</b>
+
+The command <b>show snmp</b> provides you with basic information about the SNMP configuration. You can see if the SNMP agent is enabled. You can verify whether the device is configured to send traps and, if so, to which SNMP managers the traps are sent. The SNMP traffic statistics are also provided.
+
+</b>Router# show snmp view
+nms-view mib-2 - included nonvolatile active
+nms-view cisco - included nonvolatile active 
+</b>
+Verify the SNMPv3 views.
+
+The command <b>show snmp view</b> gives you information about configured SNMP views. You can verify for each group which OIDs are included. Also, there is a default read view (v1default) displayed, which is used if you do not configure any custom read views.
+
+Verify the SNMPv3 users.
+Verify the SNMPv3 groups.
+
+<b>
+Router# show snmp group
+
+Router# show snmp user
+</b>
+
+The command <b>show snmp group</b> gives you information about configured SNMP groups. The most important parameter is the security model and level (SNMPv3 authPriv, displayed as v3 priv in the output).
+
+
+Information about read and write views for the group is displayed. Also, note that although the notify view was not configured explicitly, it is implicitly defined by a set of allowed SNMP objects for specific trap destinations. This view is defined when you configure the trap receiver and attach a specific user to it. The view is generated for the group to which the user belongs (in this case, nms-group), in accordance with allowed SNMP objects for the trap receiver.
+
+The access list that defines who has access to the agent is also displayed.
+
+The command show snmp user gives you information about configured SNMP users. The most important parameters to notice are the username (nms-user) and group name to which the user belongs (nms-group). Aside from that, authentication (SHA) and encryption (AES-256) algorithms are displayed, which tells you that the group that the user belongs to is configured with the authPriv security level.
+
+<h3>Syslog</h3>
+
+IOS administrators generally become familiar with seeing syslog messages on the router console. Some common syslog messages that you may have seen include:
+
+%SYS-5-CONFIG_I: Configured from console by console
+%LINK-3-UPDOWN: Interface FastEthernet0/0, changed state to down
+Syslog was originally developed to provide monitoring and auditing of the UNIX Sendmail service. Other applications began to use the service, and it grew to be the standard logging solution on UNIX and UNIX-like operating systems. Syslog has been adopted by many network device manufacturers, and it was standardized in RFC 5424.
+
+Generally, when an event occurs that is deemed important by a service, the service generates a syslog message to document the event. On Cisco IOS devices, by default, syslog messages are sent to the console, to the terminal monitor, and to a local buffer. Optimally, syslog messages should be sent to a centralized repository, where they can be aggregated and analyzed. A syslog server normally listens on UDP port 514. More recently, servers using TCP have been implemented, providing greater reliability in message delivery.
+
+Facilitates monitoring and auditing
+
+Messages generated for important events
+
+Syslog messages sent to the console, the terminal monitor, and a local buffer
+
+Syslog messages should be sent to a centralized repository
+
+Syslog severity levels 0–7
+
+
+Syslog defines eight severity levels: 0–7. The lower the number, the more severe the issue. Syslog also defines standard names that are associated with each level.
+
+Within IOS, the severity levels that are associated with events are often more in line with device health and network management than they are with security. For example, the following four messages are listed in order of severity.
+
+
+<h4>Syslog Messages</h4>
+
+
+Syslog message fields:
+
+Timestamp: The date and time from the internal clock.
+
+Facility Code: A system identifier that categorizes the function or module that has generated the message; the facility code always begins with a percent sign.
+
+Severity: A number from 0 to 7 that indicates how important or severe the event is; a lower severity means that the event is more critical.
+
+Mnemonic: A short text string that categorizes the event within the facility code.
+
+
+Obviously, a power supply failure (severity level 1) is an urgent issue, as it affects the operating health of a device and of the network in which it resides. An interface failure (severity level 3) is generally less severe than a complete device failure, but it can certainly affect the device and the network. A configuration change (severity level 5) is routine in network maintenance and is assigned a relatively low severity. But from a security perspective, auditing configuration changes is very important. The last example is a logged hit on an ACL. If a security administrator has specified the log option on a particular line in the ACL, this event is probably significant. However, the severity level is only a 6. It is important to note that the severity levels on syslog messages are not necessarily prioritized according to security.
+
+While logging to the console is enabled by default, it is the most expensive regarding CPU resources on an IOS device. This is because the console is a character-by-character serial device. Each character that is displayed to the console requires a CPU interrupt. As such, it is common to disable logging to the console when logging to a centralized syslog server is configured. A sample syslog configuration is displayed below.
+
+The logging trap informational command has been added to the output. This is the default setting and as such does not normally appear in the configuration. But you can adjust the threshold of severity level that is required to send a message to the defined logging host.
+
+
+
+<h4>Syslog Configuration</h4>
+
+<b>
+Router# show running-config | include logging
+logging buffered 4096
+no logging console
+logging trap informational
+logging source-interface Loopback1
+logging host 172.16.200.25
+</b>
+
+In the output, informational syslog messages (level 6) and lower (levels 5 to 0) are sent to the Syslog server at 172.16.200.25 using the IP address on Loopback 1 as the source address. Logging to the console has been disabled. By default, the internal memory buffer for Syslog messages is set to 4096 bytes which is enough space to collect 50 lines of full-length text. In the example, the buffer is increased to 8192 bytes.
+
+<h4>Network Management Protocols</h4>
+
+Network management protocols can be classified in different ways. Here, you will look at network management protocols that can be used to change the configuration on network devices. The two common methodologies that are offered by network devices are a CLI or a web-based GUI.
+
+Telnet with line password
+<b>
+R1# show running-config | section vty
+line vty 0 4
+password cisco
+login
+transport input telnet
+</b>
+Telnet with local database
+<b>
+R1# show running-config | section username|vty
+username admin secret cisco
+line vty 0 4
+login local
+transport input telnet
+</b>
+
+
+Access to a device’s CLI can be provided by physical connections to the console port or AUX port. This direct serial connection to the device can facilitate an out of band management access method. The CLI can also be reached via networking protocols via a device’s VTY lines. In the past, Telnet was commonly used as a protocol for accessing a network device’s CLI. While the use of Telnet does persist, its popularity is waning due to security concerns. Telnet does not provide any privacy. Not only is the data sent cleartext, authentication credentials are also sent cleartext. If an attacker can sniff a Telnet session, they can capture the administrator’s username and password. Because of this, SSH has become the standard for CLI access via the network. You can see in the Telnet configuration example above two scenarios, one where the Telnet password is configured directly on the VTY lines, and one where the router uses a local database to authenticate the Telnet use.
+
+SSH
+<b>
+R1(config)# username admin secret cisco
+R1(config)# ip domain-name cisco.com
+R1(config)# crypto key generate rsa modulus 1024
+The name for the keys will be: R1.cisco.com
+% The key modulus size is 1024 bits
+% Generating 1024 bit RSA keys, keys will be non-exportable...
+[OK] (elapsed time was 0 seconds)
+
+*Oct 21 03:08:09.673: %SSH-5-ENABLED: SSH 1.99 has been enabled
+R1(config)# ip ssh version 2
+R1(config)# ip ssh authentication-retries 2
+R1(config)# ip ssh time-out 90
+R1(config)# ip ssh source-interface Loopback 1
+R1(config)# line vty 0 4
+R1(config-line)# transport input ssh
+R1(config-line)# login local
+</b>
+
+SSH provides the ability for the client to verify the identity of the server (the network device), preventing man-in-the-middle attacks. Also, it protects the authentication credentials and the data using encryption. For SSH, the configuration steps are in the example above. After defining a domain name and generating an RSA key, SSH version 1.99 is automatically enabled. This indicates that the router will accept both SSHv1 and SSHv2 connections. SSHv1 is known to be vulnerable so only SSHv2 is manually enabled. Further SSH configuration parameters include the number of authentication attempts that are allowed before the connection is dropped, the inactivity timeout, and the interface used to source SSH packets. Notice also that the VTY lines are configured to only accept SSH connections. Telnet attempts will be refused.
+
+<b>
+R1# show ip ssh
+SSH Enabled - version 2.0
+Authentication methods:publickey,keyboard-interactive,password
+Authentication Publickey Algorithms:x509v3-ssh-rsa,ssh-rsa
+Hostkey Algorithms:x509v3-ssh-rsa,ssh-rsa
+Encryption Algorithms:aes128-ctr,aes192-ctr,aes256-ctr,aes128-cbc,3des-cbc, aes192-cbc,aes256-cbc
+MAC Algorithms:hmac-sha1,hmac-sha1-96
+Authentication timeout: 90 secs; Authentication retries: 2
+Minimum expected Diffie Hellman key size : 1024 bits
+IOS Keys in SECSH format(ssh-rsa, base64 encoded): R1.cisco.com
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQC9d+iD3vgFO0IwcIQrnbnqW2CT8a76S47BzfhIc8cs
+2+1wV8ddw/nD8U1Wop4BuYe4QxrUwdmK7OxU1rdSQpGdUSxxI06Eck1UrBGSw+puwBD5J/xsfvPxKE6oSoNfGdL+U0ZZ11av4VqqmWbPD9Au+gOp664UO89EsDK/J6urDQ== 
+</b>
+
+The show ip ssh command displays the current SSH configuration. The router confirms that SSHv2 is enabled, the authentication timeout is now 90 seconds (default is 120 seconds), and the authentication retries is set to 2 (default is 3).
+
+Many network devices offer web-based GUIs. The robustness of the GUI varies from platform to platform. On the ASA platform, ASDM, is a very robust platform and is often preferred by administrators over the CLI. On the other hand, IOS devices offer less robust web-based GUIs and administrators often prefer to use the CLI on IOS devices. Some devices offer access to the web-based GUI via either HTTP or HTTPS. Similar to SSH and Telnet, HTTPS is preferred over HTTP from a security perspective. HTTPS allows the client to verify the identity of the network device and it protects the administrator’s credentials and all data passing over the network.
+
+HTTP/HTTPS
+<b>
+R1(config)# username admin privilege 15 secret cisco
+R1(config)# ip http server
+R1(config)# ip http secure-server 
+% Generating 1024 bit RSA keys, keys will be non-exportable...
+[OK] (elapsed time was 1 seconds)
+
+*Oct 21 03:20:50.076: %PKI-4-NOAUTOSAVE: Configuration was modified.  Issue "write memory" to save new certificate
+
+R1(config)# ip http authentication local
+R1(config)# ip http access-class 10
+R1(config)# ip http path flash:/GUI
+R1(config)# do write memory
+Building configuration...
+[OK]
+</b>
+
+In the configuration example above, HTTP and HTTPS are enabled on the router. A user with privilege level 15 (privileged EXEC level) is used for HTTP authentication. A numbered standard ACL (10) is configured to further protect access to the GUI that is located in Flash: /GUI. After enabling HTTPS, a new RSA key is generated and added to the running-configuration. A write memory command is used to save it to NVRAM.
+
+TFTP usage is simple because it does not require any configuration on network devices. With TFTP, you only need to specify the configuration (startup, running, or from file)—there is no authentication. However, without authentication capabilities and transferring files in cleartext, TFTP is considered an insecure protocol. More secure protocols in use are FTP, SCP, HTTP, and HTTPS.
+
+When you use protocols that require authentication, you must specify the username and the password. The credentials can be part of the configuration, or they can be stated as a part of the URL used with the copy command.
+
+FTP
+
+<b>
+R1(config)# ip ftp source-interface Loopback 1
+R1(config)# ip ftp username admin
+R1(config)# ip ftp password cisco
+R1(config)# exit
+R1# copy running-config ftp:
+Address or name of remote host []? 172.16.100.100
+Destination filename [r1-confg]? R1-CONFIG
+Writing R1-CONFIG !!
+2323 bytes copied in 0.304 secs (7641 bytes/sec)
+R1#
+R1# copy startup-config ftp://jradmin:jrpassword@172.16.100.100/R1-START.cfg
+Address or name of remote host []? 172.16.100.100
+Destination filename [r1-confg]? R1-START.cfg
+Writing R1-START.cfg !!
+2323 bytes copied in 0.268 secs (8668 bytes/sec)
+</b>
+
+You can add the username and the password into configuration and then back up the running configuration. You will need to enter the username and the password in the global configuration mode using the following commands: <b>ip ftp username</b> and <b>ip ftp password</b>.
+
+The configuration example demonstrates both ways of using FTP, either with pre-defined credentials or with credentials as part of the copy command.
+
+Instead of FTP, it is possible to use SCP. SCP is more secure than FTP or TFTP. SCP is an implementation of RCP that runs over an SSH connection. By using SSH as the underlying data transfer conduit, SCP offers the same security benefits as SSH. If the public key of the server is properly validated, then SCP offers origin authentication, data integrity, and privacy.
+
+For SCP to work, SSH must first be configured properly on the server. After completing the SSH configuration, you can enable SCP server functionality on a Cisco IOS device. You can then use an SCP client or other Cisco IOS device to copy files securely to and from the server.
+
+<b>
+SCP: Server side with local AAA authentication and authorization
+
+R1(config)# username admin priviliege 15 secret cisco
+R1(config)# ip domain-name cisco.com
+R1(config)# crypto key generate rsa modulus 1024
+R1(config)# aaa new-model
+R1(config)# aaa authentication login default local
+R1(config)# aaa authorization exec default local
+R1(config)# ip scp server enable
+SCP: Client side
+
+Client# copy running-config scp://admin:cisco@172.16.100.100
+Destination filename [Client-confg]? Client-RUN-CFG
+!
+2529 bytes copied in 0.553 secs (4573 bytes/sec)
+</b>
+
+The configuration example shows how R1 is configured as the SCP server using AAA-based local authentication and authorization. The Client device then uses the copy command to make a backup of its running-configuration. Notice that the credentials are included in the copy command. It is possible to enter the copy command parameters through an interactive prompt instead:
+
+<b>
+R1# copy flash: scp:
+Source filename []? R1-config.txt
+Address or name of remote host []? 172.16.100.100
+Destination username [Router]? admin
+Destination filename [test-scp.txt]? R1-config.txt
+Writing R1-config.txt
+Password: (cisco)
+!
+1894 bytes copied in 0.628 secs (3297 bytes/sec)
+</b>
+
+When troubleshooting SCP, use the <b>debug ip scp</b> command. The output provides confirmation of the filename and if it was received successfully.
+
+Troubleshooting SCP
+
+R1# debug ip scp
+
+<h3>NetFlow</h3> 
+
+NetFlow is a Cisco IOS application that provides statistics on packets flowing through the routing devices in the network. It is emerging as a primary network accounting and security technology. NetFlow identifies packet flows for both ingress and egress IP packets. NetFlow is completely transparent to the existing network, including end stations and application software and network devices like LAN switches. Also, NetFlow capture and export are performed independently on each internetworking device; NetFlow does not need to be operational on each router in the network.
+
+
+NetFlow is a Cisco IOS application that provides statistics on packets flowing through the routing devices in the network.
+
+Performs capture and export independently on each internetworking device
+
+Need not be operational on each router in the network
+
+Groups packets into flows and then tallies packets and bytes
+
+Version 5: Popular NetFlow version, limited to IPv4 flows
+
+Version 9: Template-based, used to report IPv4, IPv6, MPLS, BGP flows
+
+
+A NetFlow network flow is defined as a unidirectional stream of packets between a given source and destination. The source and destination are each defined by a network-layer IP address and transport-layer source and destination port numbers.
+
+
+Specifically, a flow is defined by the combination of the following seven key fields:
+
+Source IP address
+
+Destination IP address
+
+Source port number
+
+Destination port number
+
+Layer 3 protocol type
+
+ToS
+
+Input logical interface
+
+These seven key fields define a unique flow. If a packet has one key field different from another packet, it is considered to belong to another flow. A NetFlow report is often compared to a phone bill. A phone bill specifies the phone calls made by the source phone. It does not provide any data on the actual conversations that took place, but it does provide information such as the time of the call and the duration of the call.
+
+
+Analyzing NetFlow data can’t reproduce the actual communication that took place in any individual connections, but it does provide information on which systems communicated with which other systems at which times over which protocols and ports. This data can be used to recognize unusual traffic patterns which may be indicative of a network attack. It can also be used for forensic analysis during and after an attack takes place.
+
+<h4>NetFlow Configuration</h4>
+
+
+<b>
+R1(config)# ip flow-export version 5
+R1(config)# ip flow-export destination 10.250.250.24 2055
+R1(config)# ip flow-export source Ethernet 0/1
+R1(config)# ip flow-cache timeout active 10
+R1(config)# ip flow-cache timeout inactive 25
+R1(config)# ip flow-top-talkers 
+R1(config-flow-top-talkers)# top 10
+R1(config)# exit
+R1(config)# interface ethernet 0/0
+R1(config-if)# ip flow ingress
+R1(config-if)# ip flow egress
+
+To enable NetFlow version 9, use the following command:
+
+R1(config)# ip flow-export version 9
+</b>
+
+In the configuration above, R1 is configured for NetFlow version 5. R1 will send flow data to 10.250.250.25 on UDP port 2055 using a source interface of Ethernet 0/1. The captured flows will be based on traffic flowing in and out of Ethernet 0/0. The flow cache will keep track of the top 10 largest packet and byte consumers on the network, also called the top-talkers. Active flows will remain in the cache for 10 minutes, while inactive ones will get timed out after 25 seconds.
+
+Notice that to enable NetFlow version 9, you must use the ip flow-export version 9 command.
+
+
+<h4>NetFlow Verification</h4>
+
+<b>
+R1# show ip flow interface
+Ethernet0/0
+  ip flow ingress
+  ip flow egress
+
+R1# show ip flow export
+</b>
+
+To verify the NetFlow configuration use the show ip flow interface and show ip flow export commands. In the example, R1’s Ethernet 0/0 interface is configured to capture incoming and outgoing packet flows. NetFlow version 5 is configured and the router is exporting data to 10.250.250.25 on UDP port 2055 using a source interface of Ethernet 0/1. A substantial number of flows and UDP datagrams have already been exported.
+
+
+The <b>show ip cache flow</b> command produces output that includes packet size distribution; basic statistics about number of flows and export timer setting, a view of the protocol distribution statistics and the NetFlow cache. The highlighted line shows that HTTP traffic has been detected by the NetFlow engine.
+<b>
+R1# show ip flow top-talkers
+
+SrcIf SrcIPaddress DstIf DstIPaddress Pr SrcP DstP Pkts
+Et0/1 172.16.10.2  Et0/0 172.16.1.84  06 0087 0087 2100
+Et0/1 172.16.10.2  Et0/0 172.16.1.85  06 0089 0089 1892
+Et0/1 172.16.10.2  Et0/0 172.16.1.86  06 0185 0185 1762
+Et0/1 172.16.10.2  Et0/0 172.16.1.86  06 00B3 00B3 2
+Et0/1 172.16.10.2  Et0/0 172.16.1.84  06 0050 0050 1
+Et0/1 172.16.10.2  Et0/0 172.16.1.85  06 0050 0050 1
+</b>
+
+
+7 of 10 top talkers shown. 7 flows processed.
+The <b>show ip flow top-talkers</b> command provides a quick view of the devices that are consuming the largest number of packets or bytes on the network. The command provides interface, IP address, protocol, port number, and packet quantity for each top-talker.
+
+<h3>Cisco Flexible NetFlow</h3> 
+
+Original NetFlow uses a fixed seven tuples of IP information to identify a flow. Flexible NetFlow allows the flow to be user-defined. The benefits of Flexible NetFlow include:
+
+
+High-capacity flow recognition, including scalability and aggregation of flow information.
+
+Enhanced flow infrastructure for security monitoring and DDoS detection and identification.
+
+New information from packets to adapt flow information to a particular service or operation in the network. The flow information available will be customizable by Flexible NetFlow users.
+
+Extensive use of Cisco flexible and extensible NetFlow Version 9 and version 10 export formats. With version 10 export format, support for variable length field for the wireless client's SSID is available.
+
+A comprehensive IP accounting feature that can be used to replace many accounting features, such as IP accounting, Border Gateway Protocol (BGP) Policy Accounting, and persistent caches.
+
+
+Evolution from traditional NetFlow
+
+Can collect and export network information and statistics
+
+Export format can be v9 or IPFIX
+
+Required to collect information from NBAR/NBAR2
+
+Monitors layers 2–7
+
+Who, what, when, where
+
+
+Original NetFlow allows you to understand the activities in the network and thus to optimize network design and reduce operational costs. Flexible NetFlow allows you to understand network behavior with more efficiency, with specific flow information tailored for various services used in the network. The following are some example applications for a Flexible NetFlow feature:
+
+Flexible NetFlow enhances Cisco NetFlow as a security monitoring tool. For instance, new flow keys can be defined for packet length or MAC address, allowing users to search for a specific type of attack in the network.
+
+Flexible NetFlow allows you to quickly identify how much application traffic is being sent between hosts by specifically tracking TCP or UDP applications by the class of service (CoS) in the packets.
+
+The accounting of traffic entering a Multiprotocol Label Switching (MPLS) or IP core network and its destination for each next hop per class of service. This capability allows the building of an edge-to-edge traffic matrix.
+
+
+<h4>Cisco Flexible NetFlow Configuration</h4>
+
+To configure Flexible NetFlow, follow these general steps:
+
+Configuring Flexible NetFlow is a four-step process. First, a customized flow record is created. Customized flow records are used to analyze traffic data for a specific purpose.
+
+
+
+A customized flow record must have at least one match criterion for use as the key field and typically has at least one collect criterion for use as a nonkey field. Second, a custom flow exporter is created. Each flow exporter supports only one destination. If you want to export the data to multiple destinations, you must configure multiple flow exporters and assign them to the flow monitor. 
+
+Third, a customized flow monitor is created. Each flow monitor has a separate cache assigned to it. Each flow monitor requires a record to define the contents and layout of its cache entries. These record formats can be one of the predefined formats or a user-defined format. Finally, apply a flow to an interface in the input or output direction.
+
+
+Step 1: Configure a Flow Record
+
+<b>
+R1(config)# flow record R1-FLOW-RECORD
+R1(config-flow-record)# match ipv4 source address
+R1(config-flow-record)# match ipv4 destination address
+R1(config-flow-record)# match ipv4 protocol
+R1(config-flow-record)# collect interface input
+R1(config-flow-record)# collect counter bytes
+</b>
+
+In the configuration for step 1, a flow record named R1-FLOW-RECORD is defined that will track the IPv4 source and destination address, and the IPv4 protocol number. The flow record will also collect interface and counter information.
+
+Step 2: Configure a Flow Exporter
+
+<b>
+R1(config)# flow exporter R1-FLOW-EXPORTER
+R1(config-flow-exporter)# destination 10.250.250.25
+R1(config-flow-exporter)# source Ethernet0/1
+R1(config-flow-exporter)# transport udp 2055
+R1(config-flow-exporter)# template data timeout 300
+</b>
+
+In the configuration for step 2, a flow exporter is defined at address 10.250.250.25 on UDP port 2055. If left unspecified, the UDP port used by default on a Cisco device is 9995. Exported data will be sourced from interface Ethernet 0/1. The NetFlow template timeout is set to 300 seconds. NetFlow Version 9 will periodically export the template data so the NetFlow collector will understand what data is to be sent, and also export the data flow set for the template. The key advantage to Flexible NetFlow is that the user configures a flow record, which is effectively converted to a Version 9 template and then forwarded to the collector.
+
+Step 3: Configure a Flow Monitor
+
+<b>
+R1(config)# flow monitor R1-FLOW-MONITOR
+R1(config-flow-monitor)# exporter R1-FLOW-EXPORTER
+R1(config-flow-monitor)# record R1-FLOW-RECORD
+</b>
+
+In the configuration for step 3, a flow monitor is defined that combines the flow exporter and the flow record into one process.
+
+Step 4: Apply the Flow Monitor to an interface
+
+<b>
+R1(config)# interface Ethernet 0/0
+R1(config-if)# ip flow monitor R1-FLOW-MONITOR input
+</b>
+
+Finally, in the configuration for step 4, the ip flow monitor command is applied for input packets so that the newly defined flow monitor can start to gather information about traffic flows entering the Ethernet 0/0 interface.
+
+
+<h4>Cisco Flexible NetFlow Verification</h4> 
+
+
+
+To verify the Flexible NetFlow configuration, use the following commands:
+<b>
+R1# show flow record [record-name]
+</b>
+Displays the configured flow record(s)
+
+<b>
+R1# show flow monitor [monitor-name]
+</b>
+Displays the configured flow monitor(s)
+
+<b>
+R1# show flow exporter [exporter-name]
+</b>
+Displays the configured flow exporter(s)
+
+The show flow record command displays all flow record configurations, or you can specify a particular flow record to minimize the output:
+
+
+<b>
+R1# show flow record R1-FLOW-RECORD
+flow record R1-FLOW-RECORD:
+  No. of users:       3
+  Total field space:  23 bytes
+  Fields:
+    match ipv4 source address
+    match ipv4 destination address
+    match ipv4 protocol
+    collect interface input
+    collect counter bytes
+</b>
+The show flow monitor command displays all flow monitor configurations, or you can specify a particular flow monitor to minimize the output:
+
+<b>
+R1# show flow monitor R1-FLOW-MONITOR
+Flow Monitor R1-FLOW-MONITOR:
+  Flow Record:       R1-FLOW-RECORD
+  Flow Exporter:     R1-FLOW-EXPORTER
+  Cache:
+    Type:              normal
+    Status:            allocated
+    Size:              4096 entries / 311316 bytes
+    Inactive Timeout:  15 secs
+    Active Timeout:    1800 secs
+    Update Timeout:    1800 secs
+</b>
+
+
+The show flow exporter command displays all flow exporter configurations, or you can specify a particular flow exporter to minimize the output:
+
+
+<b>
+R1# show flow exporter
+
+Flow Exporter R1-FLOW-EXPORTER:
+  Export protocol:          NetFlow Version 9
+  Transport Configuration:
+    Destination IP address: 10.250.250.25
+    Source IP address:      172.16.6.2
+    Source Interface:       Ethernet0/1
+    Transport Protocol:     UDP
+    Destination Port:       2055
+    Source Port:            55864
+    DSCP:                   0x3F
+    TTL:                    255
+    Output Features:        Used
+</b>
+Which service does Flexible NetFow use on a Cisco router for deep packet inspection?
+NBR/NBAR2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ <!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo
+<h3></h3> subtema modulo
+<h4></h4> subtema subtema
+<h5></h5>
+<b></b>
+<hr>
+ 
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<th>x</th>
+<th>x</th>
+</tr>
+</table>
+ 
+<ul>
+<li></li>
+<li></li>
+<li></li>
+</ul>
+ 
+ 
+<br>
+-->

@@ -1,0 +1,262 @@
+
+
+Describe the basic components of troubleshooting a network that is running EIGRP
+
+Troubleshoot EIGRP issues relating to neighbor relationships
+
+Troubleshoot EIGRP issues relating to the routing table
+
+Troubleshoot EIGRP issues relating to stub configurations
+
+Troubleshoot EIGRP issues relating to route summarization
+
+Troubleshoot EIGRP for IPv6
+
+Troubleshoot EIGRP issues relating to authentication
+
+
+show ip eigrp neighbors
+show ip route
+
+
+When you encounter an EIGRP problem, first use the <b>show ip eigrp neighbors</b> command to check for neighbor adjacency issues.
+
+The following issues can prevent neighbor adjacencies from being established:
+
+
+<ul>
+  <li>The interface between the devices is down.</li>
+  <li>The routers have mismatching EIGRP autonomous systems.</li>
+  <li>The EIGRP process is not enabled on one of the interfaces that connects the devices.</li>
+  <li>One of the interfaces that connects the devices is configured as a passive interface</li>
+</ul>
+
+Aside from these issues, there are several other, more advanced issues that can cause neighbor relationships to not be formed. For example, mismatched K values can prevent neighbor relationships from being formed.
+
+
+Issues that may prevent a routing table <b> show ip route</b> from learning the appropriate routes from EIGRP include the following:
+
+
+<ul>
+  <li>Networks are not being advertised on remote routers.</li>
+  <li>An access list is blocking advertisements of remote networks.</li>
+  <li>Automatic route summarization is causing confusion in your discontiguous network.</li>
+
+</ul>
+Although there are also debug commands that provide excellent diagnostic information, you should use the debug commands with caution. In general, it is recommended that you use these commands only under the direction of your router technical support representative when you are troubleshooting specific problems.
+
+<h4>Troubleshoot EIGRP Neighbor Issues</h4>
+
+<b> Are All Interface Statuses "Up/Up"? ->  show ip interface brief</b>
+
+When EIGRP is configured, you may receive a "not on common subnet" message on your router console. This message indicates that there is an incorrect IP address on one of the EIGRP neighbor interfaces. For a neighbor adjacency to be formed between two routers, the interfaces that connect the routers must be on the same subnet.
+
+<b>Is There an AS Mismatch? -> show ip protocols</b>
+
+
+Another prerequisite for the establishment of neighbor adjacencies is the matching of Autonomous System (AS) numbers. You could use the <b>show ip protocols</b> command to determine whether the routers have the same AS number. This command displays the name and AS number of the currently running routing protocol.
+
+To correct a mismatched AS number situation, do the following commands to reconfigure the router that has the wrong AS number:
+
+
+<ul>
+  <li>Remove the old EIGRP routing process that has wrong AS number.</li>
+  <li>Enable the EIGRP routing process with the correct AS number.</li>
+  <li>Include the networks into the newly created EIGRP process.</li>
+</ul>
+
+
+<b>Is EIGRP Enabled on the Interface? -> show ip protocols / show ip eigrp interfaces</b>
+
+The "Routing for Networks" section of the  <b>show ip protocols</b> command output indicates which networks have been configured. Any interfaces in those networks participate in EIGRP.
+
+As shown in the command output above, you can also use the <b>show ip protocols</b> command to verify the <b>"K"</b> values that are being used in EIGRP metric calculations.
+
+Neighbor adjacencies will be established between two routers only if the connecting interfaces on the two routers are enabled for the EIGRP process. You can use the <b>show ip eigrp interfaces</b> command to determine on which interfaces EIGRP is enabled and to learn the information about EIGRP relating to those interfaces. If an interface is not listed in the output of this command, the router is not using EIGRP on that interface.
+
+Use the <b>network <b> command to correct a situation in which an interface that should be enabled for EIGRP is not. This command, which is configured under the EIGRP routing process, specifies which networks will participate in the EIGRP process. Only the interfaces that fall within the range of addresses that are defined by the network entries will participate in the EIGRP process.
+
+<b>Is Passive Interface Configured? ->  show ip protocols</b>
+
+Another situation in which neighbor adjacencies may fail to form occurs when an interface that should form a neighbor adjacency is configured as passive. You can use the <b>passive-interface <b>command in an EIGRP configuration to specify that certain interfaces are passive. This result means that those interfaces will not send or receive hello packets and will not form neighbor adjacencies. To determine whether any interface on a router is configured as passive, use the <b>show ip protocols</b> command.
+
+To return an interface to a nonpassive state, use the <b>no passive-interface</b> command.
+
+<b>Is Access List Blocking Route Advertisements? -> </b>
+
+To block EIGRP traffic, you can configure an access list, blocking this type of the traffic and apply it on the interface in a desired direction. If you applied the access list on the interface in the inbound direction, the neighbor relationship will flap between those two routers. This is due to the EIGRP traffic only being blocked in one direction.
+
+The <b>show ip access-list</b> and <b>show ip interface interface slot/number</b> commands will give you this information. In the figure above, the output of these two commands indicates that an inbound access list has been set on router B. The access list is set on the interface FastEthernet0/1 in the inbound direction and is blocking all EIGRP traffic.
+
+<h3>Troubleshoot EIGRP Routing Table Issues</h3>
+
+<b>Are All Required EIGRP Networks Being Advertised? -> show ip protocols</b>
+
+use the <b>show ip protocols</b> command to determine the reason for the missing routes.
+use the <b>network</b> command in the router configuration mode to configure router to advertise this network, issue the <b>show ip protocols</b> command again on router to verify that the network is now included in the EIGRP process.
+
+<b>Is There a Discontiguous Network? -> </b>
+
+
+The automatic route summarization feature of the EIGRP routing process summarizes the routes on the network number boundaries, which can result in an inaccurate routing and packet loss. This issue is referred to as a discontiguous network issue. A discontiguous network comprises a major network that is separated by another major network. You can address this issue by disabling the autosummarization feature under the EIGRP process.
+
+
+Automatic route summarization (causing a discontiguous network issue) is enabled by default in the Cisco IOS Software before Release 15 (for example, Cisco IOS Release 12). In this case, you would have to use the <b>no auto-summary</b> command. If you are using Cisco IOS Software Release 15 or later, you do not need to use the <b>no auto-summary</b> command to disable automatic route summarization. Automatic route summarization is disabled by default in Cisco IOS Software Releases 15 or later.
+
+To solve the discontiguous network issue, make sure that all the routers in the figure, that have interfaces that are connected to multiple different classful networks have the automatic route summarization option disabled (the <b>no auto-summary</b> command).
+
+You can verify, if route summarization is enabled, using the <b>show ip protocols</b> command.
+
+<h3>Troubleshoot EIGRP Stub</h3>
+The stub feature is one of the convergence improvement mechanisms. The typical topology in which it is used is hub and spoke, which can be implemented with more than one hub when redundancy is provided. In hub-and-spoke topology, spokes are usually the remote sites and hubs are central sites. At the spoke locations, one or more routers can be used to connect to hubs. Spokes communicate between each other using the hub. Traffic from hub routers should not use remote routers as transit paths.
+
+When configured as stub EIGRP routers, the remote spokes are configured to share only a subset of routing information with their neighbors. With the default <b>eigrp stub</b> configuration, a remote router advertises only its connected and summary routes.
+There are several stub types that determine which routing information is advertised, as follows:
+<ul>
+  <li><b>eigrp stub connected</b> The remote router advertises only its connected routes.</li>
+  <li><b>eigrp stub static </b> The remote router advertises only its static routes.</li>
+  <li><b>eigrp stub redistribute</b> The remote router advertises only other protocols and AS routes.</li>
+  <li><b>eigrp stub summary<b> The remote router advertises only summary routes.</li>
+  <li><b>eigrp stub receive-only</b> The remote router does not advertise routes.</li>
+
+</ul>
+
+When troubleshooting, use the following tools:
+
+When no routes or incorrect routes are advertised to the neighbors:
+
+Use <b>show running-config | section router eigrp</b> to check which stub type is configured on the device.
+
+When no routes are learned from neighbors:
+
+Check whether the neighbor is configured as a stub and which type of routes that it advertises.
+
+Use <b>show ip eigrp neighbors</b> detail to display the stub status of neighbors and which routes are advertised.
+
+To monitor EIGRP activities that are related to the stub feature, use the following:
+
+<b>debug eigrp packet terse</b> to display all EIGRP packets except hellos.
+
+<b>debug eigrp packet stub</b> to display information about the stub status of the peer routers.
+
+<h3> Troubleshoot EIGRP Summarization</h3>
+The network is unreachable:
+
+Check whether automatic summarization is active.
+
+EIGRP supports variable-length subnet masking (VLSM). In earlier releases of the Cisco IOS (pre-release 15.0), EIGRP automatically performed route summarization at classful network boundaries. This was an issue in networks containing discontiguous networks. As a result, it was necessary when configuring EIGRP to turn off automatic summarization using the <b>no auto-summary</b> command in router configuration mode for an EIGRP autonomous system. However, from Cisco IOS release 15.0 and onward, automatic summarization is off by default for EIGRP. 
+
+However, you should be able to recognize a discontiguous network when reviewing a network topology and understand that if someone manually enabled automatic summarization in your EIGRP autonomous system, routing would be broken.
+
+To troubleshoot EIGRP summarization:
+
+No summary route is in the routing table: If the summarization is manual, do the following:
+
+Check that there is a more specific route than the summary-route in the routing table. Use <b>show ip route network network-mask longer-prefixes</b>.
+
+Check that the interface, at which the summarization is configured, is included in the EIGRP process.
+
+Packets looping:
+
+Check the scope of summarization and tighten it to include only the existing networks.
+
+
+When configuring manual summarization, the summary-route is advertised only when there is a route in the routing table for the more specific, summary component network:
+
+Summary-route must be configured on the interface via which it would be advertised to other routers (that is, the interface must be included in the EIGRP routing).
+
+Use the <b>show ip route network network-mask longer-prefixes</b> command to display all networks in the routing table to verify the existence of the more specific routes in the routing table.
+
+The command should be used carefully—the network and network-mask pair are "anded" to become the prefix, and any address that matches this prefix is displayed.
+
+If no summary-route is present in the routing table, check the following:
+
+Whether the summary-route and its network mask include more specific networks that are present in the routing table.
+
+If the summary-route does not include more specific networks, you can add a loopback interface and configure it with an IP address belonging to the summary-route range to "force" its propagation.
+
+No summary route is in the routing table:
+
+If the summarization is manual, do the following:
+
+Check that there is a more specific route than the summary-route in the routing table. Check that the interface, at which the summarization is configured, is included in the EIGRP process.
+
+Manually configured summary-route should not be too broad. Configure the summary-route to cover only the existent networks or networks that are planned to be added soon.
+
+It is important to create accurate summary routes to ensure that the router is not advertising networks in the summary route that it does not truly know how to reach. If it does, it is possible that it might receive packets to destinations that fall within the summary that it really does not know how to reach. If so, it means that packets will be dropped because of the route to null 0. The figure shows an example of this issue.
+
+When a summary route is created on a router, so is a summary route to null 0. This route to null 0 is created to prevent routing loops. It is imperative that this route is in the table to ensure that if a packet is received by this router that is destined to a network that falls within the summary that the router does not really know how to reach, it will be dropped. If the route to null 0 did not exist, and there was a default route on the router, the router would forward the packet via the default route, and then the next-hop router would end up forwarding it back to this router, because it is using the summary route, then the local router would then forward it based on the default route, and then it would come back, which creates a routing loop.
+
+The route to null 0 has an AD of 5 to ensure that it is more trustworthy than most of the other sources of routing information. Therefore, the only way this route would not be in the routing table is if you had a source with a lower AD (for example, a static route for the same summary network that points to a next hop IP address instead of null 0), which would cause a routing loop.
+
+Packets dropping:
+
+Check the scope of summarization and tighten it to include only the existing networks.
+
+<h3>Troubleshoot EIGRP for IPv6</h3>
+
+Configuring IPv6 EIGRP using classic mode is very similar to configuring EIGRP for IPv4. The main difference is that IPv6 EIGRP using classic mode is enabled on the interface with the <b>ipv6 eigrp as-number</b> command. Therefore, troubleshooting EIGRP for IPv6 is very similar to troubleshooting EIGRP for IPv4.
+
+To check the IPv6 routing protocols on the router, use the <b>show ipv6 protocols</b> command. The output will show the IPv6 routing protocols that are enabled on the router. The EIGRP section shows metric weights, router ID, EIGRP interfaces, redistribution information, etc.
+
+
+To display the neighbors that are discovered by EIGRP for IPv6, use the <b>show ipv6 eigrp neighbors</b> command.
+
+The <b>show ipv6 route eigrp</b> command shows the content of the IPv6 routing table that includes the routes that are specific to EIGRP.
+
+To verify the topology table, use the <b>show ipv6 eigrp topology</b> command. You can see all routing updates that the router received, with AD and FD information, next-hop, etc.
+
+There are also other things to check that are not directly related to EIGRP configuration. To check whether IPv6 addresses have been assigned on the interfaces, use the <b>show ipv6 interface brief</b>. To verify if there are any access lists configured, use <b>show ipv6 access-list</b> command.
+
+Note that the commands described above applies to both EIGRP using classic mode and EIGRP using named mode.
+
+<h3>Troubleshoot EIGRP Authentication</h3>
+
+
+Authentication is used to ensure that your EIGRP routers only form neighbor relationships with legitimate routers and that they only accept EIGRP packets from legitimate routers. Therefore, if authentication is implemented, both routers must agree on the settings for a neighbor relationship to form. For authentication, you can use the output of the commands <b>show run interface interface_type interface_number</b> and <b>show ip eigrp interfaces detail interface_type interface_number</b>, which will identify whether EIGRP authentication is enabled on the interface.
+
+Note that the authentication must be on the correct interface and that it must be tied to the correct autonomous system number. If you put in the wrong autonomous system number, it will not be enabled for the correct autonomous system. In addition, make sure that you specify the correct key chain that will be used for the Message Digest 5 (MD5) authentication hash. You can verify the key chain with the command <b>show key chain</b>. The keys in this example do not expire. However, if you have implemented rotating keys, the keys must be valid for authentication to be successful.
+
+Inside the key chain, you find the key ID (1 in this case) and the key string (“C1sc0” in this case). It is mandatory that the key ID in use and the key string in use between neighbors match. Therefore, if you have multiple keys and key strings in a chain, the same key and string must be used at the same time by both routers (meaning they must be valid and in use); otherwise, authentication will fail. You can configure multiple keys with specific lifetimes. Only one authentication packet is sent, regardless of how many valid keys exist. The software examines the key numbers in the order from lowest to highest, and uses the first valid key that it encounters. Note that the device needs to know the time to configure keys with lifetimes. The router uses its internal clock to ensure that keys are valid. To ensure an accurate clock, the router should synchronize with a master NTP server in the network.
+
+When using the <b>debug eigrp packets</b> command for troubleshooting authentication, you will receive different output based on the authentication issue. The first example displays what message is generated when the neighbor is not configured for authentication. It ignores that packet and states “(missing authentication).” When the key IDs or the key strings do not match between the neighbors, the debug output states “(invalid authentication),” as shown in the second example.
+
+Recall that with EIGRP using named mode, authentication commands are entered under af-interface configuration mode. This procedure applies to both MD5 key-chain authentication and HMAC-SHA-256, for either IPv4 or IPv6. A Syslog message is logged to the console when SHA is enabled, and a separate message is logged if there is a mismatch in the shared password.
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo
+<h3></h3> subtema modulo
+<h4></h4> subtema subtema
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<th>x</th>
+<th>x</th>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+
+<br>
+-->
+
+
+
+
+
+
+
+
+.

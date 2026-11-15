@@ -1,0 +1,594 @@
+<h1>Implementing OSPF</h1> 
+
+
+Open Shortest Path First (OSPF) is a link-state protocol that is based on the open standard. At a high level, OSPF operation consists of three main elements: neighbor discovery, link-state information exchange, and best-path calculation.
+
+To calculate the best path, OSPF utilizes SPF or Dijkstra’s algorithm. The input information for the Shortest Path First (SPF) calculation is link state information, which is exchanged between routers through several different OSPF message types. These message types help improve convergence and scalability in multiarea OSPF deployments.
+
+OSPF also supports several different network types, which enable you to configure OSPF over various different underlying network technologies.
+
+OSPF as a link state protocol uses several different packets to exchange information about network topology between routers. These packets are called link-state advertisements and they describe the network topology in great detail. Each router stores the received LSA packets in the link-state database. After LSDBs are synced between the routers, OSPF uses the shortest path first algorithm to calculate the best routes. The best intra-area routes are calculated individually by each OSPF router. For the best interarea route calculation, the internal router must also rely on the best path information that is received from the ABRs.
+
+Open OSPF is a widely used IGP in IPv4, IPv6, and dual-stack (IPv4/IPv6) environments. Upgrading OSPF to support IPv6 generated several significant changes to how the protocol behaves. Understanding the differences between OSPFv2 and OSPFv3 is required for the successful deployment and operation of an IPv6 network using OSPF for routing. This lesson describes OSPFv3, the IPv6-capable version of the OSPF routing protocol, including its operations, configuration, and commands.
+
+In this section, you will be able to:
+
+Explain the different features of OSPFv2 and OSPFv3
+
+Describe basic operational steps with link-state protocols
+
+Describe area and router types in OSPF
+
+Explain the design limitations of OSPF
+
+List and describe OSPF message types
+
+Describe the differences between OSPFv2 and OSPFv3
+
+List and describe OSPF neighbor states
+
+List and describe OSPF network types
+
+List and describe different Link-State Advertisement (LSA) types
+
+Describe how OSPF LSAs are also reflooded at periodic intervals
+
+Describe the exchange of information in a network without a designated router
+
+Describe the exchange of information in a network with a designated router
+
+Explain when SPF algorithms occur
+
+Describe how the cost of intra-area routes is calculated
+
+Describe how the cost of interarea routes is calculated
+
+Describe rules selecting between intra-area and interarea routes
+
+Implement OSPFv3 in a dual-stack (IPv4/IPv6) environment
+
+
+OSPF was developed by the Internet Engineering Task Force (IETF) to overcome the limitations of distance vector protocols. One of the main reasons why OSPF is widely deployed in enterprise networks is the fact that it is an open standard—OSPF is not proprietary.
+
+Version 1 of the protocol is described in RFC 1131. The current version that is used for IPv4, version 2, is specified in RFCs 1247 and 2328. OSPF version 3, which is used in IPv6 networks, is specified in RFC 5340.
+
+OSPF offers a larger level of scalability and fast convergence. Despite its relatively simple configuration in small and medium networks, OSPF implementation and troubleshooting in large-scale networks may represent a real challenge.
+
+
+The key features of the OSPF protocol are:
+
+Link-state routing protocol -> tehy keep track of the status of all links within our network enviroment
+
+Open standard (RFC 2328) for OSPFv2; RFC 5340 for OSPFv3
+
+Scalability and fast convergence
+
+Independent transport
+
+Efficient use of updates
+
+VLSM support
+
+Manual route summarization
+
+Authentication
+
+The key features of the OSPF protocol are described below:
+
+Independent transport: OSPF works on top of IP and uses protocol number 89. It does not rely on the functions of TCP or UDP.
+
+Efficient use of updates: When an OSPF router first discovers a new neighbor, it will send a full update with all known link-state information. All routers within an OSPF area must have identical and synchronized link-state information in their OSPF databases. When an OSPF network is in a converged state and a new link comes up or a link becomes unavailable, an OSPF router will send only a partial update to all its neighbors. This update will then be flooded to all OSPF routers within an area.
+
+Metric: OSPF uses a metric that is based on the cumulative costs of all outgoing interfaces from source to destination. The interface cost is inversely proportional to the interface bandwidth and can be set up explicitly.
+
+Update destination address: OSPFv2 uses multicast and unicast, rather than broadcast. The multicast addresses that are used for OSPF are 224.0.0.5 to send information to all OSPF routers and 224.0.0.6 to send information to DR or Backup Designated Router (BDR) routers. For OSPFv3, the “all routers” multicast address is FF02::5, while the “all DR” multicast address is FF02::6. If the underlying network does not have broadcast capabilities, you must establish OSPF neighbor relationships using unicast.
+
+VLSM support: OSPFv2 is a classless routing protocol; it supports VLSM and discontiguous networks. It carries subnet mask information in the routing updates.
+
+Manual route summarization: You can manually summarize OSPF interarea routes at the Area Border Routers (ABR) and it is possible to summarize OSPF external routes at the Autonomous System Border Routers (ASBR). OSPF does not know the concept of autosummarization.
+
+Authentication: OSPFv2 supports cleartext, Message Digest 5 (MD5), and cryptographic SHA authentication. OSPFv3 relies on IPsec for authentication and encryption with AH and ESP, as well as authentication using cryptographic SHA.
+
+
+
+
+<h3>OSPF Operations</h3>
+
+At a high level, OSPF operation can be divided into three distinct steps
+
+
+In the first step, the OSPF router must discover all OSPF-speaking neighbor routers on directly connected interfaces. To establish neighbor relationships, OSPF uses small hello packets, similar to EIGRP. Before two routers on directly connected links become OSPF neighbors, they must agree on certain parameters that are specified in the hello packet. Once two OSPF routers establish neighbor adjacency, the second step can begin.
+
+
+In the second step of OSPF operation, routers exchange link-state information that describes the topology of the network within an OSPF area. Link-state information, conveyed in the form of LSAs, is flooded throughout the area until all routers have identical LSDBs. Each router stores the received LSAs in its LSDB, creating a consistent and synchronized view of the network topology shared by all routers in the area. The LSAs include details such as each router’s identifier (router ID), interfaces, IP addresses, masks, subnets, and the list of routers reachable on each interface.
+
+
+Once the LSDBs on all routers within an area are synchronized and have identical database entries, the last step can begin—best path calculation. To calculate the best path to a given destination, OSPF uses SPF or Dijkstra’s algorithm. The SPF algorithm analyzes and compares all possible paths to the destination from the local router’s perspective and selects the one with the smallest metric (cost). This path, together with the next hop and the outgoing interface to the destination, is then a candidate to be placed in the routing table.
+
+
+<h3>Hierarchical Structure of OSPF</h3>
+
+Link-state routing needs a hierarchical structure to ensure scalability
+
+OSPF two-level hierarchy consists of:
+
+Backbone, transit, or Area 0
+
+Nonbackbone area
+
+If you run OSPF in a simple network, the number of routers and links are small and best paths to all destinations are easily determined. However, the information necessary to describe larger networks with several routers and links can become complex. SPF calculations that compare all possible paths for routes can easily turn into a complex and time-consuming calculation.
+
+One of the main methods to reduce the complexity and size of the link-state information database is to partition the OSPF network into smaller units called areas. This implementation also reduces the time that it takes for the SPF algorithm to run. All OSPF routers within an area must have identical entries within their respective Link-State Database (LSDBs). Inside an area, routers exchange detailed link-state information. However, information that is transmitted from one area into another contains only summary details of the link-state database entries. It does not contain topology details about the originating area.
+
+OSPF uses a two-layer area hierarchy:
+
+Backbone area, transit area, or area 0: Two principal requirements for the backbone area are that it must connect to all other nonbackbone areas, and it must be always contiguous—it is not allowed to be split. Generally, end users are not found within a backbone area.
+
+Nonbackbone area: The primary function of this area is to connect end users and resources. Nonbackbone areas are usually set up according to functional or geographical groupings. Traffic between different nonbackbone areas must always pass through the backbone area.
+
+In the multiarea topology, there are some special commonly used OSPF terms:
+
+ABR: A router that has interfaces that are connected to at least two different OSPF areas, including the backbone area. ABRs contain LSDB information for each area, make route calculations for each area, and advertise routing information between areas.
+
+ASBR: An ASBR is a router that has at least one of its interfaces that are connected to an OSPF area and at least one of its interfaces that are connected to an external non-OSPF domain.
+
+Internal router: A router that has all its interfaces that are connected to only one OSPF area. This router is completely internal to the area.
+
+Backbone router: A router that has at least one interface that is connected to the backbone area.
+
+
+<h3>Design Limitations of OSPF</h3>
+
+
+If more than one area is configured, one area has to be Area 0.
+
+All areas have to be connected to Area 0.
+
+Area 0 must be contiguous.
+
+OSPF has special restrictions when multiple areas are configured in an OSPF AS. If more than one area is configured, one of these areas has to be Area 0. It is called the backbone area. When designing networks, it is good practice to start with the core layer, which becomes Area 0, and then expand into other areas later.
+
+The backbone has to be at the center of all other areas, and other areas have to be connected to the backbone. The main reason is that OSPF expects all areas to inject routing information into the backbone area, which distributes that information into other areas.
+
+Another important requirement for the backbone area is that it must be contiguous. In other words, splitting up area 0 is not allowed.
+
+
+<h3>OSPF Message Types</h3>
+
+OSPF uses five types of routing protocol packets, which share a common protocol header. Every OSPF packet is directly encapsulated in the IP header. The IP protocol number for OSPF is 89.
+
+Type	Packet Name	Description
+
+1	Hello		Discovers neighbors and builds adjacencies between them
+
+2	DBD		Checks for database synchronization between routers
+
+3	LSR		Requests specific LSAs from another router
+
+4	LSU		Sends specifically requested LSAs
+
+5	LSAck		Acknowledges the other packet types
+
+Hello packet: Used to discover, build, and maintain OSPF neighbor adjacencies. To establish adjacency, OSPF peers at both sides of the link must agree on some parameters that are contained in the hello packet.
+
+DBD packet: When the OSPF neighbor adjacency is already established, a DBD packet is used to describe the LSDB so that routers can compare whether databases are in sync.
+
+LSR packet: When the database synchronization process is over, the router might still have a list of LSAs that are missing in its database. The router will send an Link State Request (LSR) packet to inform OSPF neighbors to send back the most recent version of the missing LSAs.
+
+LSU packet: Used when flooding LSAs and sending LSA responses to LSR packets. It is sent only to the directly connected neighbors who have previously requested LSAs in the form of an LSR packet. If there is flooding, the neighbor routers are responsible for re-encapsulation of received LSA information in new LSU packets.
+
+LSAck packet: Used to make flooding of LSAs reliable. Each LSA received must be explicitly acknowledged. Multiple LSAs can be acknowledged in a single LSAck packet.
+
+<h3>Compare OSPFv2 and OSPFv3</h3> 
+
+While OSPFv2 is feature-rich and widely deployed, it does have one major limitation in that it does not support the routing of IPv6 networks. Fortunately, OSPF version 3 (OSPFv3) does support IPv6 routing, and it can be configured to also support IPv4 routing.
+
+The OSPF processes—traditional OSPFv2, traditional OSPFv3, and the new OSPFv3 that uses address families to support both IP stacks—differ in the transport protocols.
+
+Traditional OSPFv2 for IPv4
+
+<b>router ospf process-id</b>
+
+Transported over IPv4
+
+Traditional OSPFv3 for IPv6 only
+
+<b>ipv6 router ospf process-id<5/b>
+
+Transported over IPv6
+
+Peering over IPv6 link-local addresses
+
+New style OSPFv3 for IPv4 and IPv6 address families
+
+<b>router ospfv3 process-id</b>
+
+Transported over IPv6 (link-local addresses)
+
+No peering with traditional OSPFv2 routers
+
+The traditional OSPFv2 method, which is configured with the <b>router ospf process-id</b> command, uses IPv4 as the transport mechanism. The traditional OSPFv3 method, which is configured with the <b>ipv6 router ospf</b> command, uses IPv6 as the transport protocol. The new OSPFv3 address family framework, which is configured with the <b>router ospfv3 command</b>, uses IPv6 as the transport mechanism for both address families. Therefore, it will not peer with routers running the traditional OSPFv2 protocol.
+
+The OSPFv3 address families feature is supported as of Cisco IOS Release 15.1(3)S and Cisco IOS Release 15.2(1)T. Cisco devices that run software older than these releases and third-party devices will not form neighbor relationships with devices running the address family feature for the IPv4 address family because they do not set the address family bit. Therefore, those devices will not participate in the IPv4 address family SPF calculations and will not install the IPv4 OSPFv3 routes in the IPv6 RIB.
+
+<h4>Traditional OSPFv3</h4>
+
+
+OSPFv3 is the IPv6-capable version of the OSPF routing protocol. It is a rewrite of the OSPF protocol to support IPv6, although the foundation remains the same as in IPv4 and OSPFv2. The OSPFv3 metric is still based on interface cost. The packet types and neighbor discovery mechanisms are the same in OSPFv3 as they are for OSPFv2. OSPFv3 also supports the same interface types, including broadcast, point-to-point, point-to-multipoint, nonbroadcast multiaccess, and virtual links. LSAs are still flooded throughout an OSPF domain, and many of the LSA types are the same, though a few have been renamed or newly created.
+
+Cisco IOS routers offer two OSPF configuration methods for IPv6: using the traditional ipv6 router ospf method or the new router ospfv3 process. You will first examine the <b>traditional configuration method</b> and then migrate the configuration to the new style.
+<b>
+Enable IPv6 routing.
+
+Router(config)# ipv6 unicast-routing
+Enable the OSPFv3 routing process.
+
+Router(config)# ipv6 router ospf process-id
+Configure the router ID.
+
+Router(config-router)# router-id router-id
+Enable OSPFv3 on an interface.
+
+Router(config-if)# ipv6 ospf process-id area area-id
+(Optionally): Configure passive interfaces by using the default command or configure passive interfaces by using the interface command.
+
+Router(config-router)# passive-interface default
+Router(config-router)# no passive-interface interface slot/number
+OR
+
+Router(config-router)# passive-interface interface slot/number
+</b>
+To start any IPv6 routing protocols, you need to enable IPv6 unicast routing using the <b>ipv6 unicast-routing</b> command. In the traditional configuration method, the OSPFv3 and OSPFv2 process runs independently on a router. In the traditional way, you start the OSPF process for IPv6 using the <b>ipv6 router ospf</b> command.
+
+The OSPF process for IPv6 no longer requires an IPv4 address for the router ID, but it does require a 32-bit number to be set. You define the router ID using the router-id command. If you do not set the router ID, the system will try to dynamically choose an ID from the currently active IPv4 addresses. If there is no active IPv4 address, the process will fail to start.
+
+In the ipv6 router ospf configuration mode you can specify the passive interfaces (using the <b>passive-interface</b> command), enable summarization, and fine-tune the operation, but you do not enable the process on specific interfaces. There is no network command. To activate the OSPF process on required interfaces, you will need the <b>ipv6 ospf</b> command in the interface configuration mode.
+
+IPv6 addresses differ from IPv4 addresses. You can have multiple IPv6 addresses on a single interface: a link-local address, one or more global addresses and others. OSPF communication within a local segment is based on link-local addresses, and not global addresses. These differences are one of the reasons why you enable the OSPF process per interface in the interface configuration mode and not with the network command.
+
+To enable the OSPF-for-IPv6 process on an interface and assign that interface to an area, use the <b>ipv6 ospf ospf-process area area-id</b> command in the interface configuration mode. To be able to enable OSPFv3 on an interface, the interface must be enabled for IPv6. This implementation is typically achieved by configuring a unicast IPv6 address. Alternatively, you could also enable IPv6 using the <b>ipv6 enable interface</b> command, which will cause the router to derive its link-local address.
+
+
+<h4>OSPFv3 for IPv4 and IPv6</h4> 
+
+OSPFv3 does not only support exchange of IPv6 routes, it also supports exchange of IPv4 routes.
+
+A single process can support IPv4 and IPv6.
+
+A single database with LSAs carries IPv4 and IPv6 information.
+
+Adjacencies are established individually for each address family.
+
+Specific settings are configured within address families. (IPv4/IPv6)
+
+The OSPFv3 address families feature is supported as of Cisco IOS Release 15.1(3)S and Cisco IOS Release 15.2(1)T.
+
+
+The newest OSPFv3 configuration method utilizes the single OSPFv3 process. It can support IPv4 and IPv6 within a single OSPFv3 process. OSPFv3 builds a single database with LSAs that carry IPv4 and IPv6 information. The OSPF adjacencies are established separately for each address family. Settings that are specific to an address family (IPv4/IPv6) are configured inside that address family router configuration mode.
+
+
+configure an OSPFv3 process using the new configuration style (router ospfv3).
+<b>
+R2(config)# router ospfv3 1
+R2(config-router)# router-id 2.2.2.2
+R2(config-router)# passive-interface Loopback0
+</b>
+You can enable the new OSPFv3 process using the <b>router ospfv3 process-number</b> command. Within the OSPF process configuration mode, you can set the OSPF router ID, set the passive interfaces, and tune the per-process OSPF behavior.
+
+
+You can view the resulting OSPF process configuration using the <b>show running-config | section router</b> command. 
+The address-family ipv6 unicast has been automatically created. Cisco IOS Software has parsed the previous OSPFv3 configuration and found that the OSPF process was enabled only for IPv6. Therefore, when you chose the new configuration, the IPv6 address family has been instantiated and the IPv4 address family does not show in the configuration. 
+
+The passive-interface configuration is a setting that is valid per address family. You can have dissimilar settings for IPv4 and IPv6. Therefore, this command has been placed in the address-family submode.
+
+Passive interface configuration is a common method for hardening routing protocols and reducing the use of resources. It is also supported by OSPF.
+
+Passive interfaces in OSPF suppress inbound and outbound OSPF packets on the interface.
+
+Passive interfaces harden routing protocol and reduce bandwidth and router CPU usage.
+
+Configure a passive interface on interfaces without any OSPF peers.
+
+When you configure a passive interface under the OSPF process, the router will stop sending and receiving OSPF hello packets on the selected interface. Use passive interface configuration only on interfaces where you do not expect the router to form any OSPF neighbor adjacency. You can either configure a specific interface as passive or turn on the passive interface setting as default and then configure interfaces, which should be configured with the <b>no passive-interface<b> configuration command.
+
+You can verify the OSPFv3 operation using the old commands (<b>show ipv6 ospf neighbor, show ipv6 ospf database</b>) or the new style of commands, such as <b>show ospfv3 neighbor</b> and <b>show ospfv3 database</b>.
+
+
+enable OSPFv3 address family IPv6 on the active interfaces using the new configuration approach.
+<b>
+R2(config)# interface Loopback0
+R2(config-if)# ospfv3 1 ipv6 area 1
+R2(config-if)# interface Serial 0/0
+R2(config-if)# ospfv3 1 ipv6 area 1
+</b>
+
+The preferred interface mode command for the new style OSPFv3 configuration is the <b>ospfv3 process-id {ipv4|ipv6} area area-id </b>command. It allows you to selectively activate the OSPFv3 process for an address family (IPv4 or IPv6) on a given interface.
+
+
+With the OSPFv3 address families feature, you may have two device processes per interface, but only one process per address family. If the IPv4 address family is used, an IPv4 address must first be configured on the interface. For the IPv6 address family, it is enough if only IPv6 is enabled on the interface, as OSPFv3 uses link-local addresses. A single IPv4 or IPv6 OSPFv3 process running multiple instances on the same interface is not supported.
+<b>
+R2(config)# router ospfv3 1
+R2(config-router)# address-family ipv4 unicast
+R2(config-router-af)# passive-interface Lo0
+R2(config-router-af)# exit
+R2(config-router)# exit
+R2(config)# interface Loopback 0
+R2(config-if)# ospfv3 1 ipv4 area 1
+R2(config-if)# interface Serial 0/0
+R2(config-if)# ospfv3 1 ipv4 area 1
+</b>
+
+An OSPFv3 process can be configured to be IPv4 or IPv6. The <b>address-family </b>command is used to determine which AF will run in the OSPFv3 process. Once the address family is selected, you can enable multiple instances on a link and enable address-family-specific commands.
+
+To activate OSPFv3 for IPv4, you need to configure the <b>ospfv3 process-number ipv4 area area-id</b> command in the configuration mode of the desired interface.
+
+This way some (or all) of the links may be allowed to do IPv4 forwarding and be configured with IPv4 addresses. For example, pockets of IPv4-only devices may exist around the edges running an IPv4 static or dynamic routing protocol. In that scenario, you could forward IPv4 or IPv6 traffic between these pockets. The transit device needs both IPv4 and IPv6 forwarding stacks (that is, a dual stack).
+
+This feature allows a separate (possibly incongruent) topology to be constructed for the IPv4 address family. It installs IPv4 routes in the IPv4 RIB, and then the forwarding occurs natively. The OSPFv3 process fully supports an IPv4 AF topology and can redistribute routes from and into any other IPv4 routing protocol.
+
+You can monitor the OSPF adjacencies using the <b>show ospfv3 neighbor </b>command. The command displays the adjacencies for both address families.
+
+You can monitor the IPv4 routing table that is computed from the OSPFv3 database using the <b>show ip route ospfv3</b> command. The ospfv3 keyword filters the content of the routing table and displays only the OSPFv3 routes.
+
+A router maintains a single OSPFv3 database, which contains various LSAs. Some LSAs carry IPv4-related information, others carry IPv6-related information, and others carry mixed information. You have to examine specific LSA types to see which address family it is described by a given LSA.
+
+Note that the old style of verification command like <b>show ip ospf database</b> will not show any information.
+
+<h3>Configure OSPFv3 for IPv4 and IPv6</h3>
+
+<b>
+R3(config)# ipv6 unicast-routing 
+R3(config)# router ospfv3 1
+R3(config-router)# address-family ipv4 unicast
+R3(config-router-af)# router-id 3.3.3.3
+R3(config-router-af)# passive-interface Loopback 0
+R3(config-router-af)# exit
+R3(config-router)# address-family ipv6 unicast
+R3(config-router-af)# router-id 3.3.3.3
+R3(config-router-af)# passive-interface Loopback 0
+R3(config-router-af)# exit
+R3(config-router)# exit
+R3(config)# interface Loopback 0
+R3(config-if)# ospfv3 1 ipv4 area 2
+R3(config-if)# ospfv3 1 ipv6 area 2
+R3(config-if)# interface Ethernet 0/0
+R3(config-if)# ospfv3 1 ipv4 area 2
+R3(config-if)# ospfv3 1 ipv6 area 2
+</b>
+
+Before starting the OSPFv3 routing protocol, you need to enable support for IPv6 unicast routing with the <b>ipv6 unicast-routing</b> command. The router ID was entered individually under each address family, but it would have been possible to enter it globally instead, 
+
+The output of the <b>show opsfv3 [ipv4 | ipv6] interface</b> command shows you all interfaces that are enabled in the OSPFv3 address families. For each enabled interface, you can see detailed information such as OSPF area ID, OSPF process ID, and the OSPF network type.
+
+Verify OSPF routes in the IPv4 routing table on R5 using the <b>show ip route ospfv3</b> command.
+
+Among routes that are originated within an OSPF autonomous system, OSPF clearly distinguishes two types of routes: intra-area routes and interarea routes. Intra-area routes are routes that are originated and learned in the same local area. The character “O” is the code for the intra-area routes in the routing table. The second type is interarea routes, which originate in other areas and are inserted into the local area to which your router belongs. The characters “O IA” are the code for the interarea routes in the routing table. Interarea routes are inserted into other areas by the ABR.
+
+To change this default behavior, you can change the OSPF network type on the loopback interface from the default LOOPBACK to POINT-TO-POINT, using the <b>ospfv3 network point-to-point interface</b> command.
+
+
+Observe OSPF routes by entering the <b>show ospfv3 rib detail</b> command.
+
+The command <b>show ospfv3 rib detail</b> gives you clearly separated lists of intra-area and interarea routes. In addition, the output of the command gives you essential information about Area Border Routers, including the router ID, IP address in the current area, the interface that advertises routes into the area, and the area ID.
+
+For the interarea routes, the metric for the route (cost), the area into which the route is advertised, and the interface over which the route is inserted are displayed.
+
+
+Observe the IPv4 OSPF neighbor adjacency formation and OSPF packet types on R3 using the <b>debug ospfv3 ipv4 adj</b> and <b>clear ospfv3 ipv4 process</b> commands. Disable debug when the OSPF session is re-established.
+
+An OSPF adjacency is established in several steps. First, routers that intend to establish full OSPF neighbor adjacency exchange OSPF hello packets. Both OSPF neighbors are in the DOWN state (the initial state of a neighbor conversation that indicates that no hello’s have been heard from the neighbor). When a router receives a hello from the neighbor but has not yet seen its own router ID in the neighbor hello packet, it will transit to the INIT state. In this state, the router will record all neighbor router IDs and start including them in "hellos" sent to the neighbors. When the router sees its own router ID in the hello packet that is received from the neighbor, it will transit to the 2-WAY state. This state means that bidirectional communication with the neighbor has been established.
+
+On broadcast links, OSPF neighbors first determine DR, and BDR roles, which optimize the exchange of information in broadcast segments.
+
+In the next step, the routers start to exchange the content of OSPF databases. The first phase of this process is to determine the master/slave relationship and choose the initial sequence number for adjacency formation. To accomplish that phase, the routers exchange DBD packets. When the router receives the initial DBD packet, it transitions the state of the neighbor from which this packet is received to the EXSTART state, populates its Database Summary list with the LSAs that describe the content of the neighbor database, and sends its own empty DBD packet. In the DBD exchange process, the router with the higher router ID will become master and it will be the only router that can increment sequence numbers.
+
+With master/slave selection complete, the database exchange can start. R3 will transit R1’s neighbor state to EXCHANGE. In this state, R3 describes its database to R1 by sending DBD packets, which contain the headers of all LSAs in the Database Summary list. The Database Summary list gives the description of all LSAs in the router’s database, but not the full content of the OSPF database. To describe the content of the database, one or multiple DBD packets may be exchanged. The router compares the content of its own Database Summary list with the list that is received from the neighbor, and if there are differences, it adds the missing LSAs to the Link State Request list. At this point, the routers enter the LOADING state. R3 sends an LSR packet to the neighbor, requesting full content of the missing LSAs from the LS Request list. R1 replies with the LSU packets, which contain the full version of the missing LSAs.
+
+Finally, when neighbors have the full version of the LS database, both neighbors will transit to the FULL state, which means that databases on the routers are synchronized and neighbors are fully adjacent.
+
+
+<h4>Verify DR and BDR Election</h4>
+
+
+DR/BDR election occurs on multiaccess broadcast and nonbroadcast networks
+
+The DR/BDR election improves network functioning in the following ways:
+
+Reducing routing update traffic
+
+Managing link state synchronization
+
+Multiaccess networks, either broadcast (such as Ethernet) or nonbroadcast (such as Frame Relay), represent interesting issues for OSPF. All routers sharing the common segment will be part of the same IP subnet. When forming adjacency on a multiaccess network, every router will try to establish full OSPF adjacency with all other routers on the segment. This behavior may not represent an issue for the smaller multiaccess broadcast networks, but it may represent an issue for the NBMA, where, usually, you do not have full-mesh PVC topology. This issue in NBMA networks manifests itself in the inability for neighbors to synchronize their OSPF databases directly among themselves. A logical solution, in this case, is to have a central point of OSPF adjacency responsible for the database synchronization and advertisement of the segment to the other routers.
+
+As the number of routers on the segment grows, the number of OSPF adjacencies increases exponentially. Every router must synchronize its OSPF database with every other router, and in the case of many routers on segment, this behavior leads to inefficiency. Another issue arises when every router on the segment advertises all its adjacencies to other routers in the network. If you have full-mesh OSPF adjacencies, the other OSPF routers will receive a large amount of redundant link-state information. The solution for this problem is again to establish a central point with which every other router forms an adjacency, and which advertises the segment to the rest of the network.
+
+The routers on the multiaccess segment elect a DR and a BDR that centralize communication for all routers that are connected to the segment. The DR and BDR improve network functionality in the following ways:
+
+Reducing routing update traffic: The DR and BDR act as a central point of contact for link-state information exchange on a multiaccess network. Therefore, each router must establish a full adjacency with the DR, and the BDR. Each router, rather than exchanging link-state information with every other router on the segment, sends the link-state information to the DR and BDR only by using the dedicated multicast address 224.0.0.6. The DR represents the multiaccess network in the sense that it sends link-state information from each router to all other routers in the network. This flooding process significantly reduces the router-related traffic on the segment.
+
+Managing link-state synchronization: The DR and BDR ensure that the other routers on the network have the same link-state information about the common segment. In this way, the DR, and BDR reduce the number of routing errors.
+
+When the DR is operating, the BDR does not perform any DR functions. Instead, the BDR receives all the information, but the DR performs the LSA forwarding and LSDB synchronization tasks. The BDR performs the DR tasks only if the DR fails. When the DR fails, the BDR automatically becomes the new DR, and a new BDR election occurs.
+
+
+Examine the DR/BDR status  using the <b>show ospfv3 ipv4 neighbor</b> command.
+
+
+When start establishing OSPF neighbor adjacency, they will first send OSPF hello packets to discover which OSPF neighbors are active on the common Ethernet segment. After the bidirectional communication between routers is established and they are all in OSPF neighbor 2-WAY state, the DR/BDR election process begins. The OSPF hello packet contains three specific fields that are used for the DR/BDR election: Designated Router, Backup Designated Router, and Router Priority.
+
+The Designated Router and Backup Designated Router fields are populated with a list of routers claiming to be DR and BDR. From all routers that are listed, the router with the highest priority becomes the DR, and the router with the next highest priority becomes the BDR. If the priority values are equal, the router with the highest OSPF router ID becomes the DR, and the router with the next highest OSPF router ID becomes BDR.
+
+The DR/BDR election process takes place on broadcast and nonbroadcast multiaccess networks. The main difference between the two is the type of IP address that is used in the hello packet. On the multiaccess broadcast networks, routers use multicast destination IP address 224.0.0.6 to communicate with the DR (called AllDRRouters) and the DR uses multicast destination IP address 224.0.0.5 to communicate with all other non-DR routers (called AllSPFRouters). On NBMA networks, the DR and adjacent routers communicate using unicast.
+
+The procedure of DR/BDR election occurs not only when the network first becomes active, but also when the DR becomes unavailable. In this case, the BDR will immediately become the DR, and the election of the new BDR starts.
+
+In the topology, R5 has been elected as the DR, and R4 as the BDR, due to the highest router-id values on the segment. R1 became DROTHER. On the multiaccess segment, it is normal behavior that the router in DROTHER status is fully adjacent with DR/BDR, and in a 2-WAY state with all other DROTHER routers present on the segment.
+
+The results should be identical for the IPv6 address family.
+
+After the Dead timer expires, a new DR/BDR election takes place. The output of the <b>show ospfv3 ipv4 neighbor<b> command shows that R4 has become the DR, and R1 the BDR.
+
+<h4>Using OSPF Priority in the DR/BDR Election</h4>
+
+
+OSPF hello packet that is used in DR/BDR election contains Router Priority field.
+
+The router with the highest OSPF priority will be elected as DR.
+
+The router with the second-highest OSPF priority will be elected as BDR.
+
+The router with the priority set to 0 does not participate in the DR/BDR election and is not eligible to become the DR/BDR.
+
+One of the fields in the OSPF hello packet that is used in the DR/BDR election process is the Router Priority field. Every broadcast and nonbroadcast multiaccess OSPF-enabled interface has an assigned priority value, which is a number between 0 and 255. By default, in Cisco IOS Software, the OSPF interface priority value is 1. You can manually change it using either the ospfv3 process-id priority interface level command or the more specific <b>ospfv3 process-id [ipv4 | ipv6] priority</b> interface level command. To elect a DR, and BDR, the routers view the OSPF priority value of other routers during the hello packet exchange process and then use the following conditions to determine which router to select:
+
+The router with the highest priority value is elected as the DR.
+
+The router with the second-highest priority value is the BDR.
+
+If there is a tie, where two routers have the same priority value, the router ID is used as the tie-breaker. The router with the highest router ID becomes the DR. The router with the second-highest router ID becomes the BDR.
+
+A router with a priority that is set to 0 cannot become the DR or BDR. A router that is not the DR or BDR is called a DROTHER.
+
+configure OSPF priority using the ospfv3 process-id priority interface level command. 
+<b>
+R1(config)# interface ethernet 0/1
+R1(config-if)# ospfv3 1 priority 100
+R4# clear ospfv3 process 
+</b>
+
+In this step, you set the OSPF interface priority value to 100 for OSPFv3 process ID 1. In this way, you influence the DR/BDR election for both address families and the R1 router will become the DR after you clear the OSPF process on the current DR, R4
+
+verify that it has been elected as a new DR for both address families by entering the <b>show ospfv3 interface ethernet 0/1</b>
+
+using the ospfv3 process-id priority level command.
+<b>
+R4(config)# interface ethernet 0/0
+R4(config-if)# ospfv3 1 priority 0
+R5(config)# interface ethernet 0/0
+R5(config-if)# ospfv3 1 priority 0
+</b>
+
+Setting the OSPF priority to a value of 0 on the Ethernet 0/0 interfaces of R4 and R5 causes these two routers to not participate in DR/BDR election. They will not be eligible to become DR/BDR. Such routers will have DROTHER function. Since you haven’t specified an address family, this value applies to both.
+
+Verify DR/BDR status on R1, R4, and R5 for both address families.
+<b>
+R1# show ospfv3 neighbor
+R4# show ospfv3 neighbor 
+</b>
+
+<h4>Modify the OSPFv3 Timers</h4>
+
+<h4>Manipulating OSPF Timers</h4>
+
+
+SPF uses hello and dead timers to monitor neighbor reachability.
+
+To form an OSPF neighbor adjacency, hello and dead interval timers must match.
+
+OSPF hello timer default values:
+
+Broadcast and point-to-point links: 10 seconds
+
+All other OSPF network types: 30 seconds
+
+Default value for OSPF dead timer is four times the hello interval.
+
+The <b>debug ospfv3 hello</b> command can be used to see a mismatch in hello timers.
+
+Like EIGRP, OSPF uses two timers to check neighbor reachability. These two timers are named hello and dead intervals. The values of the hello and dead intervals are carried in the OSPF hello packet, which serves as a keepalive message with the purpose of acknowledging the router presence on the segment. The hello interval specifies the frequency of sending OSPF hello packets in seconds. The SPF dead timer specifies how long a router waits to receive a hello packet before it declares the neighbor router down.
+
+OSPF requires that both the hello and dead timers are identical for all routers on the segment to become OSPF neighbors. The default value of the OSPF hello timer on multiaccess broadcast and point-to-point links is 10 seconds and on all other network types, including nonbroadcast (NBMA), is 30 seconds. <b>Once you set up the hello interval, the default value of the dead interval will automatically be four times the hello interval</b>. For broadcast and point-to-point links, it is 40 seconds and for all other OSPF network types, it is 120 seconds.
+
+To detect faster topological changes, you can lower the value of the OSPF hello interval, with the downside of having more routing traffic on the link.
+
+To investigate the mismatch of the hello timers, use the <b>debug ospfv3 hello</b> command
+
+On low-speed links, you may want to alter the default OSPF timer values to achieve faster convergence. The negative aspect of lowering the OSPF hello interval is the overhead of more frequent routing updates, causing higher router utilization, and more traffic on the link.
+
+The OSPF timer can be changed using the ospfv3 process-id hello-interval and ospfv3 process-id dead-interval interface commands.
+
+<b>
+R1(config-if)# interface serial 2/0
+R1(config-if)# ospfv3 1 hello-interval 8
+R1(config-if)# ospfv3 1 dead-interval 30
+</b>
+
+Once you change the default OSPF hello and dead interval values on the serial link, both routers will detect a hello timer mismatch. As a result, the dead timer will not be refreshed, so it will expire, declaring the OSPF neighbor relationship as down. Notice that this occurs for both address families since you applied the new values to the entire OSPFv3 process.
+
+When changing only the OSPF hello interval, OSPF automatically changes the dead interval to four times the hello interval.
+
+verify the OSPF neighbor state using the <b>show ospfv3 neighbor</b> detail command.
+The output of the <b>show ospfv3 neighbor detail</b> command confirms that full OSPF adjacency with R1 is established for IPv4 and IPv6 address families. The output also shows additional information regarding the neighbor router ID and how long the neighbor session has been established.
+
+<h3>OSPFv2 and OSPFv3 LSA Types</h3>
+Knowing the detailed topology of the OSPF area is a prerequisite for a router to calculate the best paths. Topology details are described by LSAs, which are the building blocks of the OSPF LSDB. Individually, LSAs act as database records. In combination, they describe the entire topology of an OSPF network area.
+
+The most common OSPFv2 LSA types:
+
+Type 1(Router LSA): Every router generates router link advertisements for each area to which it belongs. Router link advertisements describe the state of the router links to the area and are flooded only within that particular area. For all types of LSAs, there are 20-byte LSA headers. One of the fields of the LSA header is the link-state ID. The link-state ID of the type 1 LSA is the originating router ID.
+
+Type 2(Network LSA): DRs generate network link advertisements for multiaccess networks. Network link advertisements describe the set of routers that are attached to a particular multiaccess network. Network link advertisements are flooded in the area that contains the network. The link-state ID of the type 2 LSA is the IP interface address of the DR.
+
+Type 3(Summary LSA): An ABR takes the information that it learned in one area to describe and summarize it for another area in the summary link advertisement. This summarization is not on by default. The link-state ID of the type 3 LSA is the destination network number.
+
+Type 4(ASBR summary LSA): The ASBR summary link advertisement informs the rest of the OSPF domain how to get to the ASBR. The link-state ID includes the router ID of the described ASBR.
+
+Type 5(LSA): AS external link advertisements, which are generated by ASBRs, describe routes to destinations that are external to the AS. They get flooded everywhere, except into special areas. The link-state ID of the type 5 LSA is the external network number.
+
+Other LSA types are as follows:
+
+Type 6: Specialized LSAs that are used in multicast OSPF applications
+
+Type 7: Used in special area type NSSA for external routes
+
+Type 8 and type 9: Used in OSPFv3 for link-local addresses and intra-area prefixes
+
+Type 10 and type 11: Generic LSAs, also called opaque, which allow future extensions of OSPF
+
+In the example, R2 is an ABR between Areas 0, 1, and 2. R3 acts as the ASBR between the OSPF routing domain and an external domain. LSA types 1 and 2 are flooded between routers within an area. Type 3 and type 5 LSAs are flooded when exchanging information between the backbone and standard areas. Type 4 LSAs are injected into the backbone by the ABR because all routers in the OSPF domain need to reach the ASBR (R3).
+
+
+Most LSA functionality in OSPFv3 is the same as in OSPFv2, with a few changes in the LSA names and the addition of two new important LSAs.
+
+The two renamed LSA types are:
+
+Inter-Area Prefix LSAs for ABRs (known in OSPFv2 as Type 3): Inter-Area Prefix LSAs advertise internal networks to routers in other areas (interarea routes). These LSAs may represent a single network or a set of networks summarized into one advertisement. Only ABRs generate Inter-Area Prefix LSAs. In OSPFv3 these LSAs are expressed as prefix/prefix length instead of address, and mask. The default route is expressed as a prefix with length 0.
+
+Inter-Area Router LSAs for ASBRs (known in OSPFv2 as Type 4): Inter-Area Router LSAs advertise the location of an ASBR. An ABR originates an Inter-Area Router LSA into an area to advertise an ASBR that resides outside of the area. The ABR originates a separate Inter-Area Router LSA for each ASBR it advertises. Routers that are trying to reach an external network use these advertisements to determine the best path to the next hop.
+
+The two new LSA types are:
+
+Link LSAs (commonly referred to as Type 8): Link LSAs have local-link flooding scope and are never flooded beyond the link with which they are associated. Link LSAs provide the link-local address of the router to all other routers that are attached to the link. They inform other routers that are attached to the link of a list of prefixes to associate with the link. In addition, they allow the router to assert a collection of option bits to associate with the Network LSA that will be originated for the link.
+
+Intra-Area Prefix LSAs (commonly referred to as Type 9): A router can originate multiple Intra-Area Prefix LSAs for each router or transit network, each with a unique link-state ID. The link-state ID for each Intra-Area Prefix LSA describes its association to either the Router LSA or the Network LSA. The link-state ID also contains prefixes for stub and transit networks.
+
+Using the same example, you can see that although some of the OSPFv3 LSAs have new names, they basically behave like their OSPFv2 counterparts. R2 is an ABR between Areas 0, 1, and 2. R3 acts as the ASBR between the OSPF routing domain and an external domain. Network, Router, Link, and Intra-Area Prefix LSAs are flooded between routers within an area. Inter-Area Prefix and AS External LSAs are flooded when exchanging information between the backbone and standard areas. Inter-Area Router LSAs are injected into the backbone by the ABR because all routers in the OSPF domain need to reach the ASBR (R3).
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo
+<h3></h3> subtema modulo
+<h4></h4> subtema subtema
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<th>x</th>
+<th>x</th>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+
+<br>
+-->

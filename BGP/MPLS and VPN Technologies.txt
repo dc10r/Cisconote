@@ -1,0 +1,597 @@
+<h2>MPLS and VPN Technologies</h2>
+
+Multiprotocol Label Switching (MPLS) is a feature that can be used as an alternate to traditional IP routing.
+
+You will also learn MPLS terms such as label switch router, lab switched path, upstream path and downstream path. Finally, you will explore the architecture of an MPLS ingress edge LSR, intermediate LSR and egress edge LSR.
+
+
+In this section, you will be able to:
+
+Describe the foundations of traditional IP routing
+
+Describe the features and benefits of MPLS
+
+Explain MPLS terminology
+
+Describe the architecture of MPLS components
+
+Describe the architecture of ingress edge LSRs
+
+Describe the architecture of intermediate LSRs
+
+Describe the architecture of egress edge LSRs
+
+Describe the features of MPLS labels
+
+Describe FEC and MPLS forwarding
+
+Describe the format of MPLS labels
+
+Describe label distribution protocols
+
+Describe how to use LDP to forward IP packets
+
+Describe LDP and IGP propagation
+
+
+<h3>Describe Traditional IP Routing</h3> 
+
+
+In traditional IP routing, packet forwarding decisions are based on the IP address.
+
+these three foundations of traditional IP routing should be discussed:
+
+<ul>
+  <li>Routing protocols are used on all Layer 3 network devices to distribute routing information</li>
+  <li>Each router analyzes the Layer 3 header of each packet, which is compared to the local routing table, and decides where to forward the packet. Regardless of the routing protocol, routers forward packets contingent on a destination address-based routing lookup.</li>
+  <li>The routing lookup is performed independently on every router in the network.</li>
+</ul>
+
+The exception to this rule is PBR, in which routers bypass the destination-based routing lookup.
+
+
+<h4>Traditional IP Forwarding Example</h4>
+
+
+Regardless of the routing protocol, packet forwarding is based on the destination address alone. Therefore, when the router receives a packet, the router determines the next-hop address by using the packet destination IP address along with the information from its own forwarding and routing table.
+
+<h3>Describe MPLS Features and Benefits</h3>
+MPLS is a packet-forwarding technology that uses appended labels to make forwarding decisions for packets.
+
+MPLS leverages both IP routing and Cisco Express Forwarding switch
+
+MPLS is a forwarding mechanism in which packets are forwarded according to labels.
+
+MPLS was designed to support multiple Layer 3 protocols.
+
+Typically, MPLS labels correspond to destination networks (equivalent to traditional IP forwarding).
+
+MPLS is designed to leverage the intelligence that is associated with IP routing and the switching model that is associated with Cisco Express Forwarding switching.
+
+Cisco Express Forwarding uses a complete IP switching table—the FIB (Forwarding Information Base (FIB)) table—to make forwarding decisions. Because the FIB(Forwarding Information Base (FIB)) contains the complete IP switching table, the router can make definitive forwarding decisions based on the information in the FIB.
+
+Within the MPLS network, the Layer 3 header analysis is performed only once: when the packet enters the MPLS domain. Labels are appended to the packet, and then the packet is forwarded into the MPLS domain. Simple label inspection, which is integrated with Cisco Express Forwarding switching, drives subsequent packet forwarding.
+
+MPLS efficiently forwards packets across the network core, according to a simplified header. 
+
+Label switching is performed regardless of the Layer 3 routing protocol. A label is a short, 4-byte, fixed length, locally significant identifier that is used to identify a Forwarding Equivalence Class (FEC)
+
+A FEC is a group of packets that are forwarded in the same manner, over the same path, and with the same forwarding treatment. 
+
+ Most commonly, a packet is assigned to a FEC based on its network layer destination address. So, MPLS labels typically correspond to Layer 3 destination addresses (equal to destination-based routing).
+
+ Labels can also correspond to other parameters, such as Quality of Service (QoS), source address, or a Layer 2 circuit.
+
+In modern routers, MPLS label switching is not much faster than IP routing, but MPLS is not used just because of its switching performance. MPLS decreases the forwarding overhead on the core routers. MPLS also supports the forwarding of non-IP protocols, because MPLS technologies are applicable to any network layer protocol.
+
+Benefits of MPLS include the following:
+
+MPLS decreases forwarding overhead on core routers.
+
+MPLS can support forwarding of non-IP protocols because MPLS technologies are applicable to any network layer protocol.
+
+MPLS supports multiple services, including:
+
+Unicast and multicast IP routing
+
+VPN
+
+TE
+
+QoS
+
+AToM
+
+<h3>Explain MPLS Terminology</h3>
+
+<h4>Label Switch Router</h4>
+
+An LSR is a router that supports MPLS. An LSR can understand MPLS labels and can receive and transmit a labeled packet on a data link.
+
+
+Two kinds of LSRs exist in an MPLS network:
+
+
+Edge LSRs: An LSR on the edge of an MPLS domain, the edge LSR implements label distribution procedures, forwards packets according to labels, and primarily inserts labels on packets or removes labels for non-MPLS devices. Depending on the flow of traffic, an edge LSR can be one of two types:
+
+<ul>
+  <li>Ingress LSRs: Ingress LSRs receive a packet that is not yet labeled, insert a label (stack) in front of the packet, and send the packet on a data link.</li>
+  <li></li>
+  <li>Egress LSRs: Egress LSRs receive a labeled packet, remove the label, and send the packet on a data link.</li>
+</ul>
+
+Intermediate LSRs: Intermediate LSRs receive an incoming labeled packet, perform an operation on the packet, switch the packet, and send the packet on the correct data link.
+
+An LSR can perform three label operations: pop, push, or swap.
+
+Intermediate LSRs and Edge LSRs are usually capable of both label switching and IP routing. Their names are based on their positions in an MPLS domain. Routers that have all interfaces enabled for MPLS are called LSRs because they mostly forward labeled packets. Routers that have some interfaces that are not enabled for MPLS are usually at the edge of an MPLS domain. These routers also forward packets according to IP destination addresses and label the packets if the outgoing interface is enabled for MPLS.
+
+<h4>Label-Switched Path</h4>
+
+
+an Multiprotocol Label Switching (MPLS) Label-Switched Path(SLP) is the contiguous labeled path for a data packet, from source to destination, through an MPLS-enabled network.
+
+The first router of an LSP is the ingress LSR for that path, while the last router of the LSP is the egress LSR
+
+All the routers between the ingress and egress LSRs are the intermediate LSRs.
+
+LSPs are unidirectional. The flow of labeled packets in the opposite direction (from right to left in the figure) between the same edge LSRs would be another LSP. The LSP is usually derived from IGP routing information but can diverge from the Interior Gateway Protocol (IGP) preferred path to the destination. 
+
+
+<h4>Upstream and Downstream</h4>
+
+ concepts of upstream and downstream are important in understanding the operation of label distribution (control plane) and data forwarding in an MPLS domain.
+
+
+Both upstream and downstream are defined with reference to the destination network. 
+<b>Data that is intended for a particular destination network always flows downstream.</b>
+<b>Updates, from a routing protocol or Label Discovery Protocol (LDP), that pertain to a specific prefix are always propagated upstream.</b>
+
+<h3>Describe MPLS Architecture Components</h3>
+
+MPLS consists of two major components:
+
+<ul>
+  <li>Control plane: The control plane performs Layer 3 protocol exchange and its related processes, using IP routing protocols such as OSPF and BGP, as well as RSVP and LDPs.</li>
+  <li>ata plane: The data plane is the forwarding engine that forwards according to labels or destination IP addresses.</li>
+</ul>
+
+
+Control Plane
+Layer 3 Protocol Exchange and its Related Processes
+Examples: OSPF, BGP, RSVP, and LDPs
+
+Data Plane
+Forwarding Engine that Forwards
+According to Labels or Destination
+IP Addresses
+
+
+<h4>MPLS Architecture: Control Plane</h4>
+
+The control plane builds a routing table—the Routing Information Base (RIB)—based on the routing protocol. Various routing protocols, such as OSPF, Enhanced Interior Gateway Routing Protocol (EIGRP), Intermediate System-to-Intermediate System (IS-IS), RIP, and BGP, can be used in the control plane for managing Layer 3 routing.
+
+The control plane uses a label exchange protocol to create and maintain labels internally and to exchange these labels with other devices. The label exchange protocol binds labels to networks that are learned via a routing protocol and builds the (Label Exchange Protocol (LIB))LIB table. Label exchange protocols include MPLS LDP and BGP (used by MPLS VPN). MPLS TE uses RSVP to accomplish label exchange.
+
+The control plane also builds two forwarding tables: a Forwarding Information Base (FIB) table that is based on the information in the RIB, and an LFIB table that is based on the label exchange protocol and the LIB. The LFIB table includes label values and associations with the outgoing interface for every network prefix.
+
+<h4>MPLS Architecture: Data Plane</h4>
+
+The data plane takes care of forwarding, which is based on either destination addresses or labels; the data plane is also known as the forwarding plane.
+
+The data plane is a simple forwarding engine that is independent of the type of routing protocol or label exchange protocol that is used. The data plane forwards packets to the appropriate interface, according to the information in the Label Forwarding Information base (LFIB) or the FIB tables.
+
+<h3>Describe the Architecture of Ingress Edge LSRs</h3> 
+
+MPLS operation typically involves adjacent LSRs forming an LDP session, assigning local labels to destination prefixes, and exchanging these labels over established LDP sessions. Upon completion of label exchange between adjacent LSRs, the control and data structures of MPLS—namely, FIB, LIB, and LFIB—are populated, and the router is ready to forward data according to label values.
+
+LSR (Label Switching Router): An MPLS-enabled router that reads, pushes, or swaps labels on packets.
+
+LDP (Label Distribution Protocol): The protocol neighboring routers use to negotiate and exchange label bindings for IP prefixes learned via routing protocols (like OSPF or BGP).
+
+Step-by-Step Operation
+
+Session Setup: Neighboring LSRs discover each other (via UDP hellos) and establish a TCP-based LDP session to exchange information reliably.Local Label Assignment: Each LSR looks at its IP Routing Information Base (RIB) and assigns a unique local numerical label to every IP destination prefix it knows about.Label Exchange: LSRs advertise these local labels to their LDP neighbors over the established session ("If you want to send traffic to prefix $X$, slap label $Y$ on it").Populating Tables: Once mappings are shared, the router populates three critical data structures across its Control Plane (learning/brain) and Forwarding Plane (fast data path):
+
+<table border="1">
+<tr>
+<td>Table</td>
+<td>Plane</td>
+<td>Primary Role</td>
+</tr>
+<tr>
+<td>LIB (Label Information Base)</td>
+<td>Control</td>
+<td>Database of all labels. Holds every local label assigned by this router and all remote labels advertised by all LDP neighbors.</td>
+</tr>
+<tr>
+<td>FIB (Forwarding Information Base)</td>
+<td>Forwarding</td>
+<td>IP packet entry point. Maps incoming unlabelled IP packets to an outgoing MPLS label (used by the ingress router to push a label).</td>
+</tr>
+<tr>
+<td>LFIB (Label Forwarding Information Base)</td>
+<td>Forwarding</td>
+<td>MPLS packet transit path. Maps incoming labeled packets to an outgoing action: swap with a neighbor's label or pop the label at the final hop.</td>
+</tr>
+</table>
+
+Data Plane Result
+
+Once these tables are built, data forwarding is instant:
+
+Ingress Router (Start): Receives a standard IP packet, checks the FIB, attaches (pushes) the designated MPLS label, and sends it out.
+
+Transit Routers (Middle): Receive the labeled packet, check the LFIB, swap the incoming label for the next hop's label, and forward it.
+
+Egress Router (End): Strips (pops) the label and forwards the original IP packet to its final destination.
+
+<h4> Ingress Edge LSR Architecture Example</h4>
+
+In the figure, the ingress edge LSR receives an unlabeled data packet for network 10.0.0.0/8 and identifies that the path to the destination is MPLS enabled. Therefore, the ingress edge LSR applies a label 24 (the next-hop label is learned from the downstream intermediate LSR router) to the packet and forwards the packet to the next-hop, intermediate LSR router (to the right in the figure).
+
+Control plane operation occurs in the following sequence:
+
+A routing protocol update (OSPF) informs the router about IP network 10.0.0.0/8. This information is used to build the RIB.
+
+The LDP attaches the locally significant label 34 to the prefix 10.0.0.0/8 and advertises the label to its neighbors.
+
+The downstream neighbor of this router (to the right in the figure) assigns a label 24 to the prefix 10.0.0.0/8 and advertises it to this router and other neighbors by using LDP. This label is referred to as the outgoing label on the local router. Labels are stored in the LIB.
+
+The prefix information, locally significant label, and outgoing label are used to build the LFIB.
+
+Data plane (IP-to-MPLS) operation occurs in the following sequence: When an incoming IP packet to network 10.0.0.0/8 arrives, it is forwarded by using the FIB table, where a next-hop label dictates that the outgoing packet should be labeled with an outgoing label 24 and forwarded to the downstream router. This process is known as label imposition.
+
+<h3>Describe the Architecture of Intermediate LSRs</h3>
+
+The LSR receives a labeled packet, swaps the label with an outgoing label, and forwards the new labeled packet from the appropriate interface. Depending on its location in the MPLS domain, the LSR can perform label disposition (removal, also called pop), label imposition (addition, also called push), or label swapping (replacing the top label in a label stack with a new outgoing label value).
+
+1. Label Imposition (PUSH)
+
+Role: Performed by the Ingress LSR (the entry router into the MPLS core, often called a Provider Edge or PE router).
+
+Action: The router receives an unlabeled IP packet, looks up the destination in its FIB table, prepends a brand-new MPLS label header to the front of the packet, and forwards it into the MPLS domain.
+
+2. Label Swapping (SWAP)
+
+Role: Performed by Transit LSRs (middle routers within the core network, often called Provider or P routers).
+
+Action: The router receives a labeled packet, looks up the top label in its LFIB table, replaces (swaps) that incoming label with a new outgoing label agreed upon with the next hop, and sends it out the appropriate interface. The router does not read the underlying IP header at all.
+
+3. Label Disposition (POP)
+
+Role: Performed by the Egress LSR (exit router) or the Penultimate LSR (the router right before the exit router).
+
+Action: The router strips (pops) the outer MPLS label from the packet. If it's the last label, the packet reverts to a standard native IP frame before leaving the MPLS network to 
+its destination.
+
+<h4> Intermediate LSR Architecture Example</h4> 
+In this figure, the intermediate LSR receives the labeled packet, swaps the label 24 with the label 44, and forwards the packet to the next-hop, egress edge LSR (to the right in the figure).
+
+Control plane operation occurs in the following sequence:
+
+A routing protocol update (OSPF) informs the router about IP network 10.0.0.0/8. This information is used to build the RIB.
+
+The LDP attaches the locally significant label 24 to the prefix 10.0.0.0/8 and advertises it to its neighbors.
+
+The downstream neighbor of the router (to the right in the figure) assigns a label 44 to the prefix 10.0.0.0/8 and advertises it to this router and other neighbors by using LDP. This label is referred to as the outgoing label on the local router. Labels are stored in the LIB.
+
+The prefix information, locally significant label, and outgoing label are used to build the LFIB.
+
+Data plane (MPLS-to-MPLS) operation occurs in the following sequence:
+
+When an upstream router (to the left in the figure) that is participating in MPLS receives a packet for network 10.0.0.0/8, the router will attach the label 24 and forward it to this router.
+
+When this router receives the labeled packet, it will swap the label value of 24 with a label value of 44, based on the LFIB table. With this process, the incoming (locally significant) label 24 is swapped with the outgoing (next-hop) label 44. This process is known as label swapping.
+
+From which other information table(s) is the LFIB table built?
+RIB and LIB
+
+<h3>Describe the Architecture of Egress Edge LSRs</h3>
+
+The egress edge LSR performs the functions of label disposition or removal (pop) and of forwarding an IP packet to the destination.
+
+An egress edge LSR can also assign the implicit null label to a FEC if it does not want to assign a label to that FEC, thus requesting the upstream penultimate LSR (in this example, the intermediate LSR) to perform a pop operation. By sending a special label with the reserved value of 3 instead of sending a regular label, the egress LSR signals the penultimate LSR to use implicit null. The result is that the egress edge LSR receives an IP packet and needs only to perform an IP lookup to forward the packet. This result enhances the performance on the egress LSR.
+
+If the egress router (the last MPLS router) receives a packet with an MPLS label, it has to do two lookups:
+
+Check the LFIB table to look up the label ----> discover that the label must be stripped (popped).
+
+Check the FIB or RIB IP routing table ----> figure out where to actually send the underlying unlabelled IP packet.
+
+Doing two consecutive table lookups for every exiting packet creates a CPU/processing bottleneck on the egress router.
+
+How Implicit Null (Label 3) Works
+
+To eliminate that double lookup, the egress router delegates the "pop" action to the second-to-last router (the Penultimate LSR):
+
+Signaling (Control Plane): The egress router sends a special reserved label—Label 3 (also called the Implicit Null label)—via LDP to its neighbor upstream.
+
+Instruction: Label 3 tells the penultimate router: "When sending traffic for this destination to me, don't put a label on it. Remove the outer label before sending it over."
+
+Execution (Data Plane): The penultimate router pops the top label off the packet before transmitting it over the final link.
+
+Key Terminology Note
+
+FEC (Forwarding Equivalence Class): A group of IP packets forwarded over the same path with the same forwarding treatment (usually a destination IP prefix).
+
+Implicit Null (Label 3): An instruction to remove the top label. It is called "implicit" because no physical label containing the value 3 is attached to the wire; the upstream router simply strips the label entirely.
+
+<h4>Egress Edge LSR Architecture Example</h4>
+
+The egress edge LSR is the border router between the MPLS and IP domains. Therefore, this router removes the labels on the data packet and forwards the IP packet to destination network 10.0.0.0/8.
+
+Control plane operation occurs in the following sequence:
+
+A routing protocol update (OSPF) informs other routers about IP network 10.0.0.0/8. This information is used to build the RIB.
+
+The LDP attaches the locally significant label 44 to the prefix 10.0.0.0/8 and advertises it to its neighbors. The LDP also assigns an implicit null or pop next-hop label to the same prefix.
+
+The prefix information, locally significant label, and outgoing label are used to build the LFIB.
+
+Data plane (MPLS-to-IP) operation occurs in the following sequence: The egress edge LSR pops the VPN label 44 and forwards the unlabeled data packet to the customer edge where the 10.0.0.0/8 network is located (to the right in the figure).
+
+The correct answers are: Step 1: A routing protocol (OSPF) receives and forwards information about IP network. Step 2: The LDP assigns an implicit null or pop local label. Step 3: The prefix information, locally significant label, and outgoing label are used to build the LFIB.
+
+<h3> Describe MPLS Labels</h3>
+
+An MPLS label is a 4-byte, fixed-length, locally significant identifier that network core devices use to make forwarding decisions for a packet. Labels define the destination and services for each packet and identify a FEC. The MPLS label that is put on a particular packet represents the FEC to which the packet is assigned.
+
+MPLS labels:
+
+Are 4-byte identifiers used for forwarding decisions
+
+Define the destination and services for a packet
+
+Identify a FEC
+
+Have local significance
+
+ - Each LSR independently maps a label to an FEC in a label binding.
+
+ - Label bindings are exchanged between LSRs.
+
+As noted in RFC 3031 (Multiprotocol Label Switching Architecture), a FEC is a group of packets that are forwarded in the same manner, over the same path, and with the same forwarding treatment.
+
+Labels have local significance to an LSR. Each LSR in the network makes an independent, local decision about which label value to use to represent a FEC. This mapping is known as a label binding.
+
+Each LSR informs its neighbors of the label bindings that it has made.
+
+
+<h4>Describe FEC and MPLS Forwarding</h4>
+
+A FEC is a group of packets forwarded:
+
+In the same manner
+Over the same path
+With the same forwarding treatment
+
+MPLS packet forwarding consists of:
+
+Assigning a packet to a specific FEC
+Determining the next hop of each FEC
+
+MPLS forwarding is connection-oriented.
+
+A FEC is a group of IP packets that are forwarded in the same manner, over the same path, and with the same forwarding treatment. A FEC might correspond to a destination IP subnetwork, but it might also correspond to any traffic class that the edge LSR considers significant. For example, all traffic with a certain value of IP precedence might constitute a FEC.
+
+MPLS packet forwarding consists of two elements:
+
+At the ingress to the MPLS network, packets are classified and assigned to a specific FEC by using a label. No further packet classification is done in the MPLS network.
+
+Throughout the MPLS network, all packets in a FEC are forwarded by using the next-hop address for the FEC. The label value changes as the IP packet traverses the network. When a labeled packet is sent from one LSR to the next-hop LSR, the packet carries the label value that the next-hop LSR has assigned to represent the FEC of the packet.
+
+MPLS uses FEC-based forwarding to evolve connectionless IP networks to connection-oriented networks.
+
+<h4>Describe MPLS Label Format</h4> 
+
+MPLS uses a 32-bit label field that contains the information listed in the figure below.
+
+A - 20-bit label (a number) -----------------------> 0 to 19
+B - 3-bit experimental field (for QoS/IP precedence value) ---------> 20 to 22
+C  1-bit bottom-of-stack indicator (specifies whether this label is the last label before the IP header) -----------------------> 23
+D - 8-bit TTL (similar to TTL in the IP header) -------------> 24 to 31
+
+
+The 20-bit label value is a number that the router assigns to identify the prefix in question. Labels can be assigned either per interface or per chassis.
+
+The 3-bit experimental field defines the QoS that is assigned to the FEC that has been assigned a label. For example, the three experimental bits can map to the eight IP precedence values, to map the IP QoS that is assigned to packets as they traverse an MPLS domain.
+
+A label stack is an ordered set of labels in which each label has a specific function. If the router (the edge LSR) imposes more than one label on a single IP packet, that action leads to what is called a label stack, in which multiple labels are imposed on a single IP packet. Therefore, the bottom-of-stack indicator identifies whether the label that has been encountered is the bottom label of the label stack.
+
+The TTL field performs the same function as an IP TTL, in which the packet is discarded when the TTL of the packet is 0, thus preventing looping of unwanted packets in the network. Whenever a labeled packet traverses an LSR, the label TTL value is decremented by 1
+
+
+<table border="1">
+<tr>
+<th>Label Fields</th>
+</tr>
+<tr>
+<td>Field</td>
+<td>Description</td>
+</tr>
+<tr>
+<td>20-bit label</td>
+<td>This is the actual label. The values 0 to 15 are reserved.</td>
+</tr>
+<tr>
+<td>3-bit experimental field</td>
+<td>This field is typically used to define a QoS or IP precedence value.</td>
+</tr>
+<tr>
+<td>Bottom-of-stack bit</td>
+<td>MPLS allows multiple labels to be inserted; this bit determines whether the label is the last label in the packet. If the bit is set (1), it indicates that this label is the last.</td>
+</tr>
+<tr>
+<td>8-bit TTL field</td>
+<td>This field has the same purpose as the TTL field in the IP header: to prevent the indefinite looping of packets.</td>
+</tr>
+</table>
+
+<h3>Describe Label Distributing Protocols</h3>
+
+Label distributing protocols are mechanisms where one LSR informs another LSR of the label to be associated with a particular FEC. This process is a fundamental part of the MPLS system. There are several label distributing protocols available.
+
+<table border="1">
+<tr>
+<th>Types of Label Distributing Protocols</th>
+</tr>
+<tr>
+<td>LDP</td>
+<td>BGP</td>
+<td>RSVP</td>
+</tr>
+<tr>
+<td>Label Distribution Protocol</td>
+<td>Border Gateway Protocol</td>
+<td>Resource Reservation Protocol</td>
+</tr>
+</table>
+
+LDP is the most common protocol that is used to distribute the labels for IGP prefixes.
+
+However, you should be familiar with some basic characteristics of all three label distributing protocols:
+
+LDP: This protocol was formalized by the IETF.
+
+BGP: Label distribution by BGP is used for MPLS VPN and CSC.
+
+RSVP: Label distribution by RSVP is used for MPLS TE only.
+
+LDP is a standard protocol that is used to exchange labels between adjacent routers.
+
+LDP establishes a session in two steps:
+
+Hello messages are periodically sent on all MPLS-enabled interfaces.
+
+MPLS-enabled routers respond to received hello messages by attempting to establish a session with the source of the hello messages.
+
+LDP link hello message is a UDP packet sent to the "all routers on this subnet" multicast address (224.0.0.2).
+
+TCP is used to establish the session.
+
+Both TCP and UDP use well-known LDP port number 646.
+
+LDP sends hello messages once every five seconds. If the LSR is adjacent or one hop from its neighbor, then the LSR sends out LDP link hello messages to all the routers on the subnet. These messages are sent as UDP packets with a multicast destination address of 224.0.0.2 ("all routers on a subnet") and a destination port number of 646.
+
+A neighboring LSR that is enabled for LDP responds by opening a TCP session with the same destination port number (646), and the two routers begin to establish an LDP session through unicast TCP.
+
+TDP and LDP are used to exchange label bindings, but if they are not functioning correctly, label bindings will not be exchanged, and MPLS will not function. TDP uses UDP 711 and the local broadcast address (255.255.255.255) for neighbor discovery. If neighbors are not directly connected, then unicast communication is again used.
+
+<h3>Describe Using LDP to Forward Packets</h3>
+
+
+control plane 
+The router has attached the locally significant label value of 25 to the prefix 10.0.0.0/8 and has advertised that label to its neighbors. The label value of 23 has been assigned to prefix 10.0.0.0/8 by the upstream neighbor of the router (to the right in the figure).
+
+Data plane
+
+When an incoming IP packet to 10.1.1.1 arrives, it is forwarded by using the FIB table in which a next-hop label dictates that the outgoing packet should be labeled with label 23.
+
+When a downstream router participating in MPLS receives a packet for 10.1.1.1, the router will attach label 25 and forward the packet to the displayed router. When this router receives the labeled packet, it swaps the label value of 25 with a label value of 23, according to the LFIB table. With this process, the incoming (locally significant) label 25 is swapped with the next-hop label 23.
+
+Which data plane table does the router use for label lookups and swapping?
+LFIB
+
+The key difference between the LIB and the LFIB is their role in the router: the LIB is a control-plane database storing all known labels, while the LFIB is a forwarding-plane table containing only the single best label mapping used to forward traffic instantly.
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>LIB (Label Information Base)</th>
+      <th>LFIB (Label Forwarding Information Base)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Plane</strong></td>
+      <td><strong>Control Plane</strong> (CPU / Software)</td>
+      <td><strong>Data / Forwarding Plane</strong> (ASIC / Hardware)</td>
+    </tr>
+    <tr>
+      <td><strong>Primary Role</strong></td>
+      <td>Stores <em>all</em> labels learned from <em>all</em> LDP neighbors.</td>
+      <td>Stores <em>only</em> the best active label path for fast packet forwarding.</td>
+    </tr>
+    <tr>
+      <td><strong>Contents</strong></td>
+      <td>Full database of local labels and remote neighbor labels.</td>
+      <td>Incoming Label &rarr; Outgoing Label + Outgoing Interface.</td>
+    </tr>
+    <tr>
+      <td><strong>Lookup Trigger</strong></td>
+      <td>Consulted when network topology changes or LDP neighbors flap.</td>
+      <td>Consulted every time a labeled packet arrives at an interface.</td>
+    </tr>
+    <tr>
+      <td><strong>Analogy</strong></td>
+      <td>Like a full phonebook containing everyone's numbers.</td>
+      <td>Like speed dial with only the best/active number.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Describe IGP and LDP Propagation</h3>
+<h4>IGP Propagates Routing Information</h4>
+
+The IP routing protocol determines the path
+
+The figure illustrates how an IGP, such as OSPF, IS-IS, or EIGRP, propagates routing information to all routers in an MPLS domain. Each router determines its own shortest path. That path is then installed in the routing table as the best path for that particular destination, which in this case is 10.0.0.0/8.
+
+LDP, which propagates labels for those networks and routers, adds labels to the FIB and LFIB tables
+
+
+<h4>LDP Propagates LFIB and LIB Tables</h4>
+
+LDP propagates labels to convert the path to an LSP.
+
+Frame-mode MPLS uses a liberal label retention mode. Each LSR keeps all labels that are received from LDP peers, even if those peers are not the downstream peers for network 10.0.0.0/8. Liberal retention mode is evident after comparing the contents of the LIB and LFIB tables. Only those labels that come from the next-hop router are inserted into the LFIB table.
+
+LSPs are unidirectional.
+
+Why it's correct: An LSP is a one-way path through an MPLS network from an Ingress router to an Egress router. For return traffic to flow back, a separate, independent LSP must be built in the reverse direction.
+
+LDP advertises labels only for individual segments in the LSP.
+
+Why it's correct: LDP operates on a hop-by-hop basis. A router only exchanges label bindings with its directly connected (or targeted) neighbors for individual links/segments. It does not advertise or set up end-to-end paths directly; the complete LSP is formed by stitching these individual hop segments together.
+
+LDP advertises labels for the entire LSP: Incorrect. LDP has no end-to-end path visibility; it only distributes local labels to adjacent neighbors segment-by-segment.
+
+BGP is used to advertise MPLS labels: Incorrect in this specific context. While MP-BGP can distribute labels in specific scenarios (like BGP-LU or MP-BGP VPNs), basic LSP formation in standard MPLS core networks is handled hop-by-hop by LDP (or RSVP-TE), not standard BGP.
+
+LSPs are bidirectional: Incorrect. LSPs are strictly unidirectional by nature.
+
+
+
+Multiprotocol Label Switching (MPLS).
+LSR (Label Switching Router)
+LDP (Label Distribution Protocol)
+LIB (Label Information Base)
+FEC (Forwarding Equivalence Class)
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->

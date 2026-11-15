@@ -1,0 +1,877 @@
+<h2>Configuring VRF-Lite</h2>
+
+ VRF is usually associated with a service provider running Multiprotocol Label Switching (MPLS) because the two work well together. In a provider network, MPLS isolates each customer’s network traffic, and a VRF is maintained for each customer. However, VRF can be used in other deployments without using Multiprotocol Label Switching (MPLS). VRF-lite is the deployment of VRF without MPLS. With the VRF-Lite feature, the Cisco router supports multiple VPN routing/forwarding instances in customer-edge devices. VRF-Lite allows a PE router to support two or more VPNs with overlapping IP addresses using one interface. VRF-Lite uses input interfaces to distinguish routes for different VPNs and forms virtual packet-forwarding tables by associating one or more Layer 3 interfaces with each VRF.
+
+Interfaces in a VRF can be either physical, such as Ethernet or serial ports, or logical, such as VLAN SVIs. However, a Layer 3 interface cannot belong to more than one VRF at any time.
+
+<h3> PE Router Routing Contexts</h3>
+
+Traditional Cisco IOS Software can support several different routing protocols. In some cases, even several completely isolated copies of the same routing protocol are supported. For example, several OSPF processes can be used.
+
+
+For several important routing protocols, such as RIPv2, Enhanced Interior Gateway Routing Protocol (EIGRP), IS-IS, and BGP, Cisco IOS Software supports only a single copy of the protocol running in the router. These protocols cannot be used directly between Provider Edge (PE) and Custom Edge (CE) routers in VPN environments because each VPN (or, more precisely, each VRF) needs a separate, isolated copy of the routing protocol to prevent undesired route leakage between VPNs. Furthermore, VPNs can use overlapping IP address spaces (for example, each VPN could use subnetworks of network 10.1.1.0/24) that would also lead to routing confusion if all VPNs shared the same copy of the routing protocol.
+
+
+<h3>VPN-Aware Routing Protocols</h3>
+
+
+Routing contexts were introduced in Cisco IOS Software to support the need for separate isolated copies of VPN routing protocols. Routing contexts can be implemented as separate routing processes (in OSPF), similar to a traditional Cisco IOS Software implementation, or as separate isolated instances of the same routing protocol.
+
+In VPN routing:
+
+<ul>
+  <li>A routing context is a routing protocol instance running in a VRF.</li>
+  <li>VPN-aware routing processes include EBGP, EIGRP, OSPF, RIPv2, IS-IS, and static routes.</li>
+  <li>VPN-aware routing processes include EBGP, EIGRP, OSPF, RIPv2, IS-IS, and static routes.</li>
+</ul>
+
+If routing contexts are implemented as instances of the same routing protocol, each instance contains its own independent routing protocol parameters. Examples would include networks over which the routing protocol is run, timers, authentication parameters, passive interfaces, and neighbors. This independence allows the network designer to have maximum flexibility in implementing routing protocols between PE and CE routers.
+
+
+<h3> VRF Table</h3>
+
+The major data structure that is associated with MPLS VPN implementation on Cisco platforms is the VRF table.
+
+Virtual routing and forwarding:
+
+A VRF is a routing instance for a set of sites with identical connectivity requirements.
+
+A VRF table contains the following data structures:
+
+
+<ul>
+  <li>An IP routing table</li>
+  <li>A CEF table</li>
+  <li>A set of rules and routing protocol parameters</li>
+  <li>A list of interfaces that use the VRF</li>
+</ul>
+A VRF table is associated with a route distinguisher and a set of import and export route targets.
+
+The VRF data structure encompasses these constructs:
+
+<ul>
+  <li>An IP routing table that is identical in function to the global IP routing table in Cisco IOS Software</li>
+  <li>A Cisco Express Forwarding table that is identical in function to the global Cisco Express Forwarding table (FIB)</li>
+  <li>Specifications for routing protocols running inside the VRF instance</li>
+</ul>
+
+A VRF is a routing and forwarding instance that you can use for a single VPN site or for many sites connected to the same PE router, if and only if these sites share the same connectivity requirements.
+
+<ul>
+  <li>The RD, that is prepended (for example, RD + IP address) to all routes that are exported from the VRF into the global VPNv4 (also called VPN IPv4) BGP table</li>
+  <li>A set of export RTs, that is attached to any route that is exported from the VRF</li>
+  <li>A set of import RTs, that is used to select VPNv4 routes that are to be imported into the VRF</li>
+</ul>
+
+VRF table characteristics:
+
+<ul>
+  <li>Contains routes for a particular set of sites</li>
+  <li>Similar to a standard routing table: Same set of mechanisms and rules</li>
+  <li>Interfaces assigned to VRFs:</li>
+       <ul>
+  		<li>Many interfaces per VRF</li>
+		<li>Physical, subinterfaces, or logical interfaces</li>
+  		<li>Each interface can be assigned to only one VRF</li>
+	</ul>
+</ul>
+
+The routes that are received from VRF routing protocol instances or from dedicated VRF routing processes are inserted into the IP routing table that is contained within the VRF. This IP routing table supports the same set of mechanisms as the standard Cisco IOS Software routing table. These mechanisms include filter mechanisms (distribute lists or prefix lists) and interprotocol route-selection mechanisms (administrative distances).
+
+The per-VRF FIB table is built from the per-VRF routing table. This table is used to forward all the packets that are received through the interfaces that are associated with the VRF. Any interface can be associated with a VRF, whether it is a physical interface, subinterface, or logical interface, as long as it supports Cisco Express Forwarding switching.
+
+There is no limit to the number of interfaces that can be associated with one VRF (other than the number of interfaces that are supported by the router). However, each interface can be assigned to only one VRF because the router needs to uniquely identify the forwarding table to be used for packets that are received over an interface.
+
+<h2>VRF-Lite Functionality</h2>
+
+VRF-Lite provides the ability to configure and maintain more than one VRF instance within the same PE router.
+
+VRF-Lite features:
+
+Support for multiple routing domains on a single PE router.
+
+Each routing domain has its own:
+
+Routing and forwarding table (VRF)
+
+Set of interfaces
+
+Multiple customers can share one PE.
+
+Only one physical link is used between the CE and the PE.
+
+VRF-Lite interfaces must be Layer 3 interfaces.
+
+VRF-Lite uses input interfaces to distinguish routes for different VPNs and forms VRF tables by associating one or more Layer 3 interfaces with each VRF. Interfaces in a VRF can be either physical, such as Ethernet ports, or logical, such as VLAN SVIs. However, a Layer 3 interface cannot belong to more than one VRF at any time. The VRF-Lite feature thus allows an operator to support two or more routing domains on a router, with each routing domain having its own set of interfaces and its own set of routing and forwarding tables. The example in the topology demonstrates a PE router configured with two VRFs, using separate L3 interfaces to connect to CE1 and CE2, but using the same IP subnet. This is possible since each VRF has its own separate, isolated routing table.
+
+VRF-Lite includes these devices:
+
+Customer edge devices: CE devices provide customer access to the service provider network over a data link to one or more PE routers. The CE device advertises the local routes of the site to the PE router and learns the remote VPN routes from it.
+
+Provider edge routers: PE routers exchange routing information with CE devices by using static routing or a routing protocol such as BGP, RIPv2, OSPF, or EIGRP. The PE router is only required to maintain VPN routes for the VPNs to which it is directly attached, eliminating the need for the PE router to maintain all the service provider VPN routes. Each PE router maintains a VRF for each of its directly connected sites. Multiple interfaces on a PE router can be associated with a single VRF if all these sites participate in the same VPN. Each VPN is mapped to a specified VRF. After learning local VPN routes from CE devices, a PE router exchanges VPN routing information with other PE routers by using IBGP.
+
+<h2>Implement VRF-Lite</h2> 
+
+With VRF-Lite, multiple customers can share one CE, and only one physical link is used between the CE and the PE. The shared CE maintains separate VRF tables for each customer and switches or routes packets for each customer, based on its own routing table. VRF-Lite extends limited PE functionality to a CE device, giving it the ability to maintain separate VRF tables to extend the privacy and security of a VPN to the branch office.
+
+To understand the VRF-Lite configuration, you can look at a configuration of the CE and PE routers in a sample network. First, VRFs must be configured on both the PE and the CE routers. Also, you must specify the Layer 3 interface to be associated with the VRF and associate the VRF with.
+
+If the CE router is only connected to one customer and only one routing context is required for that customer, then the CE router does not need to be VRF-aware or have VRFs configured locally. Only the PE router required the VRF configuration, since it is often shared among multiple clients.
+
+For simple VRF-Lite deployments, RDs and RTs are not required. They only become necessary when BGP is used for inter-VRF route leaking.
+
+<b>
+PE (config) #
+vrf definition VPN_A
+rd 1:200
+address-family ipv4
+route-target both 1:210
+
+vrf definition VPN_B
+rd 1:300
+address-family ipv4
+route-target both 1:310
+
+interface GigabitEthernet0/0/0
+vrf forwarding VPN_A
+ip address 10.1.2.30 255.255.255.0
+
+interface GigabitEthernet0/0/1
+vrf forwarding VPN_B
+ip address 10.1.22.20 255.255.255.0
+</b>
+
+<b>
+CE (config) #
+vrf definition VPN_A
+rd 1:200
+!
+vrf definition VPN_B
+rd 1:300
+!
+interface GigabitEthernet0/0/0
+vrf forwarding VPN_A
+ip address 10.1.2.21 255.255.255.0
+
+interface GigabitEthernet0/0/1
+vrf forwarding VPN_B
+ip address 10.1.22.21 255.255.255.0
+</b>
+
+<h2>Migration from Old to New Style VRF CLI</h2>
+
+The multiprotocol VRF configuration allows you to define multiple address families under the same VRF. A given VRF, identified by its name and a set of policies, can apply to both an IPv4 VPN and an IPv6 VPN at the same time. This VRF can be activated on a given interface, even though the routing and forwarding tables are different for the IPv4 and IPv6 protocols.
+
+Cisco IOS supports old and new VRF CLI formats:
+
+Old Cisco IOS VRF configuration style that supports IPv4 only.
+
+New multiprotocol IPv4 and IPv6 CLI
+
+Migration tool from IPv4-only to multiprotocol VREF CLI
+
+<b>
+Router(config)# vrf upgrade-cli multi-af-mode {common-policies | non-common-policies} [vrf vrf-name]
+</b>
+
+<b>
+Old Style VRF CLI
+ip vrf CustomerA
+rd 1:210
+route-target both 1:210
+!
+interface Ethernet 0/0
+ip vrf forwarding CustomerA
+ip address 10.1.1.1 255.255.255.0
+</b>
+
+<b>
+New Style VRF CLI
+vrf definition CustomerA
+rd 1:210
+route-target both 1:210
+!
+address-family ipv4
+exit-address-family
+!
+interface Ethernet 0/0
+vrf forwarding CustomerA
+ip address 10.1.1.1 255.255.255.0
+</b>
+
+Cisco IOS releases earlier than 12.2(33)SRB supported only the single-protocol IPv4-only VRF. You created a single-protocol VRF by entering the <b>ip vrf</b> command. To activate the single-protocol VRF on an interface, you enter the <b>ip vrf forwarding (interface configuration)</b> command. After the introduction of the VRF CLI for IPv4 and IPv6 VPNs feature in Cisco IOS Release 12.2(33)SRB, you can create a multiprotocol VRF by entering the vrf definition command. To activate the multiprotocol VRF on an interface, you enter the vrf forwarding command.
+
+Cisco IOS offers a migration tool that upgrades a VRF instance or all VRFs configured on the router to support multiple address families under the same VRF. The <b>vrf upgrade-cli multi-af-mode {common-policies | non-common-policies} [vrf vrf-name]</b> command is issued in the configuration mode and uses these parameters:
+
+The <b>multi-af-mode</b> keyword specifies an upgrade of the single-protocol VRF to the multiprotocol VRF that supports configuration of multiple address families.
+
+The <b>common-policies</b> keyword specifies copying the route-target policies to the common part of the VRF configuration so that the policies apply to all address families configured in the multiple address family VRF.
+
+The <b>non-common-policies</b> keyword specifies copying the route-target policies to the IPv4 address family part of the VRF configuration so that the policies apply only to IPv4.
+
+The <b>vrf</b> keyword specifies a VRF for the upgrade to a multiple address family VRF configuration.
+
+The <b>vrf-name</b> argument is the name of the single-protocol VRF to upgrade to a multiple address family VRF configuration.
+
+<h3> Routing with VRF-Lite</h3>
+
+<h5>VRF-lite for OSPFv2</h5>
+<b>
+vrf
+!
+
+!
+
+definition CustomerA
+
+address-family ipv4
+exit-address-family
+!
+interface Ethernet 0/0
+vrf forwarding CustomerA
+ip address 172.16.16.1 255.255.255.0
+
+router ospf 10 vrf CustomerA
+network 172.16.16.0 0.0.0.255 area 1
+capability vrf-lite
+</b>
+
+<h5>VRF-lite for OSPFv3 Address Families</h5>
+<b>
+
+vrf definition CustomerA
+
+address-family ipv4
+exit-address-family
+
+address-family ipv6
+exit-address-family
+!
+interface Ethernet 0/0
+vrf forwarding CustomerA
+ip address 172.16.16.1 255.255.255.0
+ipv6 address 2001:BD8:172:16: :1/64
+ospfv3 10 ipv6 area 1
+ospfv3 10 ipv4 area 1
+!
+router ospfv3 10
+
+address-family ipv4 unicast
+capability vrf-lite
+exit-address-family
+!
+address-family ipv6 unicast vrf CustomerA
+capability vrf-lite
+exit-address-family
+
+-.
+</b>
+
+The table summarizes VRF-Lite configuration for OSPF routing.
+
+
+The basic configuration steps are similar for both OSPFv2 and OSPFv3:
+
+Define a VRF and identify the required address family, IPv4 and/or IPv6. Use the <b>vrf definition</b> command to create the the VRF and use the <b>address-family {ipv4 | ipv6} unicast</b> command to initialize the appropriate address family.
+
+Associate the VRF with an interface or subinterface. The VRF is associated with the interface or subinterface by entering the vrf forwarding command under interface configuration mode.
+
+Enable a specific instance of OSPF for the configured VRF. For OSPFv2, the VRF is associated with the OSPF process by using the <b>router ospf process-id vrf vrf-name</b> command. For OSPFv3, the <b>address-family {ipv4 | ipv6} unicast vrf vrf-name</b> command configures an instance of the OSPFv3 process in the VRF routing table for the IPv4 or IPv6 address family. The <b>capability vrf-lite</b> subcommand under the OSPF VRF process should be used when configuring OSPF as the routing protocol between the PE and the CE if the VRF is also defined on the CE router, and when the PE is performing a mutual redistribution of packets between the OSPF and BGP protocols.
+
+<h5></h5>
+<b>
+
+VRF-Lite for EIGRP using classic mode
+vrf definition CustomerA
+
+address-family ipv4
+exit-address-family
+
+interface Ethernet 0/0
+vrf forwarding CustomerA
+ip address 172.16.16.1 255.255.255.0
+!
+router eigrp 500
+
+address-family ipv4 unicast vrf CustomerA
+autonomous-system 65001
+network 172.16.16.0 0.0.0.255
+exit-address-family
+</b>
+
+<h5>VRF-lite for EIGRP using name mode</h5>
+<b>
+vrf definition CustomerA
+
+address-family ipv4
+exit-address-family
+!
+address-family ipv6
+exit-address-family
+
+interface Ethernet 0/0
+vrf forwarding CustomerA
+ip address 172.16.16.1 255.255.255.0
+ipv6 address 2001:BD8 : 172 : 16: :1/64
+
+router eigrp CISCO
+!
+address-family ipv4 unicast vrf CustomerA
+autonomous-system 65001
+network 172.16.16.0 0.0.0.255
+exit-address-family
+!
+address-family ipv6 unicast vrf CustomerA
+autonomous-system 65001
+exit-address-family
+
+</b>
+
+
+The table summarizes VRF-Lite configuration for EIGRP routing
+
+The basic configuration steps are similar for both configuration methods:
+
+Define a VRF and identify the required address family, IPv4 and/or IPv6. Use the <b>vrf definition</b> command to create the the VRF and use the <b>address-family {ipv4 | ipv6} unicast</b> command to initialize the appropriate address family.
+
+Associate the VRF with an interface or subinterface. The VRF is associated with the interface or subinterface by entering the <b>vrf forwarding</b> command under interface configuration mode.
+
+Enable an instance of EIGRP to be used for VRF. For EIGRP using classic or named mode configuration, the VRF is associated with the EIGRP process by using the <b>address-family {ipv4 | ipv6} unicast vrf vrf-name autonomous-system as-number<b> command. For EIGRP using classic mode configuration, the autonomous system number used to define the global EIGRP process does not need to match the autonomous system number used for the VRF.
+
+<h5>VRF-Lite for IPv4 Static Routing</h5>
+
+<b>
+vrf definition CustomerA
+!
+address-family ipv4
+exit-address-family
+
+interface Ethernet 0/0
+vrf forwarding CustomerA
+ip address 172.16.16.1 255.255.255.0
+!
+ip route vrf CustomerA 192.168.0.0
+255.255.0.0 172.16.16.2
+
+</b>
+
+<h5>VRF-lite for ipv6 Static routing</h5>
+<b>
+definition CustomerA
+vrf
+
+address-family ipv6
+exit-address-family
+
+interface Ethernet 0/0
+vrf forwarding CustomerA
+ipv6 address 2001:BD8 : 172: 16: :1/64
+
+ipv6 route vrf CustomorA
+2001 : BD8 : 192 : 168 : : /64 2001 : BD8 : 172 : 16 : :2
+</b>
+
+The table summarizes VRF-Lite configuration for static routing. 
+
+
+The basic configuration steps are similar for both configuration methods:
+
+Define a VRF and identify the required address family, IPv4 and/or IPv6. Use the <b>vrf definition</b> command to create the the VRF and use the <b>address-family {ipv4 | ipv6} unicast</b> command to initialize the appropriate address family.
+
+Associate the VRF with an interface or subinterface. The VRF is associated with the interface or subinterface by entering the <b>vrf forwarding</b> command under interface configuration mode.
+
+Configure a static route and assign it to the VRF using the <b>ip route vrf or ipv6 route vrf</b> command.
+
+
+<h5>VRF-Lite for IPV4 MP-BGP</h5>
+<b>
+vrf definition CustomerA
+!
+address-family ipv4
+exit-address-family
+
+!
+interface Ethernet0/0
+vrf forwarding CustomerA
+ip address 172.16.16.1 255.255.255.0
+
+router bgp 65500
+bgp log-neighbor-changes
+!
+address-family ipv4 vrf CustomerA
+network 10.1.0.0 mask 255.255.0.0
+neighbor 172.16.16.2 remote-as 65001
+neighbor 172.16.16.2 activate
+exit-address-family
+<b>
+
+<h5>VFR-Lite for IPV6 MP-BGP</h5>
+<b>
+vrf definition CustomerA
+!
+address-family ipv6
+exit-address-family
+!
+interface Ethernet0/0
+vrf forwarding CustomerA
+ipv6 address 2001:DB8:172:16: :1/64
+
+router bgp 65500
+bgp log-neighbor-changes
+!
+address-family ipv6 vrf CustomerA
+network 2001:DB8:10:1 : :/48
+neighbor 2001:DB8: 172 : 16 : :2 remote-as 65001
+neighbor 2001:DB8: 172 : 16 : :2 activate
+exit-address-family
+</b>
+
+The table summarizes VRF-Lite configuration for BGP routing. 
+
+The basic configuration steps are similar for both configuration methods:
+
+Define a VRF and identify the required address family, IPv4 and/or IPv6. Use the <b>vrf definition</b> command to create the VRF and use the <b>address-family {ipv4 | ipv6} unicast</b> command to initialize the appropriate address family.
+
+Associate the VRF with an interface or subinterface. The VRF is associated with the interface or subinterface by entering the <b>vrf forwarding</b> command under interface configuration mode.
+
+Enable an instance of BGP. The VRF is associated with the BGP process by using the <b>address-family {ipv4 | ipv6} vrf vrf-name</b> command.
+
+<h3>Configure Routing with VRF-Lite</h3>
+
+<table border="1">
+<tr>
+<td>VRF Name</td>
+<td>Address Family</td>
+<td>Parameters</td>
+</tr>
+<tr>
+<td>OSPF</td>
+<td>IPv4 and IPv6</td>
+<td>-</td>
+</tr>
+<tr>
+<td>EIGRP</td>
+<td>IPv4 and IPv6</td>
+<td>-</td>
+</tr>
+<tr>
+<td>STATIC</td>
+<td>IPv4 and IPv6</td>
+<td>-</td>
+</tr>
+<tr>
+<td>BGP</td>
+<td>IPv4 and IPv6</td>
+<td>RD 10:10 RT import 10:203 RT export 10:10</td>
+</tr>
+<tr>
+<td>SHARED</td>
+<td>IPv4</td>
+<td>RD 10:203 RT import 10:10 RT export 10:203</td>
+</tr>
+</table>
+
+On ISP, configure the VRFs according to table above.
+
+<b>
+ISP(config)# vrf definition OSPF
+ISP(config-vrf)# address-family ipv4
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# address-family ipv6     
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# exit
+ISP(config)# vrf definition EIGRP
+ISP(config-vrf)# address-family ipv4
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# address-family ipv6     
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# exit
+ISP(config)# vrf definition STATIC
+ISP(config-vrf)# address-family ipv4
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# address-family ipv6     
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# exit
+ISP(config)# vrf definition BGP
+ISP(config-vrf)# rd 10:10 
+ISP(config-vrf)# route-target export 10:10
+ISP(config-vrf)# route-target import 10:203
+ISP(config-vrf)# address-family ipv4
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# address-family ipv6     
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# exit
+ISP(config)# vrf definition SHARED
+ISP(config-vrf)# rd 10:203
+ISP(config-vrf)# route-target export 10:203
+ISP(config-vrf)# route-target import 10:10
+ISP(config-vrf)# address-family ipv4
+ISP(config-vrf-af)# exit
+ISP(config-vrf)# exit
+</b>
+
+The BGP and SHARED VRFs are configured with route distinguishers (RD) and route targets (RT) since these VRFs will be used with MP-BGP. Recall that RDs allow BGP to advertise and distinguish between duplicate IPv4 prefixes by applying a 64-bit value to the 32-bit IPv4 prefix. The RD can take one of three formats:
+
+2-byte-integer:4-byte-integer
+
+4-byte-integer:2-byte-integer
+
+4-byte-dotted-decimal:2-byte-integer
+
+In all three cases, the first value (before the colon) should be either an Autonomous System Number (ASN) or an IPv4 address. The second value, after the colon, can be any value.
+
+Route targets determine into which VRFs a PE router places BGP-learned routes. In this scenario, you want to export and import routes between the BGP and SHARED VRFs using MP-BGP. Think of the term export to mean “redistribute out of the VRF into BGP” and the term import to mean “redistribute into the VRF from BGP.” Notice that routes from the SHARED VRF are being exported out and then imported into the BGP VRF, and vice versa. This configuration will for the implementation of inter-VRF route leaking which will be explored in Task 4.
+
+The SHARED VRF is only configured with the IPv4 address family for simplicity.
+
+verify the VRF configuration using the <b>show vrf</b> command.
+ISP# show vrf
+
+All five VRFs are listed, and the configured RD values are assigned correctly to the BGP and SHARED VRFs. Notice that there are no interfaces assigned to the VRFs. Also, only the IPv4 address family is configured for the SHARED VRF.
+
+
+On ISP, verify the configuration details of the BGP VRF using the <b>show vrf detail BGP</b> command.
+
+ISP# show vrf detail BGP
+The output shows the configured RD and RT values for both IPv4 and IPv6 address families of the BGP VRF.
+
+<h4>Assign Interfaces to Appropriate VRFs on the ISP Router</h4>
+
+In this task, you will assign interfaces on ISP to the appropriate VRFs according to the table below.
+
+
+<table border="1">
+
+<tr>
+<td>VRF Name</td>
+<td>Interface</td>
+</tr>
+<tr>
+<td>OSPF</td>
+<td>Ethernet0/0.10 Loopback 0
+</td>
+</tr>
+<tr>
+<td>EIGRP</td>
+<td>Ethernet0/0.20 Loopback 1</td>
+</tr>
+<tr>
+<td>STATIC</td>
+<td>Ethernet0/0.30 Loopback 2</td>
+</tr>
+<tr>
+<td>BGP</td>
+<td>Ethernet0/0.40 Loopback 3
+</td>
+</tr>
+<tr>
+<td>SHARED</td>
+<td>Loopback 203</td>
+</tr>
+</table>
+
+<b>
+ISP(config)# interface Ethernet 0/0.10
+ISP(config-subif)# vrf forwarding OSPF 
+ISP(config-subif)# ip address 192.168.10.1 255.255.255.0
+ISP(config-subif)# ipv6 address 2001:db8:192:10::1/64
+ISP(config-subif)# exit
+ISP(config)# interface Ethernet 0/0.20
+ISP(config-subif)# vrf forwarding EIGRP 
+ISP(config-subif)# ip address 192.168.20.1 255.255.255.0
+ISP(config-subif)# ipv6 address 2001:db8:192:20::1/64
+ISP(config-subif)# exit
+ISP(config)# interface Ethernet 0/0.30
+ISP(config-subif)# vrf forwarding STATIC 
+ISP(config-subif)# ip address 192.168.30.1 255.255.255.0
+ISP(config-subif)# ipv6 address 2001:db8:192:30::1/64
+ISP(config-subif)# exit
+ISP(config)# interface Ethernet 0/0.40
+ISP(config-subif)# vrf forwarding BGP 
+ISP(config-subif)# ip address 192.168.40.1 255.255.255.0
+ISP(config-subif)# ipv6 add 2001:db8:192:40::1/64
+</b>
+
+
+
+On ISP, assign the Loopback interfaces to the appropriate VRF and apply IPv4 and IPv6 addresses.
+
+<b>
+ISP(config)# interface Loopback 0
+ISP(config-if)# vrf forwarding OSPF
+ISP(config-if)# ip address 10.1.2.1 255.255.255.0
+ISP(config-if)# ipv6 address 2001:db8:10:2::1/64
+ISP(config-if)# interface Loopback 1
+ISP(config-if)# vrf forwarding EIGRP
+ISP(config-if)# ip address 10.1.2.1 255.255.255.0
+ISP(config-if)# ipv6 address 2001:db8:10:2::1/64
+ISP(config-if)# interface Loopback 2
+ISP(config-if)# vrf forwarding STATIC
+ISP(config-if)# ip address 10.1.2.1 255.255.255.0
+ISP(config-if)# ipv6 address 2001:db8:10:2::1/64
+ISP(config-if)# interface Loopback 3
+ISP(config-if)# vrf forwarding BGP
+ISP(config-if)# ip address 10.1.2.1 255.255.255.0
+ISP(config-if)# ipv6 address 2001:db8:10:2::1/64
+ISP(config-if)# interface Loopback 203
+ISP(config-if)# vrf forwarding SHARED
+ISP(config-if)# ip address 203.0.113.1 255.255.255.255
+<b>
+
+Notice that the Loopback interfaces are using overlapping IPv4 and IPv6 addresses. This is only possible when using VRFs since each VRF will maintain its own routing table isolated from the other VRFs.
+
+On ISP, use the ping vrf command to test connectivity to each customer router.
+<b>ISP# ping vrf OSPF 192.168.10.10</b>
+
+Since each customer router is assigned to a specific VRF, it is important to source the ICMP echo request from the correct VRF. The <b>ping vrf</b> command allows the router to perform a VRF-aware ping. All ping tests should be successful.
+
+<h4>Enable VRF-Lite Routing on the ISP Router</h4>
+
+In this task, you will enable routing on the ISP router to support all four customer scenarios:
+
+OSPFv3
+
+EIGRP
+
+MP-BGP
+
+Static routing
+
+On ISP, create an OSPFv3 process using process ID 10. Apply a router ID of 1.1.1.1. Configure IPv4 and IPv6 address families and assign them to the OSPF VRF.
+
+
+<b>
+
+ISP(config)# router ospfv3 10
+ISP(config-router)# router-id 1.1.1.1
+ISP(config-router)# address-family ipv4 unicast vrf OSPF
+ISP(config-router-af)# exit
+ISP(config-router)# address-family ipv6 unicast vrf OSPF
+</b>
+The OSPF VRF is assigned to the IPv4 and IPv6 address families of the OSPFv3 routing process.
+
+
+On ISP, assign the Ethernet 0/0.10 interface to Area 0 and assign the loopback 0 interface to Area 1. Apply this configuration to both address families. Change the OSPF network type of the loopback 0 interface to point to point.
+
+
+<b>
+ISP(config)# interface Ethernet 0/0.10
+ISP(config-subif)# ospfv3 10 ipv4 area 0
+ISP(config-subif)# ospfv3 10 ipv6 area 0    
+ISP(config-subif)# exit
+ISP(config)# interface Loopback 0
+ISP(config-if)# ospfv3 10 ipv4 area 1
+ISP(config-if)# ospfv3 10 ipv6 area 1
+ISP(config-if)# ospfv3 network point-to-point
+<b>
+
+
+OSPFv3 neighbor adjacency messages should appear for both IPv4 and IPv6 address families after enabling OSPF on the Ethernet 0/0.10 subinterface.
+
+Enabling the point to point OSPF network type on the loopback 0 interface ensures that the ISP router advertises the correct subnet mask for that prefix (/24 instead of /32).
+
+On ISP, verify the OSPF VRF IPv4 and IPv6 routing tables and test connectivity to the loopback 0 interface on the OSPF Customer router. Source the ping from the ISP loopback 0 interface.
+
+<b>
+ISP# show ip route vrf OSPF
+ISP#show ipv6 route vrf OSPF
+</b>
+The <b>show ip route vrf</b> and <b>show ipv6 route vrf</b> commands display the contents of the OSPF VRF routing tables. The routes displayed are specific to the OSPF VRF only. The ISP is learning an OSPF inter-area route from the Customer router.
+
+<b>
+ISP# ping vrf OSPF 10.1.1.1 source Loopback 0
+ISP# ping vrf OSPF 2001:db8:10:1::1 source Loopback 0
+</b>
+
+Pings sourced from the ISP loopback 0 interface and destined to the OSPF Customer router loopback 0 interface are successful. The <b>ping vrf<b> command must be used for this test since the OSPF customer routes are not included in the global routing table on ISP.
+
+On the OSPF_CUST router, verify the global IPv4 and IPv6 routing tables.
+<b>
+OSPF_CUST# show ip route
+OSPF_CUST#show ipv6 route
+</b>
+
+VRFs are not configured locally on the OSPF Customer router. Instead, the global routing table shows that the router is learning an IPv4 and an IPv6 OSPF inter-area prefix from ISP.
+
+On ISP, create an EIGRP process using named configuration mode. Use the name VRF-LAB and an autonomous system number of 20. Configure IPv4 and IPv6 address families and assign them to the EIGRP VRF. Apply a router ID of 1.1.1.1.
+
+<b>
+ISP(config)# router eigrp VRF-LAB 
+ISP(config-router)# address-family ipv4 unicast vrf EIGRP autonomous-system 20
+ISP(config-router-af)# eigrp router-id 1.1.1.1
+ISP(config-router-af)# exit
+ISP(config-router)# address-family ipv6 unicast vrf EIGRP autonomous-system 20
+ISP(config-router-af)# eigrp router-id 1.1.1.1
+</b>
+
+Notice that a neighbor adjacency is formed with the EIGRP Customer router when the IPv6 address family is configured for the EIGRP VRF. By default, all active IPv6 interfaces within that VRF are included in the EIGRP process when using named configuration mode. The network command is still required for the IPv4 address family.
+
+
+On ISP, assign the Ethernet 0/0.20 and the Loopback 1 interfaces to the EIGRP process.
+<b>
+ISP(config)# router eigrp VRF-LAB
+ISP(config-router)# address-family ipv4 unicast vrf EIGRP autonomous-system 20
+ISP(config-router-af)#network 192.168.20.0 0.0.0.255
+ISP(config-router-af)# network 10.1.2.0 0.0.0.255
+</b>
+
+An IPv4 EIGRP neighbor adjacency is formed with the EIGRP Customer router after entering the network command for the Ethernet 0/0.20 interface.
+
+On ISP, verify the EIGRP VRF IPv4 and IPv6 routing tables and test connectivity to the loopback 0 interface on the EIGRP Customer router. Source the ping from the ISP Loopback 1 interface.
+<b>
+ISP# show ip route vrf EIGRP
+ISP# show ipv6 route vrf EIGRP
+</b>
+
+The <b>show ip route vrf<b> and <b>show ipv6 route vrf</b> commands display the contents of the EIGRP VRF routing tables. The routes displayed are specific to the EIGRP VRF only. The ISP is learning an EIGRP route from the Customer router.
+
+<b>
+ISP# ping vrf EIGRP 10.1.1.1 source Loopback 1
+ISP# ping vrf EIGRP 2001:db8:10:1::1 source Loopback 1
+</b>
+
+Pings sourced from the ISP Loopback 1 interface and destined to the EIGRP Customer router loopback 0 interface are successful. The <b>ping vrf</b> command must be used for this test since the EIGRP customer routes are not included in the global routing table on ISP.
+
+On the EIGRP_CUST router, verify the global IPv4 and IPv6 routing tables.
+
+<b>
+EIGRP_CUST# show ip route
+EIGRP_CUST# show ipv6 route
+</b>
+
+As was the case for the OSPF_CUST router, VRFs are also not configured locally on the EIGRP Customer router. Instead, the global routing table shows that the router is learning an IPv4 and an IPv6 EIGRP prefix from ISP.
+
+On ISP, configure IPv4 and IPv6 static routes to reach the loopback 0 interface of the STATIC_CUST router. Apply the static routes to the STATIC VRF.
+
+<b>
+ISP(config)# ip route vrf STATIC 10.1.1.0 255.255.255.0 192.168.30.30
+ISP(config)# ipv6 route vrf STATIC 2001:DB8:10:1::/64 2001:DB8:192:30::30
+</b>
+
+The <b>ip route vrf</b> and </b>ipv6 route vrf</b> commands allow a static route to be added to a specific VRF routing table.
+
+On ISP, verify the STATIC VRF IPv4 and IPv6 routing tables and test connectivity to the loopback 0 interface on the Static Customer router. Source the ping from the ISP Loopback 2 interface.
+
+<b>
+ISP# show ip route vrf STATIC
+ISP# show ipv6 route vrf STATIC
+</b>
+The <b>show ip route vrf</b> and <b>show ipv6 route vrf</b> commands display the contents of the STATIC VRF routing tables. The routes displayed are specific to the STATIC VRF only.
+
+<b>
+ISP# ping vrf STATIC 10.1.1.1 source Loopback 2
+ISP# ping vrf STATIC 2001:db8:10:1::1 source Loopback 2
+</b>
+
+Pings sourced from the ISP Loopback 2 interface and destined to the Static Customer router loopback 0 interface are successful. The ping vrf command must be used for this test since the Static Customer routes are not included in the global routing table on ISP.
+
+
+On ISP, create a BGP process. Use an autonomous system number of 10. Configure IPv4 and IPv6 address families and assign them to the BGP VRF. Apply a router ID of 1.1.1.1. Activate the EBGP Customer router as a BGP neighbor. Advertise the Loopback 3 prefixes into BGP.
+
+<b>
+ISP(config)# router bgp 10
+ISP(config-router)# bgp router-id 1.1.1.1
+ISP(config-router)# address-family ipv4 unicast vrf BGP 
+ISP(config-router-af)# neighbor 192.168.40.40 remote-as 40
+ISP(config-router-af)# neighbor 192.168.40.40 activate 
+ISP(config-router-af)# network 10.1.2.0 mask 255.255.255.0
+ISP(config-router-af)# exit
+ISP(config-router)# address-family ipv6 unicast vrf BGP
+ISP(config-router-af)# neighbor 2001:db8:192:40::40 remote-as 40
+ISP(config-router-af)# neighbor 2001:db8:192:40::40 activate 
+ISP(config-router-af)# network 2001:db8:10:2::/64 
+</b>
+
+Since the ISP router currently has no active interfaces in its global routing table, BGP is unable to automatically assign itself a router ID, hence the error message. This is corrected with the bgp router-id command. The IPv4 and IPv6 address families are defined as being part of the BGP VRF. The EBGP Customer router is activated and the BGP neighbor adjacency is established. The ISP router can then advertise its Loopback 3 prefixes within the BGP VRF.
+
+On ISP, verify the BGP VRF IPv4 and IPv6 routing tables and test connectivity to the loopback 0 interface on the EBGP Customer router. Source the ping from the ISP Loopback 3 interface.
+<b>
+ISP# show ip route vrf BGP
+ISP# show ipv6 route vrf BGP
+</b>
+The </b>show ip route vrf<b> and </b>show ipv6 route vrf</b> commands display the contents of the BGP VRF routing tables. The routes displayed are specific to the BGP VRF only. The ISP is learning a BGP route from the Customer router.
+
+<b>
+ISP# ping vrf BGP 10.1.1.1 source Loopback 3
+ISP# ping vrf BGP 2001:db8:10:1::1 source Loopback 3
+</b>
+
+Pings sourced from the ISP Loopback 3 interface and destined to the EBGP Customer router loopback 0 interface are successful. The ping vrf command must be used for this test since the EBGP Customer routes are not included in the global routing table on ISP.
+
+On ISP, use the show bgp vpnv4 unicast vrf BGP and show bgp vpnv6 unicast vrf BGP commands to inspect the BGP-learned VRF prefixes.
+
+<b>
+ISP# show bgp vpnv4 unicast vrf BGP
+</b>
+Since the BGP VRF prefixes are learned with RDs attached, they are placed in the VPNv4 and VPNv6 BGP tables instead of the global BGP tables.
+
+On the EBGP_CUST router, verify the global IPv4 and IPv6 routing tables.
+<b>
+EBGP_CUST# show ip route 
+EBGP_CUST# show ipv6 route
+</b>
+
+As was the case for the other Customer routers, VRFs are also not configured locally on the EBGP Customer router. Instead, the global routing table shows that the router is learning an IPv4 and an IPv6 EIGRP prefix from ISP.
+
+
+<h4><Configure Inter-VRF Route Leaking on the ISP Router/h4>
+
+In this task, you will configure the ISP router to leak routes between the BGP and SHARED VRFs. This will allow the EBGP Customer to reach the 203.0.113.1 public address hosted by the ISP router.
+
+On ISP, configure a new IPv4 address family under the BGP process. Assign the SHARED VRF to it. Redistribute connected interfaces.
+<b>
+
+ISP(config)# router bgp 10
+ISP(config-router)# address-family ipv4 unicast vrf SHARED
+ISP(config-router-af)# redistribute connected
+</b>
+
+
+Since the Loopback 203 interface is already assigned to the SHARED VRF on the ISP router, redistributing connected interfaces allows BGP to advertise the prefix. Recall that route targets were configured to export SHARED VRFs prefixes and import them into the BGP VRF, and vice versa.
+On the EBGP_CUST router, use the show bgp ipv4 unicast command to inspect the BGP table.
+<b>
+EBGP_CUST# show bgp ipv4 unicast 
+</b>
+Notice that the EBGP Customer router has learned the 203.0.113.1/32 prefix. This prefix is being exported out of the SHARED VRF and imported into the BGP VRF. ISP is then able to advertise it to the EBGP Customer router. The ?“” symbol at the end of the line is an indication that the origin of the prefix is unknown since it was redistributed on the ISP router.
+
+On ISP, use the show bgp vpnv4 unicast all command to verify the BGP tables for all the VRFs.
+
+<b>
+ISP# show bgp vpnv4 unicast all
+</b>
+All prefixes are being imported and exported between the BGP and SHARED VRFs. There should be full connectivity between the two.
+
+On the EBGP_CUST router, test connectivity to the Loopback 203 interface on the ISP router. Source the ping from the loopback 0 interface.
+<b>
+EBGP_CUST# ping 203.0.113.1 source Loopback 0
+</b>
+The EBGP Customer router can reach the public-host IP address 203.0.113.1 on the ISP router.
+
+
+
+<!-- 
+<h1></h1> protoclo
+<h2></h2> tema modulo x
+<h3></h3> subtema modulo x.x
+<h4></h4> subtema subtema x.x.x
+<h5></h5>
+<b></b>
+<hr>
+
+<table border="1">
+<tr>
+<th>x</th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+<ul>
+  <li></li>
+  <li></li>
+  <li></li>
+</ul>
+
+-->
